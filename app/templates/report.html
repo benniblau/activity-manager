@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Activity Report - Activity Manager{% endblock %}
+
+{% block content %}
+<!-- Back Navigation -->
+<div class="mb-4">
+    <a href="/" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Activities
+    </a>
+</div>
+
+<!-- Report Header -->
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-calendar-range"></i> Activity Report
+    </div>
+    <div class="card-body">
+        <!-- Date Range Selector -->
+        <form method="get" class="row g-3 align-items-end mb-4">
+            <div class="col-md-3">
+                <label class="form-label small text-muted">Start Date</label>
+                <input type="date" name="start_date" class="form-control" value="{{ start_date }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">End Date</label>
+                <input type="date" name="end_date" class="form-control" value="{{ end_date }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search"></i> Generate Report
+                </button>
+            </div>
+            <div class="col-md-3">
+                <!-- Quick date presets -->
+                <div class="btn-group btn-group-sm">
+                    <a href="?start_date={{ (end_date | replace('-', '') | int - 7) // 10000 }}-{{ '%02d' | format(((end_date | replace('-', '') | int - 7) % 10000) // 100) }}-{{ '%02d' | format((end_date | replace('-', '') | int - 7) % 100) }}&end_date={{ end_date }}" class="btn btn-outline-secondary">7 Days</a>
+                    <a href="?start_date={{ (end_date | replace('-', '') | int - 30) // 10000 }}-{{ '%02d' | format(((end_date | replace('-', '') | int - 30) % 10000) // 100) }}-{{ '%02d' | format((end_date | replace('-', '') | int - 30) % 100) }}&end_date={{ end_date }}" class="btn btn-outline-secondary">30 Days</a>
+                    <a href="?start_date={{ (end_date | replace('-', '') | int - 90) // 10000 }}-{{ '%02d' | format(((end_date | replace('-', '') | int - 90) % 10000) // 100) }}-{{ '%02d' | format((end_date | replace('-', '') | int - 90) % 100) }}&end_date={{ end_date }}" class="btn btn-outline-secondary">90 Days</a>
+                </div>
+            </div>
+        </form>
+
+        <!-- Summary Stats -->
+        <div class="row text-center mb-3">
+            <div class="col-md-3">
+                <div class="p-3 border rounded">
+                    <h4 class="mb-0">{{ total_activities }}</h4>
+                    <small class="text-muted">Total Activities</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded">
+                    <h4 class="mb-0">{{ "%.1f"|format(total_distance / 1000) }} km</h4>
+                    <small class="text-muted">Total Distance</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded">
+                    <h4 class="mb-0">{{ (total_time // 3600)|int }}h {{ ((total_time % 3600) // 60)|int }}m</h4>
+                    <small class="text-muted">Total Time</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded">
+                    <h4 class="mb-0">{{ days_with_activities }} / {{ total_days }}</h4>
+                    <small class="text-muted">Active Days</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Table -->
+<div class="card stats-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 report-table">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">Date</th>
+                        <th style="width: 100px;">Day</th>
+                        <th style="width: 80px;" class="text-center">Day Feel</th>
+                        <th style="width: 180px;">Day Notes</th>
+                        <th>Activities</th>
+                        <th style="width: 100px;" class="text-end">Distance</th>
+                        <th style="width: 100px;" class="text-end">Duration</th>
+                        <th style="width: 80px;" class="text-center">Before</th>
+                        <th style="width: 80px;" class="text-center">During</th>
+                        <th style="width: 80px;" class="text-center">After</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in all_days %}
+                    {% set day_feel = day_feelings.get(day.date, {}) %}
+                    {% if day.activities %}
+                    {% for activity in day.activities %}
+                    <tr class="{% if loop.first %}day-first-row{% endif %}">
+                        {% if loop.first %}
+                        <td rowspan="{{ day.activities|length }}" class="align-middle fw-bold day-cell">
+                            {{ day.date }}
+                        </td>
+                        <td rowspan="{{ day.activities|length }}" class="align-middle day-cell">
+                            {{ day.weekday[:3] }}
+                        </td>
+                        <td rowspan="{{ day.activities|length }}" class="align-middle text-center day-cell">
+                            {% if day_feel and day_feel.feeling_pain is defined and day_feel.feeling_pain is not none %}
+                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ day_feel.feeling_pain ~ '.svg') }}"
+                                 alt="{{ day_feel.feeling_pain }}" class="feeling-icon-sm" title="Level {{ day_feel.feeling_pain }}">
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td rowspan="{{ day.activities|length }}" class="align-middle day-cell">
+                            {% if day_feel.feeling_text %}
+                            <span class="small" title="{{ day_feel.feeling_text }}">{{ day_feel.feeling_text }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                        <td>
+                            <a href="/activity/{{ activity.id }}" class="text-decoration-none">
+                                <span class="badge badge-sport-{{ activity.sport_type|lower|replace(' ', '')|replace('-', '') }} me-1">{{ activity.sport_type }}</span>
+                                {{ activity.name }}
+                            </a>
+                        </td>
+                        <td class="text-end">
+                            {% if activity.distance %}
+                            {{ "%.2f"|format(activity.distance / 1000) }} km
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if activity.moving_time %}
+                            {{ (activity.moving_time // 3600)|int }}:{{ '%02d'|format((activity.moving_time % 3600) // 60) }}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if activity.feeling_before_pain is not none %}
+                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ activity.feeling_before_pain ~ '.svg') }}"
+                                 alt="{{ activity.feeling_before_pain }}" class="feeling-icon-sm" title="Level {{ activity.feeling_before_pain }}">
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if activity.feeling_during_pain is not none %}
+                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ activity.feeling_during_pain ~ '.svg') }}"
+                                 alt="{{ activity.feeling_during_pain }}" class="feeling-icon-sm" title="Level {{ activity.feeling_during_pain }}">
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if activity.feeling_after_pain is not none %}
+                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ activity.feeling_after_pain ~ '.svg') }}"
+                                 alt="{{ activity.feeling_after_pain }}" class="feeling-icon-sm" title="Level {{ activity.feeling_after_pain }}">
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            {% if activity.feeling_before_text or activity.feeling_during_text or activity.feeling_after_text %}
+                            <div class="notes-cell">
+                                {% if activity.feeling_before_text %}
+                                <div class="text-truncate" title="{{ activity.feeling_before_text }}">
+                                    <strong>B:</strong> {{ activity.feeling_before_text }}
+                                </div>
+                                {% endif %}
+                                {% if activity.feeling_during_text %}
+                                <div class="text-truncate" title="{{ activity.feeling_during_text }}">
+                                    <strong>D:</strong> {{ activity.feeling_during_text }}
+                                </div>
+                                {% endif %}
+                                {% if activity.feeling_after_text %}
+                                <div class="text-truncate" title="{{ activity.feeling_after_text }}">
+                                    <strong>A:</strong> {{ activity.feeling_after_text }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr class="rest-day">
+                        <td class="fw-bold">{{ day.date }}</td>
+                        <td>{{ day.weekday[:3] }}</td>
+                        <td class="text-center">
+                            {% if day_feel and day_feel.feeling_pain is defined and day_feel.feeling_pain is not none %}
+                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ day_feel.feeling_pain ~ '.svg') }}"
+                                 alt="{{ day_feel.feeling_pain }}" class="feeling-icon-sm" title="Level {{ day_feel.feeling_pain }}">
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if day_feel.feeling_text %}
+                            <span class="small" title="{{ day_feel.feeling_text }}">{{ day_feel.feeling_text }}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td colspan="6" class="text-muted fst-italic">Rest day</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

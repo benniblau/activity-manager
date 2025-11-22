@@ -1,182 +1,120 @@
 # Activity Manager
 
-A **lean** Python Flask application for managing sport activities with Strava integration. The data model is fully compliant with Strava's API, allowing you to track all activity metrics including performance, location, and social engagement data.
+A **sports journal** application for athletes recovering from injuries or working with coaches. Automatically sync your activities from Strava and annotate how you felt before, during, and after each workout. Track your daily overall condition to help trainers adjust your training plan and monitor your recovery progress.
+
+## Why This App?
+
+When recovering from an injury (like Achilles tendinitis, runner's knee, or other overuse injuries), tracking how your body responds to training is crucial. This app helps you:
+
+- **Document your feelings** - Record pain/discomfort levels and notes for each activity
+- **Track daily condition** - Log how you feel each day, even on rest days
+- **Identify patterns** - See how different activities affect your recovery
+- **Communicate with coaches** - Provide trainers with detailed reports to adjust your plan
+- **Monitor progress** - Track your journey back to full fitness over time
 
 ## Features
 
-- **Bootstrap 5 Dark Theme Web UI** - Beautiful, responsive interface for viewing activities
-- **Strava Integration** - One-click OAuth connection and sync via stravalib
-- Full Strava API data model with 50+ activity attributes
-- Complete CRUD operations for activities
-- Activity filtering by sport type and date range
-- Activities grouped by day with pagination
-- Statistics and summaries
-- Lightweight: Uses Python's built-in `sqlite3` module (no SQLAlchemy!)
-- Only 3 dependencies: Flask, stravalib, python-dotenv
-- RESTful API design with blueprints
+- **Strava Integration** - One-click OAuth sync to automatically import all your activities
+- **Feeling Annotations** - Rate pain/discomfort (0-10 scale) before, during, and after each workout
+- **Daily Journal** - Record your overall daily condition, even on rest days
+- **Visual Reports** - Date-range reports showing activities alongside your subjective feedback
+- **Activity Overview** - Activities grouped by day with color-coded sport types
+- **Dark Theme UI** - Clean, responsive Bootstrap 5 interface
 
-## Prerequisites
+## Screenshots
 
-- Python 3.13+ (or 3.8+)
-- Strava API credentials (Client ID and Client Secret)
+The app provides three main views:
 
-## Installation
+1. **Activities Overview** - Daily view with activity cards and day feelings
+2. **Activity Detail** - Full activity stats with feeling annotation form
+3. **Report** - Tabular view of activities and feelings over a date range
 
-1. Clone the repository or navigate to the project directory:
+## Quick Start
+
+### Prerequisites
+
+- Python 3.8+
+- Strava API credentials ([create an app here](https://www.strava.com/settings/api))
+
+### Installation
+
 ```bash
+# Clone and enter directory
 cd activity-manager
-```
 
-2. Create a virtual environment:
-```bash
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-3. Install dependencies:
-```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-4. Set up environment variables:
-```bash
+# Configure environment
 cp .env.example .env
-# Edit .env and add your Strava API credentials
+# Edit .env with your Strava credentials
+
+# Run the app
+python run.py
 ```
 
-5. Initialize the database:
-```bash
-python run.py
-# The database will be created automatically on first run
-```
+The app will be available at `http://localhost:5000`
+
+### First Use
+
+1. Click "Connect with Strava" to authenticate
+2. Click "Sync" to import your activities
+3. Click on any activity to add your feeling annotations
+4. Use the "Report" page to review your progress over time
 
 ## Configuration
 
-Edit the `.env` file with your Strava credentials:
+Edit `.env` with your Strava API credentials:
 
 ```env
-FLASK_APP=run.py
 FLASK_ENV=development
 SECRET_KEY=your-secret-key-here
 
-STRAVA_CLIENT_ID=your-client-id-here
-STRAVA_CLIENT_SECRET=your-client-secret-here
-STRAVA_ACCESS_TOKEN=your-access-token-here
-STRAVA_REFRESH_TOKEN=your-refresh-token-here
+STRAVA_CLIENT_ID=your-client-id
+STRAVA_CLIENT_SECRET=your-client-secret
 ```
-
-## Running the Application
-
-Start the Flask development server:
-
-```bash
-python run.py
-```
-
-The application will be available at `http://localhost:5000`
-
-## API Endpoints
-
-### Root
-- `GET /` - API information
-
-### Authentication
-- `GET /auth/login` - Initiate Strava OAuth flow
-- `GET /auth/callback` - OAuth callback endpoint
-- `GET /auth/status` - Check authentication status
-- `GET /auth/logout` - Clear session
-
-### Activities
-
-#### List Activities
-```bash
-GET /activities/
-```
-Query parameters:
-- `sport_type` - Filter by sport type (e.g., 'Run', 'Ride')
-- `start_date` - Filter activities after date (ISO format)
-- `end_date` - Filter activities before date (ISO format)
-- `limit` - Maximum results to return
-- `offset` - Number of results to skip
-
-#### Get Single Activity
-```bash
-GET /activities/<activity_id>
-```
-
-#### Create Activity
-```bash
-POST /activities/
-Content-Type: application/json
-
-{
-  "name": "Morning Run",
-  "sport_type": "Run",
-  "start_date_local": "2024-01-15T08:00:00",
-  "elapsed_time": 3600,
-  "distance": 10000,
-  "description": "Great run!"
-}
-```
-
-Required fields:
-- `name` - Activity name
-- `sport_type` - Type of sport
-- `start_date_local` - Start time (ISO format)
-- `elapsed_time` - Duration in seconds
-
-#### Update Activity
-```bash
-PUT /activities/<activity_id>
-Content-Type: application/json
-
-{
-  "name": "Updated Activity Name",
-  "description": "New description"
-}
-```
-
-#### Delete Activity
-```bash
-DELETE /activities/<activity_id>
-```
-
-#### Sync from Strava
-```bash
-POST /activities/sync
-```
-Query parameters:
-- `limit` - Number of activities to fetch (default: 30, max: 200)
-- `after` - Fetch activities after timestamp (Unix epoch)
-- `before` - Fetch activities before timestamp (Unix epoch)
-
-#### Get Statistics
-```bash
-GET /activities/stats
-```
-Query parameters:
-- `sport_type` - Filter by sport type
-- `start_date` - Start of date range
-- `end_date` - End of date range
 
 ## Data Model
 
-The Activity model includes all Strava API fields:
+### Activities
 
-### Core Fields
-- Identification: id, resource_state, external_id, upload_id
-- Temporal: start_date, start_date_local, timezone, elapsed_time, moving_time
-- Descriptive: name, description, type, sport_type
-- Performance: distance, speed, cadence, power, heart rate
-- Location: start/end coordinates, city, state, country
-- Social: kudos_count, comment_count, achievement_count
+Each synced activity includes:
+- All Strava metrics (distance, time, heart rate, elevation, etc.)
+- **Feeling annotations** (added by you):
+  - Before exercise: pain level (0-10) + notes
+  - During exercise: pain level (0-10) + notes
+  - After exercise: pain level (0-10) + notes
 
-### Activity Types Supported
-- Running: Run, TrailRun
-- Cycling: Ride, MountainBikeRide, GravelRide, EBikeRide
-- Water: Swim, Kayaking, Rowing
-- Winter: AlpineSki, BackcountrySki, NordicSki, Snowboard
-- Other: Hike, Walk, Workout, and more
+### Days
+
+Each day can have:
+- Overall pain/discomfort level (0-10)
+- Notes about how you're feeling
+- Tracked even on rest days
+
+## Pain Scale
+
+The 0-10 pain scale uses visual indicators:
+- **0-2**: Green faces (minimal discomfort)
+- **3-4**: Yellow faces (mild discomfort)
+- **5-6**: Orange faces (moderate discomfort)
+- **7-8**: Red faces (significant pain)
+- **9-10**: Dark red faces (severe pain)
+
+## Use Cases
+
+### Injury Recovery
+Track your return from injury by documenting how each activity affects you. Share reports with your physiotherapist to adjust rehabilitation protocols.
+
+### Training Load Management
+Help your coach understand how you're responding to training. Identify when to push harder or when to back off.
+
+### Pattern Recognition
+Over time, identify which activities, intensities, or combinations lead to increased discomfort, helping optimize your training approach.
 
 ## Project Structure
 
@@ -184,49 +122,29 @@ The Activity model includes all Strava API fields:
 activity-manager/
 ├── app/
 │   ├── __init__.py          # Flask app factory
-│   ├── database.py          # Database layer (sqlite3)
-│   ├── auth/
-│   │   ├── __init__.py
-│   │   └── routes.py        # OAuth routes
-│   └── activities/
-│       ├── __init__.py
-│       └── routes.py        # CRUD endpoints
-├── activities.db            # SQLite database (auto-created)
-├── config.py                # Configuration
-├── requirements.txt         # Dependencies (only 3!)
-├── run.py                   # Application entry point
-├── .env                     # Environment variables (not in repo)
-├── .env.example             # Environment template
-└── .gitignore               # Git ignore rules
+│   ├── database.py          # SQLite database layer
+│   ├── auth/                 # Strava OAuth
+│   ├── activities/           # REST API endpoints
+│   ├── web/                  # Web UI routes
+│   ├── static/
+│   │   ├── css/style.css    # Custom styles
+│   │   └── svg/             # Pain scale icons
+│   └── templates/           # Jinja2 templates
+├── requirements.txt         # Dependencies (Flask, stravalib, python-dotenv)
+└── run.py                   # Entry point
 ```
 
-## Development
+## Technical Notes
 
-### Database Schema
-
-The database is automatically initialized on first run. The schema is defined in [app/database.py](app/database.py).
-
-To reset the database, simply delete `activities.db` and restart the application.
-
-### Adding New Features
-
-The application uses Flask blueprints for modular organization. To add new functionality:
-
-1. Create a new blueprint in `app/`
-2. Register it in [app/__init__.py](app/__init__.py)
-3. Add routes to the blueprint
-
-### Architecture
-
-- **No ORM**: Uses Python's built-in `sqlite3` module for maximum simplicity
-- **Minimal dependencies**: Only Flask, stravalib, and python-dotenv
-- **Blueprint-based**: Modular organization with `auth` and `activities` blueprints
-- **Database layer**: Simple helper functions in [app/database.py](app/database.py)
+- **Lightweight**: Uses Python's built-in `sqlite3` (no ORM)
+- **Minimal dependencies**: Flask, stravalib, python-dotenv
+- **Preserves annotations**: Strava sync updates activity data without overwriting your feeling notes
 
 ## License
 
 This project is for personal use.
 
-## Strava API Reference
+## Resources
 
-Full Strava API documentation: https://developers.strava.com/docs/reference/
+- [Strava API Documentation](https://developers.strava.com/docs/reference/)
+- [Bootstrap 5 Documentation](https://getbootstrap.com/docs/5.3/)

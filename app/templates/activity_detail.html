@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}{{ activity.name }} - Activity Manager{% endblock %}
+
+{% block content %}
+<!-- Flash Messages -->
+{% if success_message %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> {{ success_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Back Navigation -->
+<div class="mb-4">
+    <a href="/" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Activities
+    </a>
+</div>
+
+<!-- Activity Header -->
+<div class="card stats-card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <span class="badge bg-primary mb-2">{{ activity.sport_type }}</span>
+                <h2 class="mb-1">{{ activity.name }}</h2>
+                <p class="text-muted mb-0">
+                    <i class="bi bi-calendar-date"></i> {{ activity.formatted_date }}
+                    {% if activity.formatted_time %}
+                    <span class="ms-3"><i class="bi bi-clock"></i> {{ activity.formatted_time }}</span>
+                    {% endif %}
+                    {% if activity.timezone %}
+                    <span class="ms-3"><i class="bi bi-globe"></i> {{ activity.timezone }}</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="text-end">
+                <small class="text-muted">Activity ID: {{ activity.id }}</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if activity.description %}
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-chat-text"></i> Description
+    </div>
+    <div class="card-body">
+        <p class="mb-0">{{ activity.description }}</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Key Metrics -->
+<div class="row mb-4">
+    {% if activity.distance %}
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-arrow-left-right text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">{{ "%.2f"|format(activity.distance / 1000) }} km</h3>
+                <small class="text-muted">Distance</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if activity.moving_time %}
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-stopwatch text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">{{ (activity.moving_time // 3600)|int }}h {{ ((activity.moving_time % 3600) // 60)|int }}m</h3>
+                <small class="text-muted">Moving Time</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if activity.total_elevation_gain %}
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-graph-up-arrow text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">{{ "%.0f"|format(activity.total_elevation_gain) }} m</h3>
+                <small class="text-muted">Elevation Gain</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if activity.calories %}
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-fire text-danger" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">{{ "%.0f"|format(activity.calories) }}</h3>
+                <small class="text-muted">Calories</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Detailed Stats -->
+<div class="row">
+    <!-- Speed & Pace -->
+    <div class="col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-header">
+                <i class="bi bi-speedometer2"></i> Speed & Pace
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    {% if activity.average_speed %}
+                    <tr>
+                        <td class="text-muted">Average Speed</td>
+                        <td class="text-end">{{ "%.2f"|format(activity.average_speed * 3.6) }} km/h</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.max_speed %}
+                    <tr>
+                        <td class="text-muted">Max Speed</td>
+                        <td class="text-end">{{ "%.2f"|format(activity.max_speed * 3.6) }} km/h</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.elapsed_time %}
+                    <tr>
+                        <td class="text-muted">Elapsed Time</td>
+                        <td class="text-end">{{ (activity.elapsed_time // 3600)|int }}h {{ ((activity.elapsed_time % 3600) // 60)|int }}m {{ (activity.elapsed_time % 60)|int }}s</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.moving_time %}
+                    <tr>
+                        <td class="text-muted">Moving Time</td>
+                        <td class="text-end">{{ (activity.moving_time // 3600)|int }}h {{ ((activity.moving_time % 3600) // 60)|int }}m {{ (activity.moving_time % 60)|int }}s</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Heart Rate -->
+    <div class="col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-header">
+                <i class="bi bi-heart-pulse"></i> Heart Rate & Power
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    {% if activity.average_heartrate %}
+                    <tr>
+                        <td class="text-muted">Average Heart Rate</td>
+                        <td class="text-end">{{ "%.0f"|format(activity.average_heartrate) }} bpm</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.max_heartrate %}
+                    <tr>
+                        <td class="text-muted">Max Heart Rate</td>
+                        <td class="text-end">{{ activity.max_heartrate }} bpm</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.average_watts %}
+                    <tr>
+                        <td class="text-muted">Average Power</td>
+                        <td class="text-end">{{ "%.0f"|format(activity.average_watts) }} W</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.weighted_average_watts %}
+                    <tr>
+                        <td class="text-muted">Weighted Avg Power</td>
+                        <td class="text-end">{{ "%.0f"|format(activity.weighted_average_watts) }} W</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.max_watts %}
+                    <tr>
+                        <td class="text-muted">Max Power</td>
+                        <td class="text-end">{{ activity.max_watts }} W</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.average_cadence %}
+                    <tr>
+                        <td class="text-muted">Average Cadence</td>
+                        <td class="text-end">{{ "%.0f"|format(activity.average_cadence) }} rpm</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.kilojoules %}
+                    <tr>
+                        <td class="text-muted">Energy Output</td>
+                        <td class="text-end">{{ "%.0f"|format(activity.kilojoules) }} kJ</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Elevation -->
+    <div class="col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-header">
+                <i class="bi bi-mountains"></i> Elevation
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    {% if activity.total_elevation_gain %}
+                    <tr>
+                        <td class="text-muted">Elevation Gain</td>
+                        <td class="text-end">{{ "%.0f"|format(activity.total_elevation_gain) }} m</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.elev_high %}
+                    <tr>
+                        <td class="text-muted">Max Elevation</td>
+                        <td class="text-end">{{ "%.0f"|format(activity.elev_high) }} m</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.elev_low %}
+                    <tr>
+                        <td class="text-muted">Min Elevation</td>
+                        <td class="text-end">{{ "%.0f"|format(activity.elev_low) }} m</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Social & Activity Info -->
+    <div class="col-md-6 mb-4">
+        <div class="card stats-card h-100">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Activity Info
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    {% if activity.type %}
+                    <tr>
+                        <td class="text-muted">Activity Type</td>
+                        <td class="text-end">{{ activity.type }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.sport_type %}
+                    <tr>
+                        <td class="text-muted">Sport Type</td>
+                        <td class="text-end">{{ activity.sport_type }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.device_name %}
+                    <tr>
+                        <td class="text-muted">Device</td>
+                        <td class="text-end">{{ activity.device_name }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td class="text-muted">Kudos</td>
+                        <td class="text-end"><i class="bi bi-hand-thumbs-up"></i> {{ activity.kudos_count or 0 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Comments</td>
+                        <td class="text-end"><i class="bi bi-chat"></i> {{ activity.comment_count or 0 }}</td>
+                    </tr>
+                    {% if activity.achievement_count %}
+                    <tr>
+                        <td class="text-muted">Achievements</td>
+                        <td class="text-end"><i class="bi bi-trophy"></i> {{ activity.achievement_count }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if activity.pr_count %}
+                    <tr>
+                        <td class="text-muted">Personal Records</td>
+                        <td class="text-end"><i class="bi bi-award"></i> {{ activity.pr_count }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flags -->
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-flag"></i> Activity Flags
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+            {% if activity.trainer %}
+            <span class="badge bg-info"><i class="bi bi-bicycle"></i> Trainer</span>
+            {% endif %}
+            {% if activity.commute %}
+            <span class="badge bg-secondary"><i class="bi bi-briefcase"></i> Commute</span>
+            {% endif %}
+            {% if activity.manual %}
+            <span class="badge bg-warning text-dark"><i class="bi bi-pencil"></i> Manual Entry</span>
+            {% endif %}
+            {% if activity.private %}
+            <span class="badge bg-dark"><i class="bi bi-lock"></i> Private</span>
+            {% endif %}
+            {% if activity.has_heartrate %}
+            <span class="badge bg-danger"><i class="bi bi-heart-pulse"></i> Heart Rate</span>
+            {% endif %}
+            {% if not activity.trainer and not activity.commute and not activity.manual and not activity.private and not activity.has_heartrate %}
+            <span class="text-muted">No special flags</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Location Info -->
+{% if activity.location_city or activity.location_state or activity.location_country %}
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-geo-alt"></i> Location
+    </div>
+    <div class="card-body">
+        <p class="mb-0">
+            {% if activity.location_city %}{{ activity.location_city }}{% endif %}
+            {% if activity.location_state %}, {{ activity.location_state }}{% endif %}
+            {% if activity.location_country %}, {{ activity.location_country }}{% endif %}
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Feeling Annotations -->
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-emoji-smile"></i> How Did You Feel?
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/activity/{{ activity.id }}/annotations">
+            <div class="row">
+                <!-- Before Exercise -->
+                <div class="col-md-4 mb-4">
+                    <div class="feeling-section h-100">
+                        <h5 class="mb-3"><i class="bi bi-hourglass-start"></i> Before Exercise</h5>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">Pain/Discomfort Level</label>
+                            <div class="pain-scale-selector" data-input="feeling_before_pain">
+                                {% for i in range(11) %}
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == i %}selected{% endif %}"
+                                     data-value="{{ i }}" title="Level {{ i }}">
+                                    <img src="{{ url_for('static', filename='svg/pain-scale-' ~ i ~ '.svg') }}" alt="Pain level {{ i }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="feeling_before_pain" id="feeling_before_pain"
+                                   value="{{ activity.feeling_before_pain if activity.feeling_before_pain is not none else '' }}">
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label small text-muted">Notes</label>
+                            <textarea class="form-control form-control-sm" name="feeling_before_text" rows="3"
+                                      placeholder="How did you feel before starting?">{{ activity.feeling_before_text or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- During Exercise -->
+                <div class="col-md-4 mb-4">
+                    <div class="feeling-section h-100">
+                        <h5 class="mb-3"><i class="bi bi-activity"></i> During Exercise</h5>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">Pain/Discomfort Level</label>
+                            <div class="pain-scale-selector" data-input="feeling_during_pain">
+                                {% for i in range(11) %}
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == i %}selected{% endif %}"
+                                     data-value="{{ i }}" title="Level {{ i }}">
+                                    <img src="{{ url_for('static', filename='svg/pain-scale-' ~ i ~ '.svg') }}" alt="Pain level {{ i }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="feeling_during_pain" id="feeling_during_pain"
+                                   value="{{ activity.feeling_during_pain if activity.feeling_during_pain is not none else '' }}">
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label small text-muted">Notes</label>
+                            <textarea class="form-control form-control-sm" name="feeling_during_text" rows="3"
+                                      placeholder="How did you feel during the activity?">{{ activity.feeling_during_text or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- After Exercise -->
+                <div class="col-md-4 mb-4">
+                    <div class="feeling-section h-100">
+                        <h5 class="mb-3"><i class="bi bi-hourglass-bottom"></i> After Exercise</h5>
+                        <div class="mb-3">
+                            <label class="form-label small text-muted">Pain/Discomfort Level</label>
+                            <div class="pain-scale-selector" data-input="feeling_after_pain">
+                                {% for i in range(11) %}
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == i %}selected{% endif %}"
+                                     data-value="{{ i }}" title="Level {{ i }}">
+                                    <img src="{{ url_for('static', filename='svg/pain-scale-' ~ i ~ '.svg') }}" alt="Pain level {{ i }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="feeling_after_pain" id="feeling_after_pain"
+                                   value="{{ activity.feeling_after_pain if activity.feeling_after_pain is not none else '' }}">
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label small text-muted">Notes</label>
+                            <textarea class="form-control form-control-sm" name="feeling_after_text" rows="3"
+                                      placeholder="How did you feel after finishing?">{{ activity.feeling_after_text or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Annotations
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Pain scale selector functionality
+    document.querySelectorAll('.pain-scale-selector').forEach(selector => {
+        const inputId = selector.dataset.input;
+        const hiddenInput = document.getElementById(inputId);
+
+        selector.querySelectorAll('.pain-scale-option').forEach(option => {
+            option.addEventListener('click', () => {
+                // Remove selected class from all options in this selector
+                selector.querySelectorAll('.pain-scale-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+
+                // Add selected class to clicked option
+                option.classList.add('selected');
+
+                // Update hidden input value
+                hiddenInput.value = option.dataset.value;
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -23,6 +23,12 @@ def close_db(e=None):
 
 def init_db():
     """Initialize the database with schema"""
+    # Ensure the directory containing the database exists
+    db_path = current_app.config['DATABASE_PATH']
+    db_dir = os.path.dirname(db_path)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+
     db = get_db()
 
     # Create activities table with full Strava data model
@@ -111,6 +117,31 @@ def init_db():
 
             -- Timestamps
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+
+            -- User Annotations (feelings before/during/after exercise)
+            feeling_before_text TEXT,
+            feeling_before_pain INTEGER,
+            feeling_during_text TEXT,
+            feeling_during_pain INTEGER,
+            feeling_after_text TEXT,
+            feeling_after_pain INTEGER,
+
+            -- Foreign key to days table
+            day_date TEXT REFERENCES days(date)
+        )
+    ''')
+
+    # Run migrations to add new columns to existing databases
+    _migrate_add_feeling_columns(db)
+
+    # Create days table for daily overall feelings
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS days (
+            date TEXT PRIMARY KEY,
+            feeling_text TEXT,
+            feeling_pain INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -119,6 +150,39 @@ def init_db():
     db.execute('CREATE INDEX IF NOT EXISTS idx_start_date ON activities(start_date)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_sport_type ON activities(sport_type)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_type ON activities(type)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_day_date ON activities(day_date)')
+
+    db.commit()
+
+
+def _migrate_add_feeling_columns(db):
+    """Add feeling annotation columns and day_date to existing databases"""
+    # Get existing columns
+    cursor = db.execute("PRAGMA table_info(activities)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+
+    # Define new columns to add
+    new_columns = [
+        ('feeling_before_text', 'TEXT'),
+        ('feeling_before_pain', 'INTEGER'),
+        ('feeling_during_text', 'TEXT'),
+        ('feeling_during_pain', 'INTEGER'),
+        ('feeling_after_text', 'TEXT'),
+        ('feeling_after_pain', 'INTEGER'),
+        ('day_date', 'TEXT REFERENCES days(date)'),
+    ]
+
+    # Add missing columns
+    for column_name, column_type in new_columns:
+        if column_name not in existing_columns:
+            db.execute(f'ALTER TABLE activities ADD COLUMN {column_name} {column_type}')
+
+    # Populate day_date for existing activities that don't have it set
+    db.execute('''
+        UPDATE activities
+        SET day_date = substr(start_date_local, 1, 10)
+        WHERE day_date IS NULL AND start_date_local IS NOT NULL
+    ''')
 
     db.commit()
 
