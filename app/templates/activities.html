@@ -115,10 +115,12 @@
                 </td>
                 <td class="align-middle">
                     <div class="day-feeling-cell d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}">
-                        {% if day_feeling and day_feeling.feeling_pain is defined and day_feeling.feeling_pain is not none %}
+                        {% if day_feeling and (day_feeling.feeling_pain is not none or day_feeling.feeling_text) %}
+                        {% if day_feeling.feeling_pain is not none %}
                         <img src="{{ url_for('static', filename='svg/pain-scale-' ~ day_feeling.feeling_pain ~ '.svg') }}"
                              alt="{{ day_feeling.feeling_pain }}" class="feeling-icon-sm flex-shrink-0" title="Level {{ day_feeling.feeling_pain }}">
-                        {% if day_feeling.feeling_text %}<span class="small text-muted feeling-text" title="{{ day_feeling.feeling_text }}">{{ day_feeling.feeling_text }}</span>{% endif %}
+                        {% endif %}
+                        {% if day_feeling.feeling_text %}<span class="small text-muted feeling-text">{{ day_feeling.feeling_text }}</span>{% endif %}
                         {% else %}
                         <i class="bi bi-plus-circle text-muted"></i> <span class="small text-muted">Add</span>
                         {% endif %}
@@ -226,10 +228,12 @@
                 </td>
                 <td class="align-middle">
                     <div class="day-feeling-cell d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}">
-                        {% if day_feeling and day_feeling.feeling_pain is defined and day_feeling.feeling_pain is not none %}
+                        {% if day_feeling and (day_feeling.feeling_pain is not none or day_feeling.feeling_text) %}
+                        {% if day_feeling.feeling_pain is not none %}
                         <img src="{{ url_for('static', filename='svg/pain-scale-' ~ day_feeling.feeling_pain ~ '.svg') }}"
                              alt="{{ day_feeling.feeling_pain }}" class="feeling-icon-sm flex-shrink-0" title="Level {{ day_feeling.feeling_pain }}">
-                        {% if day_feeling.feeling_text %}<span class="small text-muted feeling-text" title="{{ day_feeling.feeling_text }}">{{ day_feeling.feeling_text }}</span>{% endif %}
+                        {% endif %}
+                        {% if day_feeling.feeling_text %}<span class="small text-muted feeling-text">{{ day_feeling.feeling_text }}</span>{% endif %}
                         {% else %}
                         <i class="bi bi-plus-circle text-muted"></i> <span class="small text-muted">Add</span>
                         {% endif %}
