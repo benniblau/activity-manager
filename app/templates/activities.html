@@ -95,6 +95,7 @@
             <tr>
                 <th style="width: 150px;">Date</th>
                 <th style="width: 200px;">Day Feeling</th>
+                <th style="width: 250px;">Coach Comment</th>
                 <th>Activities</th>
                 <th style="width: 120px;" class="text-end">Total Distance</th>
                 <th style="width: 120px;" class="text-end">Total Time</th>
@@ -123,6 +124,15 @@
                         {% if day_feeling.feeling_text %}<span class="small text-muted feeling-text">{{ day_feeling.feeling_text }}</span>{% endif %}
                         {% else %}
                         <i class="bi bi-plus-circle text-muted"></i> <span class="small text-muted">Add</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="align-middle">
+                    <div class="coach-comment-cell" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}">
+                        {% if day_feeling and day_feeling.coach_comment %}
+                        <span class="small"><i class="bi bi-chat-left-text text-info me-1"></i>{{ day_feeling.coach_comment }}</span>
+                        {% else %}
+                        <span class="small text-muted"><i class="bi bi-chat-left text-muted me-1"></i>Add comment</span>
                         {% endif %}
                     </div>
                 </td>
@@ -239,6 +249,15 @@
                         {% endif %}
                     </div>
                 </td>
+                <td class="align-middle">
+                    <div class="coach-comment-cell" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}">
+                        {% if day_feeling and day_feeling.coach_comment %}
+                        <span class="small"><i class="bi bi-chat-left-text text-info me-1"></i>{{ day_feeling.coach_comment }}</span>
+                        {% else %}
+                        <span class="small text-muted"><i class="bi bi-chat-left text-muted me-1"></i>Add comment</span>
+                        {% endif %}
+                    </div>
+                </td>
                 <td class="text-muted fst-italic">
                     Rest day
                 </td>
@@ -334,10 +353,15 @@
                         <input type="hidden" name="feeling_pain" id="day_feeling_pain_{{ day | replace('-', '') }}"
                                value="{{ day_feeling.feeling_pain if day_feeling and day_feeling.feeling_pain is defined and day_feeling.feeling_pain is not none else '' }}">
                     </div>
-                    <div class="mb-0">
+                    <div class="mb-3">
                         <label class="form-label small text-muted">Notes</label>
                         <textarea class="form-control form-control-sm" name="feeling_text" rows="3"
                                   placeholder="How did you feel overall today?">{{ day_feeling.feeling_text or '' }}</textarea>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small text-muted"><i class="bi bi-chat-left-text me-1"></i>Coach Comment</label>
+                        <textarea class="form-control form-control-sm" name="coach_comment" rows="3"
+                                  placeholder="Coach notes and recommendations...">{{ day_feeling.coach_comment or '' }}</textarea>
                     </div>
                 </div>
                 <div class="modal-footer">

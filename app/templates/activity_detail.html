@@ -412,7 +412,18 @@
                 </div>
             </div>
 
-            <div class="text-end">
+            <!-- Coach Comment -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="feeling-section">
+                        <h5 class="mb-3"><i class="bi bi-chat-left-text"></i> Coach Comment</h5>
+                        <textarea class="form-control" name="coach_comment" rows="4"
+                                  placeholder="Coach notes and recommendations for this activity...">{{ activity.coach_comment or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-end mt-4">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-save"></i> Save Annotations
                 </button>

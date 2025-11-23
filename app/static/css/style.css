@@ -160,6 +160,18 @@
     word-wrap: break-word;
 }
 
+/* Coach Comment Cell */
+.coach-comment-cell {
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.coach-comment-cell:hover {
+    background-color: rgba(88, 166, 255, 0.1);
+}
+
 /* Rest Day Row (Activities Overview) */
 .day-row.rest-day {
     background-color: rgba(30, 30, 30, 0.3);

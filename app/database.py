@@ -127,6 +127,9 @@ def init_db():
             feeling_after_text TEXT,
             feeling_after_pain INTEGER,
 
+            -- Coach comment for this activity
+            coach_comment TEXT,
+
             -- Foreign key to days table
             day_date TEXT REFERENCES days(date)
         )
@@ -141,16 +144,35 @@ def init_db():
             date TEXT PRIMARY KEY,
             feeling_text TEXT,
             feeling_pain INTEGER,
+            coach_comment TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Run migration to add coach_comment columns
+    _migrate_add_coach_comment_columns(db)
 
     # Create indexes for common queries
     db.execute('CREATE INDEX IF NOT EXISTS idx_start_date ON activities(start_date)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_sport_type ON activities(sport_type)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_type ON activities(type)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_day_date ON activities(day_date)')
+
+    # Create strava_tokens table for persistent OAuth tokens
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS strava_tokens (
+            id INTEGER PRIMARY KEY DEFAULT 1,
+            athlete_id INTEGER,
+            athlete_name TEXT,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            CHECK (id = 1)
+        )
+    ''')
 
     db.commit()
 
@@ -170,6 +192,7 @@ def _migrate_add_feeling_columns(db):
         ('feeling_after_text', 'TEXT'),
         ('feeling_after_pain', 'INTEGER'),
         ('day_date', 'TEXT REFERENCES days(date)'),
+        ('coach_comment', 'TEXT'),
     ]
 
     # Add missing columns
@@ -185,6 +208,17 @@ def _migrate_add_feeling_columns(db):
     ''')
 
     db.commit()
+
+
+def _migrate_add_coach_comment_columns(db):
+    """Add coach_comment column to days table for existing databases"""
+    # Check if coach_comment column exists in days table
+    cursor = db.execute("PRAGMA table_info(days)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+
+    if 'coach_comment' not in existing_columns:
+        db.execute('ALTER TABLE days ADD COLUMN coach_comment TEXT')
+        db.commit()
 
 
 def dict_to_db_values(data):

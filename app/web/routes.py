@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from app.web import web_bp
 from app.database import get_db, db_row_to_dict, dict_to_db_values
-from app.auth.routes import get_strava_client
+from app.auth.routes import get_strava_client, is_authenticated as check_strava_auth
 
 
 @web_bp.route('/')
@@ -79,8 +79,8 @@ def index():
     cursor = db.execute('SELECT DISTINCT sport_type FROM activities ORDER BY sport_type')
     sport_types = [row['sport_type'] for row in cursor.fetchall()]
 
-    # Check authentication status
-    is_authenticated = 'access_token' in session
+    # Check authentication status (loads from DB if needed, refreshes if expired)
+    is_authenticated = check_strava_auth()
     athlete_name = session.get('athlete_name', '')
 
     # Get and clear flash messages from session
@@ -342,6 +342,7 @@ def save_annotations(activity_id):
     feeling_during_pain = request.form.get('feeling_during_pain', type=int)
     feeling_after_text = request.form.get('feeling_after_text', '').strip() or None
     feeling_after_pain = request.form.get('feeling_after_pain', type=int)
+    coach_comment = request.form.get('coach_comment', '').strip() or None
 
     # Update the activity
     db.execute('''
@@ -352,6 +353,7 @@ def save_annotations(activity_id):
             feeling_during_pain = ?,
             feeling_after_text = ?,
             feeling_after_pain = ?,
+            coach_comment = ?,
             updated_at = ?
         WHERE id = ?
     ''', (
@@ -361,6 +363,7 @@ def save_annotations(activity_id):
         feeling_during_pain,
         feeling_after_text,
         feeling_after_pain,
+        coach_comment,
         datetime.utcnow().isoformat(),
         activity_id
     ))
@@ -463,6 +466,7 @@ def save_day_annotations(date):
     # Get form data
     feeling_text = request.form.get('feeling_text', '').strip() or None
     feeling_pain = request.form.get('feeling_pain', type=int)
+    coach_comment = request.form.get('coach_comment', '').strip() or None
 
     # Check if day entry exists
     cursor = db.execute('SELECT date FROM days WHERE date = ?', (date,))
@@ -474,15 +478,16 @@ def save_day_annotations(date):
             UPDATE days SET
                 feeling_text = ?,
                 feeling_pain = ?,
+                coach_comment = ?,
                 updated_at = ?
             WHERE date = ?
-        ''', (feeling_text, feeling_pain, datetime.utcnow().isoformat(), date))
+        ''', (feeling_text, feeling_pain, coach_comment, datetime.utcnow().isoformat(), date))
     else:
         # Insert new day
         db.execute('''
-            INSERT INTO days (date, feeling_text, feeling_pain, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (date, feeling_text, feeling_pain, datetime.utcnow().isoformat(), datetime.utcnow().isoformat()))
+            INSERT INTO days (date, feeling_text, feeling_pain, coach_comment, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (date, feeling_text, feeling_pain, coach_comment, datetime.utcnow().isoformat(), datetime.utcnow().isoformat()))
 
     db.commit()
 
