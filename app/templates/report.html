@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import sport_icon %}
+{% from "macros.html" import sport_icon, pain_icon %}
 
 {% block title %}Activity Report - Activity Manager{% endblock %}
 
@@ -109,12 +109,7 @@
                             {{ day.weekday[:3] }}
                         </td>
                         <td rowspan="{{ day.activities|length }}" class="align-middle text-center day-cell">
-                            {% if day_feel and day_feel.feeling_pain is defined and day_feel.feeling_pain is not none %}
-                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ day_feel.feeling_pain ~ '.svg') }}"
-                                 alt="{{ day_feel.feeling_pain }}" class="feeling-icon-sm" title="Level {{ day_feel.feeling_pain }}">
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
+                            {{ pain_icon(day_feel.feeling_pain if day_feel else none) }}
                         </td>
                         <td rowspan="{{ day.activities|length }}" class="align-middle day-cell">
                             {% if day_feel.feeling_text %}
@@ -145,28 +140,13 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            {% if activity.feeling_before_pain is not none %}
-                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ activity.feeling_before_pain ~ '.svg') }}"
-                                 alt="{{ activity.feeling_before_pain }}" class="feeling-icon-sm" title="Level {{ activity.feeling_before_pain }}">
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
+                            {{ pain_icon(activity.feeling_before_pain) }}
                         </td>
                         <td class="text-center">
-                            {% if activity.feeling_during_pain is not none %}
-                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ activity.feeling_during_pain ~ '.svg') }}"
-                                 alt="{{ activity.feeling_during_pain }}" class="feeling-icon-sm" title="Level {{ activity.feeling_during_pain }}">
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
+                            {{ pain_icon(activity.feeling_during_pain) }}
                         </td>
                         <td class="text-center">
-                            {% if activity.feeling_after_pain is not none %}
-                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ activity.feeling_after_pain ~ '.svg') }}"
-                                 alt="{{ activity.feeling_after_pain }}" class="feeling-icon-sm" title="Level {{ activity.feeling_after_pain }}">
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
+                            {{ pain_icon(activity.feeling_after_pain) }}
                         </td>
                         <td class="small">
                             {% if activity.feeling_before_text or activity.feeling_during_text or activity.feeling_after_text %}
@@ -198,12 +178,7 @@
                         <td class="fw-bold">{{ day.date }}</td>
                         <td>{{ day.weekday[:3] }}</td>
                         <td class="text-center">
-                            {% if day_feel and day_feel.feeling_pain is defined and day_feel.feeling_pain is not none %}
-                            <img src="{{ url_for('static', filename='svg/pain-scale-' ~ day_feel.feeling_pain ~ '.svg') }}"
-                                 alt="{{ day_feel.feeling_pain }}" class="feeling-icon-sm" title="Level {{ day_feel.feeling_pain }}">
-                            {% else %}
-                            <span class="text-muted">-</span>
-                            {% endif %}
+                            {{ pain_icon(day_feel.feeling_pain if day_feel else none) }}
                         </td>
                         <td>
                             {% if day_feel.feeling_text %}

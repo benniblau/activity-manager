@@ -54,3 +54,37 @@
 {% macro sport_badge(sport_type) %}
 <span class="activity-badge badge badge-sport-{{ sport_type|lower|replace(' ', '')|replace('-', '') }}">{{ sport_icon(sport_type) }} {{ sport_type }}</span>
 {% endmacro %}
+
+{# Pain level to Font Awesome face icon with color gradient (green to red) #}
+{% macro pain_icon(level, size='md') %}
+{%- if level is not none and level is defined -%}
+{%- set size_class = 'fa-lg' if size == 'lg' else 'fa-sm' if size == 'sm' else '' -%}
+{%- if level == 0 -%}
+<i class="fa-solid fa-face-grin-beam {{ size_class }}" style="color: #10b981;" title="Level 0"></i>
+{%- elif level == 1 -%}
+<i class="fa-solid fa-face-smile-beam {{ size_class }}" style="color: #34d399;" title="Level 1"></i>
+{%- elif level == 2 -%}
+<i class="fa-solid fa-face-meh {{ size_class }}" style="color: #84cc16;" title="Level 2"></i>
+{%- elif level == 3 -%}
+<i class="fa-solid fa-face-frown-slight {{ size_class }}" style="color: #a3e635;" title="Level 3"></i>
+{%- elif level == 4 -%}
+<i class="fa-solid fa-face-worried {{ size_class }}" style="color: #eab308;" title="Level 4"></i>
+{%- elif level == 5 -%}
+<i class="fa-solid fa-face-frown-open {{ size_class }}" style="color: #f59e0b;" title="Level 5"></i>
+{%- elif level == 6 -%}
+<i class="fa-solid fa-face-grimace {{ size_class }}" style="color: #f97316;" title="Level 6"></i>
+{%- elif level == 7 -%}
+<i class="fa-solid fa-face-sad-cry {{ size_class }}" style="color: #ea580c;" title="Level 7"></i>
+{%- elif level == 8 -%}
+<i class="fa-solid fa-face-confounded {{ size_class }}" style="color: #ef4444;" title="Level 8"></i>
+{%- elif level == 9 -%}
+<i class="fa-solid fa-face-weary {{ size_class }}" style="color: #dc2626;" title="Level 9"></i>
+{%- elif level == 10 -%}
+<i class="fa-solid fa-face-dizzy {{ size_class }}" style="color: #b91c1c;" title="Level 10"></i>
+{%- else -%}
+<i class="fa-solid fa-face-meh {{ size_class }}" style="color: #6b7280;" title="Unknown"></i>
+{%- endif -%}
+{%- else -%}
+<span class="text-muted">-</span>
+{%- endif -%}
+{% endmacro %}

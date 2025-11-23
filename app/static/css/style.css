@@ -199,6 +199,26 @@ body {
     height: 20px;
 }
 
+/* Font Awesome Pain Scale Icons */
+.pain-icon-fa {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.pain-icon-fa-sm {
+    font-size: 1rem;
+}
+
+.pain-icon-fa-lg {
+    font-size: 2rem;
+}
+
+/* Pain scale selector with FA icons */
+.pain-scale-option i {
+    font-size: 2rem;
+    line-height: 1;
+}
+
 .notes-cell {
     max-width: 200px;
 }

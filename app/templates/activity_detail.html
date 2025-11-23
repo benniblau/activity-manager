@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import sport_icon %}
+{% from "macros.html" import sport_icon, pain_icon %}
 
 {% block title %}{{ activity.name }} - Activity Manager{% endblock %}
 
@@ -362,12 +362,17 @@
                         <div class="mb-3">
                             <label class="form-label small text-muted">Pain/Discomfort Level</label>
                             <div class="pain-scale-selector" data-input="feeling_before_pain">
-                                {% for i in range(11) %}
-                                <div class="pain-scale-option {% if activity.feeling_before_pain == i %}selected{% endif %}"
-                                     data-value="{{ i }}" title="Level {{ i }}">
-                                    <img src="{{ url_for('static', filename='svg/pain-scale-' ~ i ~ '.svg') }}" alt="Pain level {{ i }}">
-                                </div>
-                                {% endfor %}
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 0 %}selected{% endif %}" data-value="0" title="Level 0"><i class="fa-solid fa-face-grin-beam" style="color: #10b981;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 1 %}selected{% endif %}" data-value="1" title="Level 1"><i class="fa-solid fa-face-smile-beam" style="color: #34d399;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 2 %}selected{% endif %}" data-value="2" title="Level 2"><i class="fa-solid fa-face-meh" style="color: #84cc16;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 3 %}selected{% endif %}" data-value="3" title="Level 3"><i class="fa-solid fa-face-frown-slight" style="color: #a3e635;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 4 %}selected{% endif %}" data-value="4" title="Level 4"><i class="fa-solid fa-face-worried" style="color: #eab308;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 5 %}selected{% endif %}" data-value="5" title="Level 5"><i class="fa-solid fa-face-frown-open" style="color: #f59e0b;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 6 %}selected{% endif %}" data-value="6" title="Level 6"><i class="fa-solid fa-face-grimace" style="color: #f97316;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 7 %}selected{% endif %}" data-value="7" title="Level 7"><i class="fa-solid fa-face-sad-cry" style="color: #ea580c;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 8 %}selected{% endif %}" data-value="8" title="Level 8"><i class="fa-solid fa-face-confounded" style="color: #ef4444;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 9 %}selected{% endif %}" data-value="9" title="Level 9"><i class="fa-solid fa-face-weary" style="color: #dc2626;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_before_pain == 10 %}selected{% endif %}" data-value="10" title="Level 10"><i class="fa-solid fa-face-dizzy" style="color: #b91c1c;"></i></div>
                             </div>
                             <input type="hidden" name="feeling_before_pain" id="feeling_before_pain"
                                    value="{{ activity.feeling_before_pain if activity.feeling_before_pain is not none else '' }}">
@@ -387,12 +392,17 @@
                         <div class="mb-3">
                             <label class="form-label small text-muted">Pain/Discomfort Level</label>
                             <div class="pain-scale-selector" data-input="feeling_during_pain">
-                                {% for i in range(11) %}
-                                <div class="pain-scale-option {% if activity.feeling_during_pain == i %}selected{% endif %}"
-                                     data-value="{{ i }}" title="Level {{ i }}">
-                                    <img src="{{ url_for('static', filename='svg/pain-scale-' ~ i ~ '.svg') }}" alt="Pain level {{ i }}">
-                                </div>
-                                {% endfor %}
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 0 %}selected{% endif %}" data-value="0" title="Level 0"><i class="fa-solid fa-face-grin-beam" style="color: #10b981;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 1 %}selected{% endif %}" data-value="1" title="Level 1"><i class="fa-solid fa-face-smile-beam" style="color: #34d399;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 2 %}selected{% endif %}" data-value="2" title="Level 2"><i class="fa-solid fa-face-meh" style="color: #84cc16;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 3 %}selected{% endif %}" data-value="3" title="Level 3"><i class="fa-solid fa-face-frown-slight" style="color: #a3e635;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 4 %}selected{% endif %}" data-value="4" title="Level 4"><i class="fa-solid fa-face-worried" style="color: #eab308;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 5 %}selected{% endif %}" data-value="5" title="Level 5"><i class="fa-solid fa-face-frown-open" style="color: #f59e0b;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 6 %}selected{% endif %}" data-value="6" title="Level 6"><i class="fa-solid fa-face-grimace" style="color: #f97316;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 7 %}selected{% endif %}" data-value="7" title="Level 7"><i class="fa-solid fa-face-sad-cry" style="color: #ea580c;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 8 %}selected{% endif %}" data-value="8" title="Level 8"><i class="fa-solid fa-face-confounded" style="color: #ef4444;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 9 %}selected{% endif %}" data-value="9" title="Level 9"><i class="fa-solid fa-face-weary" style="color: #dc2626;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_during_pain == 10 %}selected{% endif %}" data-value="10" title="Level 10"><i class="fa-solid fa-face-dizzy" style="color: #b91c1c;"></i></div>
                             </div>
                             <input type="hidden" name="feeling_during_pain" id="feeling_during_pain"
                                    value="{{ activity.feeling_during_pain if activity.feeling_during_pain is not none else '' }}">
@@ -412,12 +422,17 @@
                         <div class="mb-3">
                             <label class="form-label small text-muted">Pain/Discomfort Level</label>
                             <div class="pain-scale-selector" data-input="feeling_after_pain">
-                                {% for i in range(11) %}
-                                <div class="pain-scale-option {% if activity.feeling_after_pain == i %}selected{% endif %}"
-                                     data-value="{{ i }}" title="Level {{ i }}">
-                                    <img src="{{ url_for('static', filename='svg/pain-scale-' ~ i ~ '.svg') }}" alt="Pain level {{ i }}">
-                                </div>
-                                {% endfor %}
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 0 %}selected{% endif %}" data-value="0" title="Level 0"><i class="fa-solid fa-face-grin-beam" style="color: #10b981;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 1 %}selected{% endif %}" data-value="1" title="Level 1"><i class="fa-solid fa-face-smile-beam" style="color: #34d399;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 2 %}selected{% endif %}" data-value="2" title="Level 2"><i class="fa-solid fa-face-meh" style="color: #84cc16;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 3 %}selected{% endif %}" data-value="3" title="Level 3"><i class="fa-solid fa-face-frown-slight" style="color: #a3e635;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 4 %}selected{% endif %}" data-value="4" title="Level 4"><i class="fa-solid fa-face-worried" style="color: #eab308;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 5 %}selected{% endif %}" data-value="5" title="Level 5"><i class="fa-solid fa-face-frown-open" style="color: #f59e0b;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 6 %}selected{% endif %}" data-value="6" title="Level 6"><i class="fa-solid fa-face-grimace" style="color: #f97316;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 7 %}selected{% endif %}" data-value="7" title="Level 7"><i class="fa-solid fa-face-sad-cry" style="color: #ea580c;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 8 %}selected{% endif %}" data-value="8" title="Level 8"><i class="fa-solid fa-face-confounded" style="color: #ef4444;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 9 %}selected{% endif %}" data-value="9" title="Level 9"><i class="fa-solid fa-face-weary" style="color: #dc2626;"></i></div>
+                                <div class="pain-scale-option {% if activity.feeling_after_pain == 10 %}selected{% endif %}" data-value="10" title="Level 10"><i class="fa-solid fa-face-dizzy" style="color: #b91c1c;"></i></div>
                             </div>
                             <input type="hidden" name="feeling_after_pain" id="feeling_after_pain"
                                    value="{{ activity.feeling_after_pain if activity.feeling_after_pain is not none else '' }}">
