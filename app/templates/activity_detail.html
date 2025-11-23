@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import sport_icon %}
 
 {% block title %}{{ activity.name }} - Activity Manager{% endblock %}
 
@@ -23,7 +24,7 @@
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-start">
             <div>
-                <span class="badge bg-primary mb-2">{{ activity.sport_type }}</span>
+                <span class="badge badge-sport-{{ activity.sport_type|lower|replace(' ', '')|replace('-', '') }} mb-2">{{ sport_icon(activity.sport_type) }} {{ activity.sport_type }}</span>
                 <h2 class="mb-1">{{ activity.name }}</h2>
                 <p class="text-muted mb-0">
                     <i class="bi bi-calendar-date"></i> {{ activity.formatted_date }}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import sport_icon %}
 
 {% block title %}Activity Report - Activity Manager{% endblock %}
 
@@ -122,7 +123,7 @@
                         {% endif %}
                         <td>
                             <a href="/activity/{{ activity.id }}" class="text-decoration-none">
-                                <span class="badge badge-sport-{{ activity.sport_type|lower|replace(' ', '')|replace('-', '') }} me-1">{{ activity.sport_type }}</span>
+                                <span class="badge badge-sport-{{ activity.sport_type|lower|replace(' ', '')|replace('-', '') }} me-1">{{ sport_icon(activity.sport_type) }} {{ activity.sport_type }}</span>
                                 {{ activity.name }}
                             </a>
                         </td>

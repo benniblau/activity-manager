@@ -11,6 +11,12 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
+    <link href="{{ url_for('static', filename='fontawesome/css/fontawesome.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='fontawesome/css/brands.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='fontawesome/css/solid.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='fontawesome/css/sharp-thin.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='fontawesome/css/sharp-duotone-thin.css') }}" rel="stylesheet" />
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -18,7 +24,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">
-                <i class="bi bi-activity"></i> Activity Manager -  A Sports Journaling App
+                <i class="fa-solid fa-person-running"></i> Activity Manager -  A Sports Journaling App
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>

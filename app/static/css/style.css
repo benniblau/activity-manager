@@ -30,6 +30,11 @@ body {
     padding: 0.25rem 0.5rem;
 }
 
+.activity-badge i,
+[class*="badge-sport-"] i {
+    margin-right: 0.25rem;
+}
+
 .day-header {
     background-color: #161b22;
     border-left: 3px solid #58a6ff;
