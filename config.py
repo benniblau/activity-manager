@@ -8,11 +8,27 @@ load_dotenv()
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
+def _normalize_host(host):
+    """Ensure HOST has a proper URL scheme (http:// or https://)"""
+    if not host:
+        return 'http://localhost:5000'
+    if not host.startswith('http://') and not host.startswith('https://'):
+        # Default to http:// for localhost, https:// for everything else
+        if 'localhost' in host or '127.0.0.1' in host:
+            return f'http://{host}'
+        return f'https://{host}'
+    return host
+
+
 class Config:
     """Base configuration class"""
 
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+
+    # Host configuration (used for OAuth callbacks)
+    # In production, set HOST to your full URL (e.g., https://activity.example.com)
+    HOST = _normalize_host(os.environ.get('HOST'))
 
     # Database
     DATABASE_PATH = os.environ.get('DATABASE_PATH') or os.path.join(BASE_DIR, "activities.db")
@@ -27,7 +43,8 @@ class Config:
     STRAVA_AUTHORIZE_URL = 'https://www.strava.com/oauth/authorize'
     STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
     STRAVA_API_BASE_URL = 'https://www.strava.com/api/v3'
-    STRAVA_REDIRECT_URI = os.environ.get('STRAVA_REDIRECT_URI') or 'http://localhost:5001/auth/callback'
+    # Redirect URI built from HOST, or can be overridden directly
+    STRAVA_REDIRECT_URI = os.environ.get('STRAVA_REDIRECT_URI') or f"{_normalize_host(os.environ.get('HOST'))}/auth/callback"
 
 
 class DevelopmentConfig(Config):

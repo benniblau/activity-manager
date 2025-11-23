@@ -13,12 +13,20 @@ def login():
 
     # Build authorization URL - READ ONLY access
     redirect_uri = current_app.config['STRAVA_REDIRECT_URI']
+    client_id = current_app.config['STRAVA_CLIENT_ID']
+
+    # Debug: log OAuth configuration
+    print(f"[OAuth] HOST: {current_app.config.get('HOST')}")
+    print(f"[OAuth] STRAVA_REDIRECT_URI: {redirect_uri}")
+    print(f"[OAuth] STRAVA_CLIENT_ID: {client_id}")
+
     authorize_url = client.authorization_url(
-        client_id=current_app.config['STRAVA_CLIENT_ID'],
+        client_id=client_id,
         redirect_uri=redirect_uri,
         scope=['read_all', 'activity:read_all']  # Read-only access, no write permissions
     )
 
+    print(f"[OAuth] Redirecting to: {authorize_url}")
     return redirect(authorize_url)
 
 
