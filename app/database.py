@@ -174,6 +174,28 @@ def init_db():
         )
     ''')
 
+    # Create gear table for equipment (bikes, shoes, etc.)
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS gear (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            brand_name TEXT,
+            model_name TEXT,
+            gear_type TEXT,
+            description TEXT,
+            distance REAL DEFAULT 0,
+            converted_distance REAL DEFAULT 0,
+            primary_gear INTEGER DEFAULT 0,
+            retired INTEGER DEFAULT 0,
+            resource_state INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Create index on gear_id for efficient joins
+    db.execute('CREATE INDEX IF NOT EXISTS idx_gear_id ON activities(gear_id)')
+
     db.commit()
 
 

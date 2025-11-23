@@ -258,6 +258,24 @@
                         <td class="text-end">{{ activity.device_name }}</td>
                     </tr>
                     {% endif %}
+                    {% if activity.gear_info %}
+                    <tr>
+                        <td class="text-muted">Gear</td>
+                        <td class="text-end">
+                            {% if activity.gear_info.gear_type == 'bike' %}
+                            <i class="fa-solid fa-bicycle"></i>
+                            {% elif activity.gear_info.gear_type == 'shoes' %}
+                            <i class="fa-solid fa-shoe-prints"></i>
+                            {% else %}
+                            <i class="fa-solid fa-gear"></i>
+                            {% endif %}
+                            {{ activity.gear_info.name }}
+                            {% if activity.gear_info.brand_name or activity.gear_info.model_name %}
+                            <br><small class="text-muted">{{ activity.gear_info.brand_name }} {{ activity.gear_info.model_name }}</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
                     <tr>
                         <td class="text-muted">Kudos</td>
                         <td class="text-end"><i class="bi bi-hand-thumbs-up"></i> {{ activity.kudos_count or 0 }}</td>

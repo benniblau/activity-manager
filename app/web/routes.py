@@ -1,4 +1,6 @@
-from flask import render_template, request, session, redirect, flash
+from flask import render_template, request, session, redirect, flash, Response
+import csv
+import io
 from datetime import datetime, timedelta
 from collections import defaultdict
 from app.web import web_bp
@@ -215,6 +217,7 @@ def sync():
                     'device_name': getattr(strava_activity, 'device_name', None),
                     'kudos_count': getattr(strava_activity, 'kudos_count', 0) or 0,
                     'comment_count': getattr(strava_activity, 'comment_count', 0) or 0,
+                    'gear_id': getattr(strava_activity, 'gear_id', None),
                 }
 
                 # Prepare data for database
@@ -281,9 +284,53 @@ def sync():
 
         db.commit()
 
+        # Sync gear information for all unique gear_ids not yet in gear table
+        cursor = db.execute('''
+            SELECT DISTINCT gear_id FROM activities
+            WHERE gear_id IS NOT NULL
+            AND gear_id NOT IN (SELECT id FROM gear)
+        ''')
+        new_gear_ids = [row[0] for row in cursor.fetchall()]
+
+        gear_synced = 0
+        for gear_id in new_gear_ids:
+            try:
+                print(f"Fetching gear details for {gear_id}...", file=sys.stderr, flush=True)
+                gear = client.get_gear(gear_id)
+
+                # Determine gear type from the ID prefix (b=bike, g=shoes)
+                gear_type = 'bike' if gear_id.startswith('b') else 'shoes' if gear_id.startswith('g') else 'unknown'
+
+                db.execute('''
+                    INSERT INTO gear (id, name, brand_name, model_name, gear_type, description,
+                                     distance, primary_gear, retired, resource_state, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    gear_id,
+                    getattr(gear, 'name', None),
+                    getattr(gear, 'brand_name', None),
+                    getattr(gear, 'model_name', None),
+                    gear_type,
+                    getattr(gear, 'description', None),
+                    float(gear.distance) if getattr(gear, 'distance', None) else 0,
+                    1 if getattr(gear, 'primary', False) else 0,
+                    1 if getattr(gear, 'retired', False) else 0,
+                    getattr(gear, 'resource_state', None),
+                    datetime.utcnow().isoformat(),
+                    datetime.utcnow().isoformat()
+                ))
+                gear_synced += 1
+            except Exception as e:
+                print(f"Error fetching gear {gear_id}: {e}", file=sys.stderr, flush=True)
+                continue
+
+        if gear_synced > 0:
+            db.commit()
+            print(f"Synced {gear_synced} gear items", file=sys.stderr, flush=True)
+
         import sys
-        print(f"Sync completed: {created_count} created, {updated_count} updated, {days_created} days added", file=sys.stderr, flush=True)
-        session['sync_message'] = f"Synced from Strava: {created_count} new, {updated_count} updated."
+        print(f"Sync completed: {created_count} created, {updated_count} updated, {days_created} days added, {gear_synced} gear synced", file=sys.stderr, flush=True)
+        session['sync_message'] = f"Synced from Strava: {created_count} new, {updated_count} updated, {gear_synced} gear."
         return redirect('/')
 
     except Exception as e:
@@ -307,6 +354,13 @@ def activity_detail(activity_id):
         return redirect('/')
 
     activity = db_row_to_dict(row)
+
+    # Get gear information if activity has gear_id
+    if activity.get('gear_id'):
+        cursor = db.execute('SELECT * FROM gear WHERE id = ?', (activity['gear_id'],))
+        gear_row = cursor.fetchone()
+        if gear_row:
+            activity['gear_info'] = dict(gear_row)
 
     # Format the date for display
     if activity.get('start_date_local'):
@@ -448,6 +502,133 @@ def report():
         total_time=total_time,
         days_with_activities=days_with_activities,
         total_days=len(all_days)
+    )
+
+
+@web_bp.route('/report/csv')
+def report_csv():
+    """Export report data as CSV"""
+    db = get_db()
+
+    # Get date range parameters (same logic as report route)
+    end_date_str = request.args.get('end_date', datetime.now().strftime('%Y-%m-%d'))
+    start_date_str = request.args.get('start_date', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+
+    # Parse dates
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    except ValueError:
+        start_date = datetime.now() - timedelta(days=30)
+        end_date = datetime.now()
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
+
+    # Query activities within date range
+    cursor = db.execute('''
+        SELECT * FROM activities
+        WHERE date(start_date_local) >= date(?) AND date(start_date_local) <= date(?)
+        ORDER BY start_date_local DESC
+    ''', (start_date_str, end_date_str))
+    rows = cursor.fetchall()
+
+    # Group activities by day
+    activities_by_day = defaultdict(list)
+    for row in rows:
+        activity = db_row_to_dict(row)
+        date_str = activity['start_date_local']
+        if date_str:
+            date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            day_key = date_obj.strftime('%Y-%m-%d')
+            activities_by_day[day_key].append(activity)
+
+    # Generate all days in range
+    all_days = []
+    current_date = end_date
+    while current_date >= start_date:
+        day_key = current_date.strftime('%Y-%m-%d')
+        all_days.append({
+            'date': day_key,
+            'weekday': current_date.strftime('%A'),
+            'activities': activities_by_day.get(day_key, [])
+        })
+        current_date -= timedelta(days=1)
+
+    # Get day feelings
+    day_feelings = {}
+    day_dates = [d['date'] for d in all_days]
+    if day_dates:
+        placeholders = ','.join(['?' for _ in day_dates])
+        cursor = db.execute(f'SELECT * FROM days WHERE date IN ({placeholders})', day_dates)
+        for row in cursor.fetchall():
+            day_feelings[row['date']] = dict(row)
+
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Write header
+    writer.writerow([
+        'Date', 'Weekday', 'Day Feeling', 'Day Notes', 'Day Coach Comment',
+        'Activity', 'Sport Type', 'Distance (km)', 'Duration',
+        'Feeling Before', 'Feeling During', 'Feeling After',
+        'Notes Before', 'Notes During', 'Notes After', 'Activity Coach Comment'
+    ])
+
+    # Write data rows
+    for day in all_days:
+        day_feel = day_feelings.get(day['date'], {})
+        day_feeling_level = day_feel.get('feeling_pain', '')
+        day_notes = day_feel.get('feeling_text', '') or ''
+        day_coach = day_feel.get('coach_comment', '') or ''
+
+        if day['activities']:
+            for activity in day['activities']:
+                # Format duration as H:MM
+                moving_time = activity.get('moving_time', 0) or 0
+                duration = f"{moving_time // 3600}:{(moving_time % 3600) // 60:02d}" if moving_time else ''
+
+                # Format distance in km
+                distance = activity.get('distance', 0) or 0
+                distance_km = f"{distance / 1000:.2f}" if distance else ''
+
+                writer.writerow([
+                    day['date'],
+                    day['weekday'][:3],
+                    day_feeling_level if day_feeling_level is not None else '',
+                    day_notes,
+                    day_coach,
+                    activity.get('name', ''),
+                    activity.get('sport_type', ''),
+                    distance_km,
+                    duration,
+                    activity.get('feeling_before_pain', '') if activity.get('feeling_before_pain') is not None else '',
+                    activity.get('feeling_during_pain', '') if activity.get('feeling_during_pain') is not None else '',
+                    activity.get('feeling_after_pain', '') if activity.get('feeling_after_pain') is not None else '',
+                    activity.get('feeling_before_text', '') or '',
+                    activity.get('feeling_during_text', '') or '',
+                    activity.get('feeling_after_text', '') or '',
+                    activity.get('coach_comment', '') or ''
+                ])
+        else:
+            # Rest day - still include day feeling info
+            writer.writerow([
+                day['date'],
+                day['weekday'][:3],
+                day_feeling_level if day_feeling_level is not None else '',
+                day_notes,
+                day_coach,
+                'Rest day', '', '', '', '', '', '', '', '', '', ''
+            ])
+
+    # Prepare response
+    output.seek(0)
+    filename = f"activity_report_{start_date_str}_to_{end_date_str}.csv"
+
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
     )
 
 

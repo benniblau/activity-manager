@@ -123,6 +123,34 @@ def create_strava_tokens_table(cursor, conn):
     return True
 
 
+def create_gear_table(cursor, conn):
+    """Create the gear table for equipment (bikes, shoes, etc.)"""
+    if table_exists(cursor, 'gear'):
+        print("  [OK] gear table already exists")
+        return False
+
+    print("  [CREATE] Creating gear table...")
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS gear (
+            id TEXT PRIMARY KEY,
+            name TEXT,
+            brand_name TEXT,
+            model_name TEXT,
+            gear_type TEXT,
+            description TEXT,
+            distance REAL DEFAULT 0,
+            converted_distance REAL DEFAULT 0,
+            primary_gear INTEGER DEFAULT 0,
+            retired INTEGER DEFAULT 0,
+            resource_state INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    return True
+
+
 def create_days_table_if_missing(cursor, conn):
     """Create the days table if it doesn't exist"""
     if table_exists(cursor, 'days'):
@@ -150,6 +178,7 @@ def create_indexes(cursor, conn):
         ('idx_sport_type', 'activities', 'sport_type'),
         ('idx_type', 'activities', 'type'),
         ('idx_day_date', 'activities', 'day_date'),
+        ('idx_gear_id', 'activities', 'gear_id'),
     ]
 
     created = []
@@ -183,7 +212,7 @@ def get_database_info(cursor):
     info['tables'] = [row[0] for row in cursor.fetchall()]
 
     # Get row counts for relevant tables
-    for table in ['activities', 'days', 'strava_tokens']:
+    for table in ['activities', 'days', 'strava_tokens', 'gear']:
         if table in info['tables']:
             cursor.execute(f"SELECT COUNT(*) FROM {table}")
             info[f'{table}_count'] = cursor.fetchone()[0]
@@ -223,6 +252,7 @@ def run_migration(db_path):
         print(f"  Activities: {info['activities_count']} rows")
         print(f"  Days: {info['days_count']} rows")
         print(f"  Strava Tokens: {info['strava_tokens_count']} rows")
+        print(f"  Gear: {info['gear_count']} rows")
 
         # Run migrations
         print("\n" + "-"*40)
@@ -245,7 +275,11 @@ def run_migration(db_path):
         if migrate_activities_table(cursor, conn):
             changes.append("Added new columns to activities table")
 
-        print("\n4. Indexes:")
+        print("\n4. Gear Table:")
+        if create_gear_table(cursor, conn):
+            changes.append("Created gear table")
+
+        print("\n5. Indexes:")
         if create_indexes(cursor, conn):
             changes.append("Created missing indexes")
 
@@ -258,6 +292,7 @@ def run_migration(db_path):
         print(f"  Activities: {info['activities_count']} rows")
         print(f"  Days: {info['days_count']} rows")
         print(f"  Strava Tokens: {info['strava_tokens_count']} rows")
+        print(f"  Gear: {info['gear_count']} rows")
 
         # Summary
         print("\n" + "="*60)
