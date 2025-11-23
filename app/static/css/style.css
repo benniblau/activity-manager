@@ -150,7 +150,6 @@
     padding: 4px;
     border-radius: 4px;
     transition: background-color 0.2s;
-    max-width: 180px;
 }
 
 .day-feeling-cell:hover {
@@ -158,13 +157,7 @@
 }
 
 .day-feeling-cell .feeling-text {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 150px;
+    word-wrap: break-word;
 }
 
 /* Rest Day Row (Activities Overview) */
