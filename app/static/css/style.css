@@ -256,15 +256,18 @@ body {
 }
 
 /* Rest Day Row (Activities Overview) */
-.day-row.rest-day {
+.rest-day {
     background-color: rgba(30, 30, 30, 0.3);
 }
 
-.day-row.rest-day td {
+.rest-day td {
     opacity: 0.7;
 }
 
-.day-row.rest-day .day-feeling-cell {
+.rest-day .day-feeling-cell,
+.rest-day .day-feeling-compact,
+.rest-day .coach-comment-cell,
+.rest-day .coach-comment-compact {
     opacity: 1;
 }
 

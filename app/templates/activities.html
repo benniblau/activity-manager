@@ -273,11 +273,56 @@
                 </td>
             </tr>
             {% else %}
-            <!-- Rest Day -->
-            <tr class="day-row rest-day">
+            <!-- Rest Day - Collapsed -->
+            <tr class="day-row-collapsed rest-day collapsed" data-day="{{ day | replace('-', '') }}">
                 <td class="day-header fw-bold">
                     <i class="bi bi-calendar-date"></i>
                     {{ day }}
+                    <i class="bi bi-chevron-down expand-icon me-2"></i>
+                </td>
+                <td class="align-middle">
+                    <div class="day-feeling-compact d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}" onclick="event.stopPropagation();">
+                        {% if day_feeling and day_feeling.feeling_pain is not none %}
+                        {{ pain_icon(day_feeling.feeling_pain) }}
+                        {% if day_feeling.feeling_text %}
+                        <div class="placeholder-bar"></div>
+                        {% endif %}
+                        {% else %}
+                        <i class="bi bi-plus-circle text-muted"></i>
+                        <span class="small text-muted">Add</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="align-middle">
+                    <div class="coach-comment-compact d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}" onclick="event.stopPropagation();">
+                        {% if day_feeling and day_feeling.coach_comment %}
+                        <i class="bi bi-chat-left-text text-info"></i>
+                        <div class="placeholder-bar"></div>
+                        {% else %}
+                        <i class="bi bi-chat-left text-muted"></i>
+                        <span class="small text-muted">Add comment</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="text-muted fst-italic">
+                    Rest day
+                </td>
+                <td class="text-end align-middle">
+                    <span class="text-muted">-</span>
+                </td>
+                <td class="text-end align-middle">
+                    <span class="text-muted">-</span>
+                </td>
+                <td class="text-center align-middle">
+                    <span class="text-muted">0</span>
+                </td>
+            </tr>
+            <!-- Rest Day - Expanded -->
+            <tr class="day-row-expanded rest-day" data-day="{{ day | replace('-', '') }}" style="display: none;">
+                <td class="day-header fw-bold" style="cursor: pointer;">
+                    <i class="bi bi-calendar-date"></i>
+                    {{ day }}
+                    <i class="bi bi-chevron-up expand-icon me-2"></i>
                 </td>
                 <td class="align-middle">
                     <div class="day-feeling-cell d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}">
