@@ -45,18 +45,25 @@ def index():
             day_key = date_obj.strftime('%Y-%m-%d')
             activities_by_day[day_key].append(activity)
 
-    # Generate all days from first to last activity date (including rest days)
+    # Generate all days from today back to earliest activity (or default 30 days)
     all_days = []
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
     if activities_by_day:
         activity_dates = sorted(activities_by_day.keys())
         first_date = datetime.strptime(activity_dates[0], '%Y-%m-%d')
-        last_date = datetime.strptime(activity_dates[-1], '%Y-%m-%d')
+        # Start from today, go back to the earliest activity date
+        start_date = today
+    else:
+        # No activities yet, show last 30 days
+        start_date = today
+        first_date = today - timedelta(days=30)
 
-        # Generate all days from last to first (descending order)
-        current_date = last_date
-        while current_date >= first_date:
-            all_days.append(current_date.strftime('%Y-%m-%d'))
-            current_date -= timedelta(days=1)
+    # Generate all days from start_date to first_date (descending order)
+    current_date = start_date
+    while current_date >= first_date:
+        all_days.append(current_date.strftime('%Y-%m-%d'))
+        current_date -= timedelta(days=1)
 
     # Paginate by days
     total_days = len(all_days)
