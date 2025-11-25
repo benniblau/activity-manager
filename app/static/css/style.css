@@ -267,3 +267,54 @@ body {
 .day-row.rest-day .day-feeling-cell {
     opacity: 1;
 }
+
+/* Collapsible Day Rows */
+.day-row-collapsed {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.day-row-collapsed:hover {
+    background-color: #1c2128 !important;
+}
+
+.day-row-collapsed td {
+    height: 48px;
+    vertical-align: middle;
+}
+
+.day-row-collapsed .expand-icon {
+    transition: transform 0.3s ease;
+    color: #58a6ff;
+    font-size: 0.9rem;
+}
+
+.day-row-collapsed.expanded .expand-icon {
+    transform: rotate(180deg);
+}
+
+.day-feeling-compact,
+.coach-comment-compact {
+    cursor: pointer;
+    min-height: 24px;
+}
+
+.day-feeling-compact:hover,
+.coach-comment-compact:hover {
+    opacity: 0.8;
+}
+
+/* Placeholder bars for collapsed view */
+.placeholder-bar {
+    height: 8px;
+    background-color: #30363d;
+    border-radius: 4px;
+    min-width: 60px;
+    max-width: 120px;
+    flex-grow: 1;
+}
+
+/* Expanded row date header hover */
+.day-row-expanded .day-header:hover {
+    background-color: #1c2128;
+}

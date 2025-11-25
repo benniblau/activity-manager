@@ -91,16 +91,16 @@
 <!-- Activities Table -->
 {% if sorted_days %}
 <div class="table-responsive">
-    <table class="table table-hover table-striped">
+    <table class="table table-hover">
         <thead>
             <tr>
-                <th style="width: 150px;">Date</th>
+                <th style="width: 180px;">Date</th>
                 <th style="width: 200px;">Day Feeling</th>
                 <th style="width: 250px;">Coach Comment</th>
                 <th>Activities</th>
                 <th style="width: 120px;" class="text-end">Total Distance</th>
                 <th style="width: 120px;" class="text-end">Total Time</th>
-                <th style="width: 100px;" class="text-center">Count</th>
+                <th style="width: 100px;" class="text-center"># Activities</th>
             </tr>
         </thead>
         <tbody>
@@ -110,10 +110,68 @@
             {% set total_time = day_activities | sum(attribute='moving_time') | default(0) %}
             {% set day_feeling = day_feelings.get(day, {}) %}
             {% if day_activities %}
-            <tr class="day-row">
+            <!-- Collapsed Day Row -->
+            <tr class="day-row-collapsed collapsed" data-day="{{ day | replace('-', '') }}">
                 <td class="day-header fw-bold">
                     <i class="bi bi-calendar-date"></i>
                     {{ day }}
+                    <i class="bi bi-chevron-down expand-icon me-2"></i>
+                </td>
+                <td class="align-middle">
+                    <div class="day-feeling-compact d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}" onclick="event.stopPropagation();">
+                        {% if day_feeling and day_feeling.feeling_pain is not none %}
+                        {{ pain_icon(day_feeling.feeling_pain) }}
+                        {% if day_feeling.feeling_text %}
+                        <div class="placeholder-bar"></div>
+                        {% endif %}
+                        {% else %}
+                        <i class="bi bi-plus-circle text-muted"></i>
+                        <span class="small text-muted">Add</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td class="align-middle">
+                    <div class="coach-comment-compact d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}" onclick="event.stopPropagation();">
+                        {% if day_feeling and day_feeling.coach_comment %}
+                        <i class="bi bi-chat-left-text text-info"></i>
+                        <div class="placeholder-bar"></div>
+                        {% else %}
+                        <i class="bi bi-chat-left text-muted"></i>
+                        <span class="small text-muted">Add comment</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex gap-1 align-items-center">
+                        {% for activity in day_activities %}
+                        {{ sport_badge(activity.sport_type) }}
+                        {% endfor %}
+                    </div>
+                </td>
+                <td class="text-end align-middle">
+                    {% if total_distance > 0 %}
+                    <span>{{ "%.2f"|format(total_distance / 1000) }} km</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-end align-middle">
+                    {% if total_time > 0 %}
+                    <span>{{ (total_time // 3600)|int }}h {{ ((total_time % 3600) // 60)|int }}m</span>
+                    {% else %}
+                    <span class="text-muted">-</span>
+                    {% endif %}
+                </td>
+                <td class="text-center align-middle">
+                    <span>{{ day_activities|length }}</span>
+                </td>
+            </tr>
+            <!-- Expanded Day Row -->
+            <tr class="day-row-expanded" data-day="{{ day | replace('-', '') }}" style="display: none;">
+                <td class="day-header fw-bold" style="cursor: pointer;">
+                    <i class="bi bi-calendar-date"></i>
+                    {{ day }}
+                    <i class="bi bi-chevron-up expand-icon me-2"></i>
                 </td>
                 <td class="align-middle">
                     <div class="day-feeling-cell d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}">
@@ -366,21 +424,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-    // Pain scale selector functionality for day feeling modals
-    document.querySelectorAll('.pain-scale-selector').forEach(selector => {
-        const inputId = selector.dataset.input;
-        const hiddenInput = document.getElementById(inputId);
-
-        selector.querySelectorAll('.pain-scale-option').forEach(option => {
-            option.addEventListener('click', () => {
-                selector.querySelectorAll('.pain-scale-option').forEach(opt => {
-                    opt.classList.remove('selected');
-                });
-                option.classList.add('selected');
-                hiddenInput.value = option.dataset.value;
-            });
-        });
-    });
-</script>
+<script src="{{ url_for('static', filename='js/activities.js') }}"></script>
 {% endblock %}
