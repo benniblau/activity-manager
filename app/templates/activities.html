@@ -144,7 +144,9 @@
                 <td>
                     <div class="d-flex gap-1 align-items-center">
                         {% for activity in day_activities %}
-                        {{ sport_badge(activity.sport_type) }}
+                        <div class="px-3">
+                        {{ sport_badge(activity.sport_type) }} <br/> {{ activity.name }}
+                        </div>
                         {% endfor %}
                     </div>
                 </td>
