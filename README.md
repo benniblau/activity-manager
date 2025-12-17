@@ -95,6 +95,36 @@ The app will be available at `http://localhost:5000`
 5. Click on any activity to add your feeling annotations
 6. Use the "Report" page to review your progress over time
 
+## Database Migrations
+
+The app includes migration scripts to update existing databases:
+
+### Adding Extended Activity Types
+
+To add the new gym-related extended types (HYROX, Weight Training, LAG, Stretching):
+
+```bash
+# Recommended: Create a backup first
+cp activities.db activities.db.backup
+
+# Run the migration
+python migrate_extended_types.py activities.db
+```
+
+The script is **idempotent** - safe to run multiple times. It will:
+- Check if each extended type already exists
+- Only add missing types
+- Skip types that are already present
+- Provide detailed output of what was added/skipped
+
+### Other Database Updates
+
+For general database schema updates:
+
+```bash
+python migrate_db.py activities.db
+```
+
 ## Configuration
 
 Edit `.env` with your Strava API credentials:
