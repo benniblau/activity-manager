@@ -249,6 +249,10 @@ def migrate_database(db_path):
         # Copy data
         cursor.execute('INSERT INTO activities SELECT * FROM activities_old')
 
+        # Drop old indexes if they exist (they may be associated with the old table)
+        for index_name in ['idx_start_date', 'idx_sport_type', 'idx_type', 'idx_day_date', 'idx_gear_id', 'idx_activities_extended_type']:
+            cursor.execute(f'DROP INDEX IF EXISTS {index_name}')
+
         # Recreate indexes
         cursor.execute('CREATE INDEX idx_start_date ON activities(start_date)')
         cursor.execute('CREATE INDEX idx_sport_type ON activities(sport_type)')
@@ -282,6 +286,10 @@ def migrate_database(db_path):
         ''')
 
         cursor.execute('INSERT INTO extended_activity_types SELECT * FROM extended_activity_types_old')
+
+        # Drop old indexes if they exist
+        cursor.execute('DROP INDEX IF EXISTS idx_extended_types_base')
+        cursor.execute('DROP INDEX IF EXISTS idx_extended_types_active')
 
         cursor.execute('CREATE INDEX idx_extended_types_base ON extended_activity_types(base_sport_type)')
         cursor.execute('CREATE INDEX idx_extended_types_active ON extended_activity_types(is_active)')
