@@ -585,7 +585,12 @@ def report():
     total_time = sum(a.get('moving_time', 0) or 0 for a in [db_row_to_dict(r) for r in rows])
     days_with_activities = len([d for d in all_days if d['activities']])
     days_with_planned = len([d for d in all_days if d['planned_activities']])
-    overall_completion_rate = (total_activities / total_planned * 100) if total_planned > 0 else None
+
+    # Calculate overall completion rate only for days with planned activities
+    # Count actual activities only on days that had a plan
+    actual_on_planned_days = sum(d['num_actual'] for d in all_days if d['num_planned'] > 0)
+    planned_on_planned_days = sum(d['num_planned'] for d in all_days if d['num_planned'] > 0)
+    overall_completion_rate = (actual_on_planned_days / planned_on_planned_days * 100) if planned_on_planned_days > 0 else None
 
     # Get day feelings for all days in range
     day_feelings = {}

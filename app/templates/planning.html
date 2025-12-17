@@ -55,9 +55,8 @@
             {% for day in sorted_days %}
             {% set planned_list = planned_by_day.get(day, []) %}
             {% set actual_list = activities_by_day.get(day, []) %}
-            {% set is_today = (day == today) %}
 
-            <tr class="{% if is_today %}table-primary{% endif %}">
+            <tr>
                 <td class="fw-bold">
                     <div>{{ day }}</div>
                     <div class="small text-muted">
