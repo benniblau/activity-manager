@@ -29,16 +29,22 @@ def get_activities():
         query += ' AND sport_type = ?'
         params.append(sport_type)
 
-    # Filter by date range
-    start_date = request.args.get('start_date')
-    if start_date:
-        query += ' AND start_date >= ?'
-        params.append(start_date)
+    # Filter by day_date (preferred for planning view) or start_date
+    day_date = request.args.get('day_date')
+    if day_date:
+        query += ' AND day_date = ?'
+        params.append(day_date)
+    else:
+        # Filter by date range using start_date
+        start_date = request.args.get('start_date')
+        if start_date:
+            query += ' AND start_date >= ?'
+            params.append(start_date)
 
-    end_date = request.args.get('end_date')
-    if end_date:
-        query += ' AND start_date <= ?'
-        params.append(end_date)
+        end_date = request.args.get('end_date')
+        if end_date:
+            query += ' AND start_date <= ?'
+            params.append(end_date)
 
     # Order by start date (most recent first)
     query += ' ORDER BY start_date DESC'

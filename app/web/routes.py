@@ -4,7 +4,7 @@ import io
 from datetime import datetime, timedelta
 from collections import defaultdict
 from app.web import web_bp
-from app.database import get_db, db_row_to_dict, dict_to_db_values
+from app.database import get_db, db_row_to_dict, dict_to_db_values, get_extended_types
 from app.auth.routes import get_strava_client, is_authenticated as check_strava_auth
 
 
@@ -19,15 +19,20 @@ def index():
 
     db = get_db()
 
-    # Build query for activities
-    query = 'SELECT * FROM activities WHERE 1=1'
+    # Build query for activities with extended types
+    query = '''
+        SELECT a.*, ext.custom_name as extended_name, ext.color_class as extended_color
+        FROM activities a
+        LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
+        WHERE 1=1
+    '''
     params = []
 
     if sport_type:
-        query += ' AND sport_type = ?'
+        query += ' AND a.sport_type = ?'
         params.append(sport_type)
 
-    query += ' ORDER BY start_date_local DESC'
+    query += ' ORDER BY a.start_date_local DESC'
 
     # Get all activities (we'll paginate by days, not activities)
     cursor = db.execute(query, params)
@@ -88,6 +93,9 @@ def index():
     cursor = db.execute('SELECT DISTINCT sport_type FROM activities ORDER BY sport_type')
     sport_types = [row['sport_type'] for row in cursor.fetchall()]
 
+    # Get all extended types for dropdowns
+    extended_types = get_extended_types()
+
     # Check authentication status (loads from DB if needed, refreshes if expired)
     is_authenticated = check_strava_auth()
     athlete_name = session.get('athlete_name', '')
@@ -107,6 +115,7 @@ def index():
         total_pages=total_pages,
         total_days=total_days,
         sport_types=sport_types,
+        extended_types=extended_types,
         current_sport_type=sport_type,
         is_authenticated=is_authenticated,
         athlete_name=athlete_name,
@@ -235,6 +244,10 @@ def sync():
                     existing_data = db_row_to_dict(existing_row)
                     update_data = {k: v for k, v in db_data.items() if k != 'id'}
 
+                    # CRITICAL: Never overwrite extended_type_id from Strava sync
+                    # This preserves user's custom activity type classifications
+                    update_data.pop('extended_type_id', None)
+
                     # Compare values to detect actual changes
                     has_changes = False
                     for key, new_value in update_data.items():
@@ -353,7 +366,13 @@ def activity_detail(activity_id):
     """Display detailed view of a specific activity"""
     db = get_db()
 
-    cursor = db.execute('SELECT * FROM activities WHERE id = ?', (activity_id,))
+    # Fetch activity with extended type information
+    cursor = db.execute('''
+        SELECT a.*, ext.custom_name as extended_name, ext.color_class as extended_color
+        FROM activities a
+        LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
+        WHERE a.id = ?
+    ''', (activity_id,))
     row = cursor.fetchone()
 
     if not row:
@@ -379,10 +398,13 @@ def activity_detail(activity_id):
             activity['formatted_date'] = activity['start_date_local']
             activity['formatted_time'] = ''
 
+    # Get extended types for the activity's sport type
+    extended_types = get_extended_types(base_sport_type=activity.get('sport_type'))
+
     # Get and clear flash messages from session
     success_message = session.pop('sync_message', None)
 
-    return render_template('activity_detail.html', activity=activity, success_message=success_message)
+    return render_template('activity_detail.html', activity=activity, extended_types=extended_types, success_message=success_message)
 
 
 @web_bp.route('/activity/<int:activity_id>/annotations', methods=['POST'])
@@ -431,6 +453,58 @@ def save_annotations(activity_id):
     db.commit()
 
     session['sync_message'] = 'Annotations saved successfully'
+    return redirect(f'/activity/{activity_id}')
+
+
+@web_bp.route('/activity/<int:activity_id>/extended-type', methods=['POST'])
+def assign_extended_type(activity_id):
+    """Assign an extended activity type to an activity"""
+    db = get_db()
+
+    # Check if activity exists
+    cursor = db.execute('SELECT id, sport_type FROM activities WHERE id = ?', (activity_id,))
+    activity_row = cursor.fetchone()
+
+    if not activity_row:
+        session['auth_error'] = 'Activity not found'
+        return redirect('/')
+
+    activity_sport_type = activity_row['sport_type']
+
+    # Get extended_type_id from form (empty string means clear extended type)
+    extended_type_id = request.form.get('extended_type_id', '').strip()
+
+    if extended_type_id:
+        # Validate that extended type exists and matches base sport type
+        cursor = db.execute(
+            'SELECT id, base_sport_type FROM extended_activity_types WHERE id = ? AND is_active = 1',
+            (extended_type_id,)
+        )
+        extended_type = cursor.fetchone()
+
+        if not extended_type:
+            session['auth_error'] = 'Extended type not found or inactive'
+            return redirect(f'/activity/{activity_id}')
+
+        if extended_type['base_sport_type'] != activity_sport_type:
+            session['auth_error'] = f"Extended type '{extended_type['base_sport_type']}' does not match activity type '{activity_sport_type}'"
+            return redirect(f'/activity/{activity_id}')
+
+        # Assign extended type
+        db.execute(
+            'UPDATE activities SET extended_type_id = ?, updated_at = ? WHERE id = ?',
+            (extended_type_id, datetime.utcnow().isoformat(), activity_id)
+        )
+        session['sync_message'] = 'Extended type assigned successfully'
+    else:
+        # Clear extended type (revert to standard type)
+        db.execute(
+            'UPDATE activities SET extended_type_id = NULL, updated_at = ? WHERE id = ?',
+            (datetime.utcnow().isoformat(), activity_id)
+        )
+        session['sync_message'] = 'Reverted to standard activity type'
+
+    db.commit()
     return redirect(f'/activity/{activity_id}')
 
 

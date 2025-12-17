@@ -153,6 +153,9 @@ def init_db():
     # Run migration to add coach_comment columns
     _migrate_add_coach_comment_columns(db)
 
+    # Run migration to add extended activity types and planned activities
+    _migrate_add_extended_activity_types(db)
+
     # Create indexes for common queries
     db.execute('CREATE INDEX IF NOT EXISTS idx_start_date ON activities(start_date)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_sport_type ON activities(sport_type)')
@@ -243,6 +246,89 @@ def _migrate_add_coach_comment_columns(db):
         db.commit()
 
 
+def _migrate_add_extended_activity_types(db):
+    """Add extended activity types and planned activities support"""
+
+    # 1. Create extended_activity_types table
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS extended_activity_types (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            base_sport_type TEXT NOT NULL,
+            custom_name TEXT NOT NULL UNIQUE,
+            description TEXT,
+            icon_override TEXT,
+            color_class TEXT,
+            display_order INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            CHECK (base_sport_type IS NOT NULL AND base_sport_type != '')
+        )
+    ''')
+
+    db.execute('CREATE INDEX IF NOT EXISTS idx_extended_types_base ON extended_activity_types(base_sport_type)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_extended_types_active ON extended_activity_types(is_active)')
+
+    # 2. Create planned_activities table
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS planned_activities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            extended_type_id INTEGER,
+            sport_type TEXT,
+            planned_distance REAL,
+            planned_duration INTEGER,
+            planned_elevation REAL,
+            coaching_notes TEXT,
+            intensity_level TEXT,
+            matched_activity_id INTEGER,
+            match_type TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (extended_type_id) REFERENCES extended_activity_types(id) ON DELETE SET NULL,
+            FOREIGN KEY (matched_activity_id) REFERENCES activities(id) ON DELETE SET NULL,
+            CHECK (extended_type_id IS NOT NULL OR sport_type IS NOT NULL)
+        )
+    ''')
+
+    db.execute('CREATE INDEX IF NOT EXISTS idx_planned_date ON planned_activities(date)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_planned_matched ON planned_activities(matched_activity_id)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_planned_extended_type ON planned_activities(extended_type_id)')
+
+    # 3. Add extended_type_id to activities table (migration-safe)
+    cursor = db.execute("PRAGMA table_info(activities)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+
+    if 'extended_type_id' not in existing_columns:
+        db.execute('ALTER TABLE activities ADD COLUMN extended_type_id INTEGER REFERENCES extended_activity_types(id) ON DELETE SET NULL')
+        db.execute('CREATE INDEX IF NOT EXISTS idx_activities_extended_type ON activities(extended_type_id)')
+
+    # 4. Seed with common extended types (optional - only on first run)
+    cursor = db.execute("SELECT COUNT(*) FROM extended_activity_types")
+    if cursor.fetchone()[0] == 0:
+        seed_types = [
+            ('Run', 'Recovery Run', 'Easy pace recovery run', None, 'badge-recovery', 1),
+            ('Run', 'Easy Run', 'Conversational pace easy run', None, 'badge-easy', 2),
+            ('Run', 'Tempo Run', 'Comfortably hard sustained effort', None, 'badge-tempo', 3),
+            ('Run', 'Interval Run', 'High-intensity interval training', None, 'badge-interval', 4),
+            ('Run', 'Long Run', 'Extended duration endurance run', None, 'badge-long', 5),
+            ('Ride', 'Zone 2 Ride', 'Aerobic base building ride', None, 'badge-zone2', 10),
+            ('Ride', 'Threshold Ride', 'FTP/threshold interval work', None, 'badge-threshold', 11),
+            ('Ride', 'Recovery Ride', 'Active recovery spin', None, 'badge-recovery', 12),
+        ]
+
+        for base, name, desc, icon, color, order in seed_types:
+            db.execute('''
+                INSERT INTO extended_activity_types
+                (base_sport_type, custom_name, description, icon_override, color_class, display_order)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (base, name, desc, icon, color, order))
+
+    db.commit()
+
+
 def dict_to_db_values(data):
     """Convert dictionary to database-friendly values (serialize JSON fields)"""
     json_fields = ['start_latlng', 'end_latlng', 'map', 'segment_efforts',
@@ -287,3 +373,64 @@ def db_row_to_dict(row):
             result[field] = bool(result[field])
 
     return result
+
+
+def get_extended_types(base_sport_type=None):
+    """Fetch extended activity types, optionally filtered by base type"""
+    db = get_db()
+
+    if base_sport_type:
+        cursor = db.execute('''
+            SELECT * FROM extended_activity_types
+            WHERE base_sport_type = ? AND is_active = 1
+            ORDER BY display_order, custom_name
+        ''', (base_sport_type,))
+    else:
+        cursor = db.execute('''
+            SELECT * FROM extended_activity_types
+            WHERE is_active = 1
+            ORDER BY base_sport_type, display_order, custom_name
+        ''')
+
+    return [db_row_to_dict(row) for row in cursor.fetchall()]
+
+
+def get_planned_activities(start_date, end_date):
+    """Fetch planned activities within a date range with extended type info"""
+    db = get_db()
+
+    cursor = db.execute('''
+        SELECT
+            p.*,
+            ext.custom_name as extended_name,
+            ext.color_class as extended_color,
+            ext.base_sport_type as extended_base_type,
+            a.name as matched_activity_name,
+            a.sport_type as matched_activity_type
+        FROM planned_activities p
+        LEFT JOIN extended_activity_types ext ON p.extended_type_id = ext.id
+        LEFT JOIN activities a ON p.matched_activity_id = a.id
+        WHERE p.date >= ? AND p.date <= ?
+        ORDER BY p.date, p.created_at
+    ''', (start_date, end_date))
+
+    return [db_row_to_dict(row) for row in cursor.fetchall()]
+
+
+def get_activity_with_extended_type(activity_id):
+    """Fetch single activity with extended type information"""
+    db = get_db()
+
+    cursor = db.execute('''
+        SELECT
+            a.*,
+            ext.custom_name as extended_name,
+            ext.color_class as extended_color,
+            ext.base_sport_type as extended_base_type
+        FROM activities a
+        LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
+        WHERE a.id = ?
+    ''', (activity_id,))
+
+    row = cursor.fetchone()
+    return db_row_to_dict(row) if row else None

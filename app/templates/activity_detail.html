@@ -43,6 +43,54 @@
     </div>
 </div>
 
+<!-- Extended Activity Type Selector -->
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-tags"></i> Activity Type Classification
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/activity/{{ activity.id }}/extended-type" class="d-flex align-items-end gap-3">
+            <div class="flex-grow-1">
+                <label class="form-label small text-muted mb-2">
+                    Extended Type
+                    <span class="text-muted">(optional custom classification)</span>
+                </label>
+                <select name="extended_type_id" class="form-select">
+                    <option value="">-- Use Standard Type ({{ activity.sport_type }}) --</option>
+                    {% for ext_type in extended_types %}
+                    <option value="{{ ext_type.id }}" {% if activity.extended_type_id == ext_type.id %}selected{% endif %}>
+                        {{ ext_type.custom_name }}
+                        {% if ext_type.description %}
+                        - {{ ext_type.description }}
+                        {% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if extended_types|length == 0 %}
+                <small class="text-muted d-block mt-2">
+                    <i class="bi bi-info-circle"></i>
+                    No extended types available for {{ activity.sport_type }} activities.
+                    <a href="/planning/types" class="text-decoration-none">Create extended types</a>
+                </small>
+                {% endif %}
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Update Type
+                </button>
+            </div>
+        </form>
+        {% if activity.extended_name %}
+        <div class="mt-3 pt-3 border-top">
+            <small class="text-muted d-block mb-1">Current Classification:</small>
+            <span class="badge {{ activity.extended_color or 'badge-sport-' + activity.sport_type|lower|replace(' ', '')|replace('-', '') }}">
+                {{ sport_icon(activity.sport_type) }} {{ activity.extended_name }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
 {% if activity.description %}
 <div class="card stats-card mb-4">
     <div class="card-header">

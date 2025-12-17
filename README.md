@@ -1,33 +1,60 @@
 # Activity Manager
 
-A **sports journal** application for athletes recovering from injuries or working with coaches. Automatically sync your activities from Strava and annotate how you felt before, during, and after each workout. Track your daily overall condition to help trainers adjust your training plan and monitor your recovery progress.
+A comprehensive **sports training and recovery journal** application for athletes working with coaches or recovering from injuries. Automatically sync activities from Strava, plan your training schedule, and track how your body responds to workouts with detailed annotations.
 
 ## Why This App?
 
-When recovering from an injury (like Achilles tendinitis, runner's knee, or other overuse injuries), tracking how your body responds to training is crucial. This app helps you:
+When training for performance or recovering from injury (like Achilles tendinitis, runner's knee, or other overuse injuries), tracking both your planned training and actual performance alongside how your body responds is crucial. This app helps you:
 
+- **Plan your training** - Create weekly training schedules with specific workouts
+- **Match plan to reality** - Link planned activities to actual workouts
 - **Document your feelings** - Record pain/discomfort levels and notes for each activity
 - **Track daily condition** - Log how you feel each day, even on rest days
+- **Classify workouts** - Use extended activity types (Easy Run, Tempo, Intervals, etc.)
 - **Identify patterns** - See how different activities affect your recovery
 - **Communicate with coaches** - Provide trainers with detailed reports to adjust your plan
-- **Monitor progress** - Track your journey back to full fitness over time
+- **Monitor progress** - Track your journey over time with comprehensive reports
 
 ## Features
 
+### Planning & Training
+- **Training Calendar** - Weekly planning view showing planned vs. actual activities
+- **Extended Activity Types** - Custom classifications (Easy Run, Tempo, Intervals, Recovery, HYROX, LAG, etc.)
+- **Planned Activities** - Create workouts with target distance, duration, intensity, and coaching notes
+- **Activity Matching** - Link planned workouts to actual Strava activities with validation
+- **Multi-day Planning** - Copy planned activities to multiple dates at once
+
+### Activity Tracking
 - **Strava Integration** - One-click OAuth sync to automatically import all your activities
-- **Feeling Annotations** - Rate pain/discomfort (0-10 scale) before, during, and after each workout
-- **Daily Journal** - Record your overall daily condition, even on rest days
-- **Visual Reports** - Date-range reports showing activities alongside your subjective feedback
-- **Activity Overview** - Activities grouped by day with color-coded sport types
-- **Dark Theme UI** - Clean, responsive Bootstrap 5 interface
+- **Activity Overview** - Activities grouped by day with collapsible rest days
+- **Detailed Activity View** - Full stats, maps, and performance metrics
+- **Sport Type Badges** - Color-coded badges for different activity types
+
+### Feeling & Recovery Annotations
+- **Pain Scale Tracking** - Rate pain/discomfort (0-10 scale) before, during, and after each workout
+- **Visual Pain Icons** - Font Awesome face icons with color gradient (green to red)
+- **Daily Journal** - Record your overall daily condition and coach comments
+- **Activity Notes** - Detailed notes for each workout session
+
+### Reporting & Analysis
+- **Date Range Reports** - Tabular view showing activities, feelings, and patterns
+- **Coach Comments** - Track trainer feedback alongside your training log
+- **Rest Day Tracking** - Monitor rest days with daily feelings and pain levels
+
+### User Interface
+- **Dark Theme** - Clean, responsive Bootstrap 5 interface optimized for readability
+- **Collapsible Days** - Compact view with expandable activity details
+- **Responsive Design** - Works on desktop, tablet, and mobile
+- **Font Awesome Icons** - Modern icon set for activities and pain scale
 
 ## Screenshots
 
-The app provides three main views:
+The app provides four main views:
 
-1. **Activities Overview** - Daily view with activity cards and day feelings
-2. **Activity Detail** - Full activity stats with feeling annotation form
-3. **Report** - Tabular view of activities and feelings over a date range
+1. **Activities Overview** - Daily view with activity cards, day feelings, and collapsible rest days
+2. **Activity Detail** - Full activity stats with feeling annotation form and type classification
+3. **Planning Calendar** - Weekly training plan with planned vs. actual activities and matching
+4. **Report** - Comprehensive tabular view of activities and feelings over any date range
 
 ## Quick Start
 
@@ -63,8 +90,10 @@ The app will be available at `http://localhost:5000`
 
 1. Click "Connect with Strava" to authenticate
 2. Click "Sync" to import your activities
-3. Click on any activity to add your feeling annotations
-4. Use the "Report" page to review your progress over time
+3. Go to "Planning" to create your training schedule
+4. Use "Manage Types" to create custom activity classifications
+5. Click on any activity to add your feeling annotations
+6. Use the "Report" page to review your progress over time
 
 ## Configuration
 
@@ -83,62 +112,132 @@ STRAVA_CLIENT_SECRET=your-client-secret
 ### Activities
 
 Each synced activity includes:
-- All Strava metrics (distance, time, heart rate, elevation, etc.)
+- All Strava metrics (distance, time, heart rate, elevation, pace, etc.)
+- **Extended type classification** (optional custom categorization)
 - **Feeling annotations** (added by you):
   - Before exercise: pain level (0-10) + notes
   - During exercise: pain level (0-10) + notes
   - After exercise: pain level (0-10) + notes
+- **Matching** to planned activities
+
+### Planned Activities
+
+Each planned workout includes:
+- Date, name, and description
+- Activity type (standard or extended)
+- Target metrics (distance, duration, elevation)
+- Intensity level
+- Coaching notes
+- Match status (linked to actual activity or unmatched)
+
+### Extended Activity Types
+
+Custom activity classifications with:
+- Base sport type (Run, Ride, WeightTraining, etc.)
+- Custom name (Easy Run, Tempo, HYROX, LAG, etc.)
+- Description
+- Color badge for visual distinction
+
+Available extended types:
+- **Running**: Easy Run, Tempo Run, Interval Run, Long Run, Recovery Run
+- **Cycling**: Zone 2 Ride, Threshold Ride, Recovery Ride
+- **Gym**: HYROX, Weight Training, LAG (Laufausgleichgymnastik), Stretching
 
 ### Days
 
 Each day can have:
 - Overall pain/discomfort level (0-10)
 - Notes about how you're feeling
+- Coach comments
 - Tracked even on rest days
 
 ## Pain Scale
 
-The 0-10 pain scale uses visual indicators:
-- **0-2**: Green faces (minimal discomfort)
-- **3-4**: Yellow faces (mild discomfort)
-- **5-6**: Orange faces (moderate discomfort)
-- **7-8**: Red faces (significant pain)
-- **9-10**: Dark red faces (severe pain)
+The 0-10 pain scale uses Font Awesome face icons with visual indicators:
+- **0**: Grinning face - No discomfort (green)
+- **1-2**: Smiling faces - Minimal discomfort (light green)
+- **3-4**: Neutral faces - Mild discomfort (yellow)
+- **5-6**: Concerned faces - Moderate discomfort (orange)
+- **7-8**: Sad faces - Significant pain (red)
+- **9-10**: Severe pain faces - Severe pain (dark red)
 
 ## Use Cases
 
+### Training Plan Management
+Create and track your weekly training schedule. Plan recovery runs, tempo workouts, and long runs with specific targets. Match each planned workout to your actual Strava activities.
+
 ### Injury Recovery
-Track your return from injury by documenting how each activity affects you. Share reports with your physiotherapist to adjust rehabilitation protocols.
+Document your return from injury by tracking how each activity affects you. Use extended types to classify workouts by intensity (Easy, Recovery, etc.). Share reports with your physiotherapist to adjust rehabilitation protocols.
 
 ### Training Load Management
-Help your coach understand how you're responding to training. Identify when to push harder or when to back off.
+Help your coach understand how you're responding to training. Track pain levels and fatigue. Identify when to push harder or when to back off based on feeling annotations.
 
 ### Pattern Recognition
-Over time, identify which activities, intensities, or combinations lead to increased discomfort, helping optimize your training approach.
+Over time, identify which activities, intensities, or combinations lead to increased discomfort. Use extended types to see patterns (e.g., "Tempo runs cause more knee pain than Easy runs").
+
+### Coach Communication
+Provide detailed reports showing planned vs. actual training, along with how you felt during each workout. Share coach comments and feedback directly in the app.
 
 ## Project Structure
 
 ```
 activity-manager/
 ├── app/
-│   ├── __init__.py          # Flask app factory
-│   ├── database.py          # SQLite database layer
-│   ├── auth/                 # Strava OAuth
-│   ├── activities/           # REST API endpoints
-│   ├── web/                  # Web UI routes
+│   ├── __init__.py              # Flask app factory
+│   ├── database.py              # SQLite database layer
+│   ├── auth/                     # Strava OAuth
+│   ├── activities/               # REST API endpoints
+│   ├── planning/                 # Planning and extended types
+│   ├── web/                      # Web UI routes
 │   ├── static/
-│   │   ├── css/style.css    # Custom styles
-│   │   └── svg/             # Pain scale icons
-│   └── templates/           # Jinja2 templates
-├── requirements.txt         # Dependencies (Flask, stravalib, python-dotenv)
-└── run.py                   # Entry point
+│   │   ├── css/style.css        # Custom dark theme styles
+│   │   ├── js/
+│   │   │   ├── activities.js    # Activities view interactions
+│   │   │   └── planning.js      # Planning view interactions
+│   │   └── fontawesome/         # Font Awesome icon library
+│   └── templates/               # Jinja2 templates
+│       ├── activities.html      # Main activities overview
+│       ├── activity_detail.html # Individual activity view
+│       ├── planning.html        # Training calendar
+│       ├── planning_modals.html # Planning UI modals
+│       ├── planning_types.html  # Extended types management
+│       ├── report.html          # Comprehensive report view
+│       ├── macros.html          # Reusable template macros
+│       └── base.html            # Base template with navigation
+├── activities.db                # SQLite database
+├── requirements.txt             # Dependencies
+├── run.py                       # Development entry point
+└── wsgi.py                      # Production entry point
 ```
 
 ## Technical Notes
 
-- **Lightweight**: Uses Python's built-in `sqlite3` (no ORM)
-- **Minimal dependencies**: Flask, stravalib, python-dotenv
-- **Preserves annotations**: Strava sync updates activity data without overwriting your feeling notes
+- **Lightweight Database**: Uses Python's built-in `sqlite3` (no ORM overhead)
+- **Minimal Dependencies**: Flask, stravalib, python-dotenv, Font Awesome
+- **Preserves Annotations**: Strava sync updates activity data without overwriting:
+  - Your feeling notes and pain scale ratings
+  - Extended activity type classifications
+  - Custom annotations and coach comments
+- **Dark Theme**: GitHub-inspired dark mode optimized for low-light use
+- **Collapsible UI**: Efficient display of many days with rest day tracking
+- **Smart Matching**: Validation prevents duplicate matches and cross-date matching
+
+## API Endpoints
+
+The app includes a REST API for programmatic access:
+
+- `GET /api/activities/` - List activities with filtering (by date, sport type, day_date)
+- `GET /api/activities/<id>` - Get single activity details
+- `POST /api/activities/sync` - Sync from Strava
+- `GET /api/activities/stats` - Get aggregate statistics
+
+Planning API:
+- `GET /planning` - View training calendar
+- `POST /planning/activity` - Create planned activity
+- `PUT /planning/activity/<id>` - Update planned activity
+- `DELETE /planning/activity/<id>` - Delete planned activity
+- `POST /planning/activity/<id>/match/<activity_id>` - Match planned to actual
+- `DELETE /planning/activity/<id>/match` - Unmatch activities
 
 ## License
 
@@ -148,3 +247,4 @@ This project is for personal use.
 
 - [Strava API Documentation](https://developers.strava.com/docs/reference/)
 - [Bootstrap 5 Documentation](https://getbootstrap.com/docs/5.3/)
+- [Font Awesome Icons](https://fontawesome.com/)

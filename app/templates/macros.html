@@ -51,8 +51,13 @@
 {% endmacro %}
 
 {# Sport badge with icon - combines icon and text in a badge #}
-{% macro sport_badge(sport_type) %}
+{# Supports optional extended_type_name and extended_color_class for custom activity types #}
+{% macro sport_badge(sport_type, extended_type_name=None, extended_color_class=None) %}
+{%- if extended_type_name -%}
+<span class="activity-badge badge {{ extended_color_class or ('badge-sport-' + sport_type|lower|replace(' ', '')|replace('-', '')) }}">{{ sport_icon(sport_type) }} {{ extended_type_name }}</span>
+{%- else -%}
 <span class="activity-badge badge badge-sport-{{ sport_type|lower|replace(' ', '')|replace('-', '') }}">{{ sport_icon(sport_type) }} {{ sport_type }}</span>
+{%- endif -%}
 {% endmacro %}
 
 {# Pain level to Font Awesome face icon with color gradient (green to red) #}

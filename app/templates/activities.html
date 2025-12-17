@@ -145,7 +145,7 @@
                     <div class="d-flex gap-1 align-items-center">
                         {% for activity in day_activities %}
                         <div class="px-3">
-                        {{ sport_badge(activity.sport_type) }} <br/> {{ activity.name }}
+                        {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }} <br/> {{ activity.name }}
                         </div>
                         {% endfor %}
                     </div>
@@ -204,7 +204,7 @@
                         <div class="card stats-card activity-card mb-2 {% if has_feelings %}has-feelings{% endif %}">
                             <div class="card-body p-2 d-flex flex-column">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
-                                    {{ sport_badge(activity.sport_type) }}
+                                    {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
                                     <span class="text-end small text-muted">
                                         {{ activity.start_date_local.split('T')[1][:5] if 'T' in activity.start_date_local else '' }}
                                     </span>

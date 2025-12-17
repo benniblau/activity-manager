@@ -1,0 +1,248 @@
+<!-- Add Planned Activity Modal -->
+<div class="modal fade" id="addPlannedActivityModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Add Planned Activity</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addPlannedForm" method="POST" action="{{ url_for('planning.create_planned_activity') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date *</label>
+                            <input type="date" name="date" id="add_date" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Activity Name *</label>
+                            <input type="text" name="name" class="form-control"
+                                   placeholder="e.g., Morning Easy Run" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Activity Type *</label>
+                        <select name="activity_type_selector" id="add_type_selector" class="form-select" required>
+                            <option value="">-- Select Type --</option>
+                            <optgroup label="Extended Types">
+                                {% for ext in extended_types %}
+                                <option value="ext-{{ ext.id }}" data-extended-id="{{ ext.id }}" data-base="{{ ext.base_sport_type }}">
+                                    {{ ext.custom_name }} ({{ ext.base_sport_type }})
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Standard Types">
+                                {% for sport in sport_types %}
+                                <option value="sport-{{ sport }}" data-sport-type="{{ sport }}">
+                                    {{ sport }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                        <input type="hidden" name="extended_type_id" id="add_extended_type_id">
+                        <input type="hidden" name="sport_type" id="add_sport_type">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="2"
+                                  placeholder="Workout details..."></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Planned Distance (km)</label>
+                            <input type="number" name="planned_distance_km" id="add_distance_km"
+                                   class="form-control" step="0.1" placeholder="10.0">
+                            <input type="hidden" name="planned_distance" id="add_distance_meters">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Planned Duration (min)</label>
+                            <input type="number" name="planned_duration_min" id="add_duration_min"
+                                   class="form-control" placeholder="60">
+                            <input type="hidden" name="planned_duration" id="add_duration_seconds">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Intensity</label>
+                            <select name="intensity_level" class="form-select">
+                                <option value="">-- Optional --</option>
+                                <option value="Easy">Easy</option>
+                                <option value="Moderate">Moderate</option>
+                                <option value="Hard">Hard</option>
+                                <option value="Race">Race</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Coaching Notes</label>
+                        <textarea name="coaching_notes" class="form-control" rows="3"
+                                  placeholder="Instructions, focus areas, goals..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-save"></i> Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Planned Activity Modal -->
+<div class="modal fade" id="editPlannedActivityModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Planned Activity</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editPlannedForm" method="POST">
+                <input type="hidden" name="_method" value="PUT">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" name="date" id="edit_date" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Activity Name *</label>
+                            <input type="text" name="name" id="edit_name" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Activity Type *</label>
+                        <select name="activity_type_selector" id="edit_type_selector" class="form-select" required>
+                            <option value="">-- Select Type --</option>
+                            <optgroup label="Extended Types">
+                                {% for ext in extended_types %}
+                                <option value="ext-{{ ext.id }}" data-extended-id="{{ ext.id }}" data-base="{{ ext.base_sport_type }}">
+                                    {{ ext.custom_name }} ({{ ext.base_sport_type }})
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            <optgroup label="Standard Types">
+                                {% for sport in sport_types %}
+                                <option value="sport-{{ sport }}" data-sport-type="{{ sport }}">
+                                    {{ sport }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                        </select>
+                        <input type="hidden" name="extended_type_id" id="edit_extended_type_id">
+                        <input type="hidden" name="sport_type" id="edit_sport_type">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" id="edit_description" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Planned Distance (km)</label>
+                            <input type="number" name="planned_distance_km" id="edit_distance_km"
+                                   class="form-control" step="0.1">
+                            <input type="hidden" name="planned_distance" id="edit_distance_meters">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Planned Duration (min)</label>
+                            <input type="number" name="planned_duration_min" id="edit_duration_min"
+                                   class="form-control">
+                            <input type="hidden" name="planned_duration" id="edit_duration_seconds">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Intensity</label>
+                            <select name="intensity_level" id="edit_intensity" class="form-select">
+                                <option value="">-- Optional --</option>
+                                <option value="Easy">Easy</option>
+                                <option value="Moderate">Moderate</option>
+                                <option value="Hard">Hard</option>
+                                <option value="Race">Race</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Coaching Notes</label>
+                        <textarea name="coaching_notes" id="edit_notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Planned Activity Modal -->
+<div class="modal fade" id="copyPlannedActivityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-files"></i> Copy Planned Activity</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="copyPlannedForm">
+                <div class="modal-body">
+                    <p class="text-muted">Copy this planned activity to other dates:</p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Select Dates</label>
+                        <div id="copy_dates_container">
+                            <div class="input-group mb-2">
+                                <input type="date" class="form-control copy-date-input" required>
+                                <button type="button" class="btn btn-outline-danger remove-date-btn">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-success" id="add_copy_date_btn">
+                            <i class="bi bi-plus-circle"></i> Add Another Date
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-files"></i> Copy</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Match Activity Modal -->
+<div class="modal fade" id="matchActivityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-link-45deg"></i> Match Planned to Actual</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Match this planned activity to an actual activity:</p>
+
+                <div class="mb-3">
+                    <label class="form-label">Planned Activity</label>
+                    <div id="match_planned_display" class="p-2 border rounded"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Select Actual Activity</label>
+                    <select id="match_activity_select" class="form-select">
+                        <option value="">-- Select Activity --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirm_match_btn">
+                    <i class="bi bi-link-45deg"></i> Match
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

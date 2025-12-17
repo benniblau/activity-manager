@@ -1,0 +1,436 @@
+/* Planning View Styles */
+
+/* Day Row Styles */
+.planning-day-row {
+    border-bottom: 1px solid #30363d;
+}
+
+.planning-day-row:hover {
+    background-color: rgba(56, 139, 253, 0.05);
+}
+
+/* Planned Activity Card */
+.planned-activity-card {
+    border-left: 3px solid #fbbf24;
+    background-color: #161b22;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.planned-activity-card:hover {
+    background-color: #1c2128;
+    border-left-color: #f59e0b;
+}
+
+/* Matched (Completed) Planned Activity */
+.planned-activity-card.matched {
+    border-left-color: #10b981;
+    opacity: 0.85;
+}
+
+.planned-activity-card.matched:hover {
+    border-left-color: #059669;
+    opacity: 1;
+}
+
+/* Actual Activity Card in Planning View */
+.actual-activity-card {
+    border-left: 3px solid #58a6ff;
+    background-color: #161b22;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+}
+
+.actual-activity-card.matched {
+    border-left-color: #10b981;
+}
+
+/* Status Badges */
+.status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-complete {
+    background-color: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    border: 1px solid #10b981;
+}
+
+.status-partial {
+    background-color: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    border: 1px solid #fbbf24;
+}
+
+.status-planned {
+    background-color: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+    border: 1px solid #a78bfa;
+}
+
+.status-rest {
+    background-color: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+    border: 1px solid #6b7280;
+}
+
+/* Extended Activity Type Badges */
+.badge-recovery {
+    background-color: #28a745;
+    color: #ffffff;
+}
+
+.badge-easy {
+    background-color: #34d399;
+    color: #0d1117;
+}
+
+.badge-tempo {
+    background-color: #f59e0b;
+    color: #0d1117;
+}
+
+.badge-interval {
+    background-color: #ef4444;
+    color: #ffffff;
+}
+
+.badge-long {
+    background-color: #6366f1;
+    color: #ffffff;
+}
+
+.badge-zone2 {
+    background-color: #3b82f6;
+    color: #ffffff;
+}
+
+.badge-threshold {
+    background-color: #dc2626;
+    color: #ffffff;
+}
+
+.badge-base {
+    background-color: #8b5cf6;
+    color: #ffffff;
+}
+
+/* Intensity Level Indicators */
+.intensity-easy {
+    color: #34d399;
+}
+
+.intensity-moderate {
+    color: #fbbf24;
+}
+
+.intensity-hard {
+    color: #f97316;
+}
+
+.intensity-race {
+    color: #ef4444;
+}
+
+/* Planning Metrics Display */
+.planned-metrics {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #8b949e;
+}
+
+.metric-item i {
+    color: #58a6ff;
+}
+
+.metric-value {
+    font-weight: 600;
+    color: #c9d1d9;
+}
+
+/* Coaching Notes */
+.coaching-notes {
+    background-color: rgba(139, 92, 246, 0.1);
+    border-left: 3px solid #8b5cf6;
+    padding: 0.75rem;
+    margin-top: 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: #c9d1d9;
+}
+
+.coaching-notes i {
+    color: #8b5cf6;
+    margin-right: 0.5rem;
+}
+
+/* Match Indicator */
+.match-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background-color: rgba(16, 185, 129, 0.15);
+    border: 1px solid #10b981;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: #10b981;
+}
+
+.match-indicator i {
+    font-size: 0.9rem;
+}
+
+/* Action Buttons in Planning View */
+.planning-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.planning-actions .btn {
+    font-size: 0.85rem;
+    padding: 0.375rem 0.75rem;
+}
+
+/* Empty State */
+.empty-day {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #8b949e;
+}
+
+.empty-day i {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+}
+
+/* Date Navigation */
+.date-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background-color: #161b22;
+    border-radius: 6px;
+}
+
+.date-navigation .btn-group .btn {
+    min-width: 120px;
+}
+
+/* Today Highlight */
+.today-row {
+    background-color: rgba(88, 166, 255, 0.05);
+    border-left: 3px solid #58a6ff;
+}
+
+/* Copy Date Inputs */
+.copy-date-input {
+    background-color: #0d1117;
+    border-color: #30363d;
+    color: #c9d1d9;
+}
+
+.copy-date-input:focus {
+    background-color: #0d1117;
+    border-color: #58a6ff;
+    color: #c9d1d9;
+}
+
+/* Activity Type Selector in Forms */
+.type-selector-wrapper {
+    position: relative;
+}
+
+.type-selector-wrapper select {
+    padding-right: 2.5rem;
+}
+
+.type-selector-wrapper i {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #8b949e;
+}
+
+/* Unit Input Groups (km/minutes) */
+.unit-input-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.unit-input-group input {
+    max-width: 150px;
+}
+
+.unit-label {
+    font-size: 0.85rem;
+    color: #8b949e;
+    white-space: nowrap;
+}
+
+/* Comparison View (Planned vs Actual) */
+.comparison-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.comparison-column h6 {
+    font-size: 0.85rem;
+    color: #8b949e;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.metric-comparison {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background-color: #0d1117;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.metric-comparison.over {
+    border-left: 3px solid #10b981;
+}
+
+.metric-comparison.under {
+    border-left: 3px solid #f97316;
+}
+
+.metric-comparison.match {
+    border-left: 3px solid #58a6ff;
+}
+
+/* Pagination for Planning View */
+.planning-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 1rem;
+}
+
+.planning-pagination .page-info {
+    color: #8b949e;
+    font-size: 0.9rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .comparison-container {
+        grid-template-columns: 1fr;
+    }
+
+    .planned-metrics {
+        gap: 1rem;
+    }
+
+    .date-navigation {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .date-navigation .btn-group {
+        width: 100%;
+    }
+
+    .date-navigation .btn-group .btn {
+        flex: 1;
+        min-width: auto;
+    }
+}
+
+/* Extended Type Management Page Styles */
+.type-management-card {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+}
+
+.type-management-card .card-header {
+    background-color: #0d1117;
+    border-bottom: 1px solid #30363d;
+    padding: 1rem;
+}
+
+.type-badge-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Modal Dark Theme Overrides for Planning */
+.modal-content.bg-dark {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d;
+}
+
+.modal-content.bg-dark .form-control,
+.modal-content.bg-dark .form-select {
+    background-color: #0d1117;
+    border-color: #30363d;
+    color: #c9d1d9;
+}
+
+.modal-content.bg-dark .form-control:focus,
+.modal-content.bg-dark .form-select:focus {
+    background-color: #0d1117;
+    border-color: #58a6ff;
+    color: #c9d1d9;
+    box-shadow: 0 0 0 0.2rem rgba(88, 166, 255, 0.25);
+}
+
+.modal-content.bg-dark .form-label {
+    color: #c9d1d9;
+}
+
+.modal-content.bg-dark .form-text {
+    color: #8b949e;
+}
+
+/* Loading State */
+.loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #30363d;
+    border-top-color: #58a6ff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

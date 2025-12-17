@@ -39,9 +39,11 @@ def create_app(config_name=None):
     from app.auth import auth_bp
     from app.activities import activities_bp
     from app.web import web_bp
+    from app.planning import planning_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(activities_bp, url_prefix='/api/activities')
     app.register_blueprint(web_bp)  # Web UI at root
+    app.register_blueprint(planning_bp, url_prefix='/planning')
 
     return app

@@ -77,6 +77,16 @@ body {
 .badge-sport-tennis, .badge-sport-pickleball { background-color: #c9f364 !important; color: #333 !important; }
 .badge-sport-alpineski, .badge-sport-snowboard, .badge-sport-nordicski { background-color: #adb5bd !important; color: #333 !important; }
 
+/* Extended Activity Type Badge Colors */
+.badge-recovery { background-color: #28a745 !important; color: #ffffff !important; }
+.badge-easy { background-color: #34d399 !important; color: #0d1117 !important; }
+.badge-tempo { background-color: #f59e0b !important; color: #0d1117 !important; }
+.badge-interval { background-color: #ef4444 !important; color: #ffffff !important; }
+.badge-long { background-color: #6366f1 !important; color: #ffffff !important; }
+.badge-zone2 { background-color: #3b82f6 !important; color: #ffffff !important; }
+.badge-threshold { background-color: #dc2626 !important; color: #ffffff !important; }
+.badge-base { background-color: #8b5cf6 !important; color: #ffffff !important; }
+
 /* Activity Cards */
 .activity-card {
     width: 280px;
