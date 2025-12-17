@@ -32,7 +32,6 @@ def verify_integrity(db_path):
 def migrate_database(db_path):
     """Main migration function"""
     conn = sqlite3.connect(db_path)
-    conn.execute('PRAGMA foreign_keys = ON')
     cursor = conn.cursor()
 
     try:
@@ -45,6 +44,10 @@ def migrate_database(db_path):
         print("\n" + "="*60)
         print("STARTING MIGRATION")
         print("="*60 + "\n")
+
+        # Disable foreign keys during table recreation to avoid constraint violations
+        print("Temporarily disabling foreign key constraints...")
+        conn.execute('PRAGMA foreign_keys = OFF')
 
         # STEP 1: Create standard_activity_types table
         print("Step 1: Creating standard_activity_types table...")
@@ -374,6 +377,10 @@ def migrate_database(db_path):
                 pass
 
         print(f"✓ Added {added_count} new extended types")
+
+        # Re-enable foreign keys before committing
+        print("\nRe-enabling foreign key constraints...")
+        conn.execute('PRAGMA foreign_keys = ON')
 
         # Commit all changes
         conn.commit()
