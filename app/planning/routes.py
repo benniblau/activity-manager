@@ -1,6 +1,9 @@
 from flask import render_template, request, jsonify, redirect, url_for, session, flash
 from app.planning import planning_bp
-from app.database import get_db, db_row_to_dict, get_extended_types, get_planned_activities
+from app.database import (
+    get_db, db_row_to_dict, get_extended_types, get_planned_activities,
+    get_standard_types_by_category, validate_sport_type
+)
 from datetime import datetime, timedelta
 from collections import defaultdict
 
@@ -70,6 +73,9 @@ def index():
     # Fetch all extended types for dropdowns
     extended_types = get_extended_types()
 
+    # Get standard types grouped by category
+    standard_types_by_category = get_standard_types_by_category()
+
     # Get distinct sport types for filter
     cursor = db.execute('SELECT DISTINCT sport_type FROM activities ORDER BY sport_type')
     sport_types = [row[0] for row in cursor.fetchall()]
@@ -79,6 +85,7 @@ def index():
                            planned_by_day=dict(planned_by_day),
                            activities_by_day=dict(activities_by_day),
                            extended_types=extended_types,
+                           standard_types_by_category=standard_types_by_category,
                            sport_types=sport_types,
                            page=page,
                            per_page=per_page,
@@ -103,6 +110,10 @@ def create_planned_activity():
 
     if not extended_type_id and not sport_type:
         return jsonify({'error': 'Either extended_type_id or sport_type must be provided'}), 400
+
+    # Validate sport_type if provided
+    if sport_type and not validate_sport_type(sport_type):
+        return jsonify({'error': f'Invalid sport_type: {sport_type}'}), 400
 
     # Insert planned activity
     cursor = db.execute('''
@@ -349,6 +360,10 @@ def create_extended_type():
     # Validate required fields
     if not data.get('base_sport_type') or not data.get('custom_name'):
         return jsonify({'error': 'Base sport type and custom name are required'}), 400
+
+    # Validate base_sport_type exists in standard types
+    if not validate_sport_type(data['base_sport_type']):
+        return jsonify({'error': f'Invalid base_sport_type: {data["base_sport_type"]}'}), 400
 
     try:
         # Insert new extended type

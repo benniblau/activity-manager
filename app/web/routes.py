@@ -4,7 +4,10 @@ import io
 from datetime import datetime, timedelta
 from collections import defaultdict
 from app.web import web_bp
-from app.database import get_db, db_row_to_dict, dict_to_db_values, get_extended_types
+from app.database import (
+    get_db, db_row_to_dict, dict_to_db_values, get_extended_types,
+    get_standard_types_by_category, validate_sport_type
+)
 from app.auth.routes import get_strava_client, is_authenticated as check_strava_auth
 
 
@@ -96,6 +99,9 @@ def index():
     # Get all extended types for dropdowns
     extended_types = get_extended_types()
 
+    # Get standard types grouped by category
+    standard_types_by_category = get_standard_types_by_category()
+
     # Check authentication status (loads from DB if needed, refreshes if expired)
     is_authenticated = check_strava_auth()
     athlete_name = session.get('athlete_name', '')
@@ -116,6 +122,7 @@ def index():
         total_days=total_days,
         sport_types=sport_types,
         extended_types=extended_types,
+        standard_types_by_category=standard_types_by_category,
         current_sport_type=sport_type,
         is_authenticated=is_authenticated,
         athlete_name=athlete_name,
@@ -205,10 +212,26 @@ def sync():
 
                 # Convert stravalib activity to dict
                 # Use getattr with defaults for attributes that might not exist on SummaryActivity
+                sport_type_value = enum_to_str(getattr(strava_activity, 'sport_type', None))
+
+                # Auto-create unknown sport types in standard_activity_types table
+                if sport_type_value and not validate_sport_type(sport_type_value):
+                    try:
+                        db.execute('''
+                            INSERT INTO standard_activity_types
+                            (name, category, display_name, icon, color, is_official, display_order)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ''', (sport_type_value, 'Other', sport_type_value, 'circle-question', 'badge-other', 1, 999))
+                        db.commit()
+                        print(f"Auto-created new sport type from Strava: {sport_type_value}", file=sys.stderr, flush=True)
+                    except Exception as e:
+                        # Ignore if already exists (race condition)
+                        print(f"Note: Could not auto-create sport type {sport_type_value}: {e}", file=sys.stderr, flush=True)
+
                 activity_data = {
                     'id': activity_id,
                     'name': getattr(strava_activity, 'name', None),
-                    'sport_type': enum_to_str(getattr(strava_activity, 'sport_type', None)),
+                    'sport_type': sport_type_value,
                     'type': enum_to_str(getattr(strava_activity, 'type', None)),
                     'start_date': strava_activity.start_date.isoformat() if getattr(strava_activity, 'start_date', None) else None,
                     'start_date_local': strava_activity.start_date_local.isoformat() if getattr(strava_activity, 'start_date_local', None) else None,

@@ -24,13 +24,15 @@
                         <label class="form-label">Activity Type *</label>
                         <select name="activity_type_selector" id="add_type_selector" class="form-select" required>
                             <option value="">-- Select Type --</option>
-                            <optgroup label="Extended Types">
-                                {% for ext in extended_types %}
+                            {% for base_type, types in extended_types|groupby('base_sport_type') %}
+                            <optgroup label="{{ base_type }} - Extended Types">
+                                {% for ext in types %}
                                 <option value="ext-{{ ext.id }}" data-extended-id="{{ ext.id }}" data-base="{{ ext.base_sport_type }}">
-                                    {{ ext.custom_name }} ({{ ext.base_sport_type }})
+                                    {{ ext.custom_name }}
                                 </option>
                                 {% endfor %}
                             </optgroup>
+                            {% endfor %}
                             <optgroup label="Standard Types">
                                 {% for sport in sport_types %}
                                 <option value="sport-{{ sport }}" data-sport-type="{{ sport }}">
@@ -115,13 +117,15 @@
                         <label class="form-label">Activity Type *</label>
                         <select name="activity_type_selector" id="edit_type_selector" class="form-select" required>
                             <option value="">-- Select Type --</option>
-                            <optgroup label="Extended Types">
-                                {% for ext in extended_types %}
+                            {% for base_type, types in extended_types|groupby('base_sport_type') %}
+                            <optgroup label="{{ base_type }} - Extended Types">
+                                {% for ext in types %}
                                 <option value="ext-{{ ext.id }}" data-extended-id="{{ ext.id }}" data-base="{{ ext.base_sport_type }}">
-                                    {{ ext.custom_name }} ({{ ext.base_sport_type }})
+                                    {{ ext.custom_name }}
                                 </option>
                                 {% endfor %}
                             </optgroup>
+                            {% endfor %}
                             <optgroup label="Standard Types">
                                 {% for sport in sport_types %}
                                 <option value="sport-{{ sport }}" data-sport-type="{{ sport }}">

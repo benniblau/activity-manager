@@ -1,6 +1,6 @@
 from flask import render_template, request, jsonify, redirect, url_for, flash
 from app.admin import admin_bp
-from app.database import get_db, get_extended_types
+from app.database import get_db, get_extended_types, validate_sport_type
 from collections import defaultdict
 
 
@@ -34,6 +34,10 @@ def create_extended_type():
     # Validate required fields
     if not data.get('base_sport_type') or not data.get('custom_name'):
         return jsonify({'error': 'Base sport type and custom name are required'}), 400
+
+    # Validate base_sport_type exists in standard types
+    if not validate_sport_type(data['base_sport_type']):
+        return jsonify({'error': f'Invalid base_sport_type: {data["base_sport_type"]}'}), 400
 
     try:
         # Insert new extended type

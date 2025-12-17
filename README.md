@@ -19,16 +19,20 @@ When training for performance or recovering from injury (like Achilles tendiniti
 
 ### Planning & Training
 - **Training Calendar** - Weekly planning view showing planned vs. actual activities
-- **Extended Activity Types** - Custom classifications (Easy Run, Tempo, Intervals, Recovery, HYROX, LAG, etc.)
+- **Standard Activity Types** - 50+ official Strava sport types organized into 7 categories (Foot, Cycle, Water, Winter, Fitness, Racket, Other)
+- **Extended Activity Types** - 55+ custom classifications including HIIT variations (Tabata, EMOM, AMRAP), Crossfit (WOD, MetCon), Yoga styles (Vinyasa, Hatha, Power), Swimming types (Pool, Open Water), and more
 - **Planned Activities** - Create workouts with target distance, duration, intensity, and coaching notes
 - **Activity Matching** - Link planned workouts to actual Strava activities with validation
 - **Multi-day Planning** - Copy planned activities to multiple dates at once
+- **Type Grouping** - Extended types organized by base sport for easy selection
 
 ### Activity Tracking
 - **Strava Integration** - One-click OAuth sync to automatically import all your activities
+- **Auto-Type Creation** - Unknown sport types from Strava are automatically added to maintain compatibility
 - **Activity Overview** - Activities grouped by day with collapsible rest days
 - **Detailed Activity View** - Full stats, maps, and performance metrics
 - **Sport Type Badges** - Color-coded badges for different activity types
+- **Type Validation** - Foreign key constraints ensure data integrity
 
 ### Feeling & Recovery Annotations
 - **Pain Scale Tracking** - Rate pain/discomfort (0-10 scale) before, during, and after each workout
