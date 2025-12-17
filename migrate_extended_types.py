@@ -52,28 +52,32 @@ def add_extended_types(cursor, conn):
             'base_sport_type': 'WeightTraining',
             'custom_name': 'HYROX',
             'description': 'High-intensity fitness competition combining running and functional exercises',
-            'color_class': 'badge-interval',
+            'icon_override': 'fa-solid fa-fire',
+            'color_class': 'badge-sport-weighttraining',
             'display_order': 1
         },
         {
             'base_sport_type': 'WeightTraining',
             'custom_name': 'Weight Training',
             'description': 'Traditional strength and resistance training',
-            'color_class': 'badge-base',
+            'icon_override': 'fa-solid fa-dumbbell',
+            'color_class': 'badge-sport-weighttraining',
             'display_order': 2
         },
         {
             'base_sport_type': 'WeightTraining',
             'custom_name': 'LAG',
             'description': 'Laufausgleichgymnastik - Running complementary exercises for injury prevention',
-            'color_class': 'badge-recovery',
+            'icon_override': 'fa-solid fa-arrows-spin',
+            'color_class': 'badge-sport-weighttraining',
             'display_order': 3
         },
         {
             'base_sport_type': 'WeightTraining',
             'custom_name': 'Stretching',
             'description': 'Flexibility and mobility work',
-            'color_class': 'badge-easy',
+            'icon_override': 'fa-solid fa-spa',
+            'color_class': 'badge-sport-weighttraining',
             'display_order': 4
         }
     ]
@@ -88,16 +92,17 @@ def add_extended_types(cursor, conn):
         else:
             cursor.execute('''
                 INSERT INTO extended_activity_types
-                (base_sport_type, custom_name, description, color_class, display_order, is_active)
-                VALUES (?, ?, ?, ?, ?, 1)
+                (base_sport_type, custom_name, description, icon_override, color_class, display_order, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
             ''', (
                 ext_type['base_sport_type'],
                 ext_type['custom_name'],
                 ext_type['description'],
+                ext_type['icon_override'],
                 ext_type['color_class'],
                 ext_type['display_order']
             ))
-            print(f"  [ADD] {ext_type['custom_name']} ({ext_type['color_class']})")
+            print(f"  [ADD] {ext_type['custom_name']} - {ext_type['icon_override']} ({ext_type['color_class']})")
             added_count += 1
 
     if added_count > 0:

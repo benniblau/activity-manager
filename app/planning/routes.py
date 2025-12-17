@@ -49,7 +49,8 @@ def index():
         SELECT
             a.*,
             ext.custom_name as extended_name,
-            ext.color_class as extended_color
+            ext.color_class as extended_color,
+            ext.icon_override as extended_icon
         FROM activities a
         LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
         WHERE a.day_date >= ? AND a.day_date <= ?

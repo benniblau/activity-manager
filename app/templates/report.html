@@ -47,25 +47,43 @@
 
         <!-- Summary Stats -->
         <div class="row text-center mb-3">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="p-3 border rounded">
                     <h4 class="mb-0">{{ total_activities }}</h4>
-                    <small class="text-muted">Total Activities</small>
+                    <small class="text-muted">Actual Activities</small>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <div class="p-3 border rounded">
+                    <h4 class="mb-0">{{ total_planned }}</h4>
+                    <small class="text-muted">Planned Activities</small>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="p-3 border rounded">
+                    {% if overall_completion_rate is not none %}
+                    <h4 class="mb-0 {% if overall_completion_rate >= 80 %}text-success{% elif overall_completion_rate >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                        {{ "%.0f"|format(overall_completion_rate) }}%
+                    </h4>
+                    {% else %}
+                    <h4 class="mb-0 text-muted">-</h4>
+                    {% endif %}
+                    <small class="text-muted">Completion Rate</small>
+                </div>
+            </div>
+            <div class="col-md-2">
                 <div class="p-3 border rounded">
                     <h4 class="mb-0">{{ "%.1f"|format(total_distance / 1000) }} km</h4>
                     <small class="text-muted">Total Distance</small>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="p-3 border rounded">
                     <h4 class="mb-0">{{ (total_time // 3600)|int }}h {{ ((total_time % 3600) // 60)|int }}m</h4>
                     <small class="text-muted">Total Time</small>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <div class="p-3 border rounded">
                     <h4 class="mb-0">{{ days_with_activities }} / {{ total_days }}</h4>
                     <small class="text-muted">Active Days</small>
@@ -84,9 +102,11 @@
                     <tr>
                         <th style="width: 120px;">Date</th>
                         <th style="width: 100px;">Day</th>
+                        <th style="width: 90px;" class="text-center">Completion</th>
                         <th style="width: 80px;" class="text-center">Day Feel</th>
-                        <th style="width: 180px;">Day Notes</th>
-                        <th>Activities</th>
+                        <th style="width: 150px;">Day Notes</th>
+                        <th style="width: 200px;">Planned Activities</th>
+                        <th>Actual Activities</th>
                         <th style="width: 100px;" class="text-end">Distance</th>
                         <th style="width: 100px;" class="text-end">Duration</th>
                         <th style="width: 80px;" class="text-center">Before</th>
@@ -109,6 +129,16 @@
                             {{ day.weekday[:3] }}
                         </td>
                         <td rowspan="{{ day.activities|length }}" class="align-middle text-center day-cell">
+                            {% if day.completion_rate is not none %}
+                            <span class="badge {% if day.completion_rate >= 80 %}bg-success{% elif day.completion_rate >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ "%.0f"|format(day.completion_rate) }}%
+                            </span>
+                            <div class="small text-muted">{{ day.num_actual }}/{{ day.num_planned }}</div>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td rowspan="{{ day.activities|length }}" class="align-middle text-center day-cell">
                             {{ pain_icon(day_feel.feeling_pain if day_feel else none) }}
                         </td>
                         <td rowspan="{{ day.activities|length }}" class="align-middle day-cell">
@@ -116,6 +146,26 @@
                             <span class="small" title="{{ day_feel.feeling_text }}">{{ day_feel.feeling_text }}</span>
                             {% else %}
                             <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td rowspan="{{ day.activities|length }}" class="align-middle small day-cell">
+                            {% if day.planned_activities %}
+                            {% for planned in day.planned_activities %}
+                            <div class="mb-1">
+                                <span class="badge {{ planned.extended_color or 'bg-secondary' }} me-1">
+                                    {% if planned.extended_icon %}
+                                    <i class="{{ planned.extended_icon }}"></i>
+                                    {% endif %}
+                                    {{ planned.extended_name or planned.sport_type }}
+                                </span>
+                                {{ planned.name }}
+                                {% if planned.matched_activity_id %}
+                                <i class="bi bi-check-circle text-success" title="Matched"></i>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <span class="text-muted">No plan</span>
                             {% endif %}
                         </td>
                         {% endif %}
@@ -178,6 +228,16 @@
                         <td class="fw-bold">{{ day.date }}</td>
                         <td>{{ day.weekday[:3] }}</td>
                         <td class="text-center">
+                            {% if day.completion_rate is not none %}
+                            <span class="badge {% if day.completion_rate >= 80 %}bg-success{% elif day.completion_rate >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ "%.0f"|format(day.completion_rate) }}%
+                            </span>
+                            <div class="small text-muted">{{ day.num_actual }}/{{ day.num_planned }}</div>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
                             {{ pain_icon(day_feel.feeling_pain if day_feel else none) }}
                         </td>
                         <td>
@@ -187,7 +247,24 @@
                             <span class="text-muted">-</span>
                             {% endif %}
                         </td>
-                        <td colspan="6" class="text-muted fst-italic">Rest day</td>
+                        <td class="small">
+                            {% if day.planned_activities %}
+                            {% for planned in day.planned_activities %}
+                            <div class="mb-1">
+                                <span class="badge {{ planned.extended_color or 'bg-secondary' }} me-1">
+                                    {% if planned.extended_icon %}
+                                    <i class="{{ planned.extended_icon }}"></i>
+                                    {% endif %}
+                                    {{ planned.extended_name or planned.sport_type }}
+                                </span>
+                                {{ planned.name }}
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <span class="text-muted">No plan</span>
+                            {% endif %}
+                        </td>
+                        <td colspan="7" class="text-muted fst-italic">Rest day - No activities</td>
                     </tr>
                     {% endif %}
                     {% endfor %}

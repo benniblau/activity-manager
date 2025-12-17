@@ -545,23 +545,47 @@ def report():
             day_key = date_obj.strftime('%Y-%m-%d')
             activities_by_day[day_key].append(activity)
 
+    # Fetch planned activities for date range
+    from app.database import get_planned_activities
+    planned_activities_list = get_planned_activities(start_date_str, end_date_str)
+
+    # Group planned activities by date
+    planned_by_day = defaultdict(list)
+    for planned in planned_activities_list:
+        planned_by_day[planned['date']].append(planned)
+
     # Generate all days in range (including days without activities)
     all_days = []
     current_date = end_date
     while current_date >= start_date:
         day_key = current_date.strftime('%Y-%m-%d')
+        actual_activities = activities_by_day.get(day_key, [])
+        planned_activities = planned_by_day.get(day_key, [])
+
+        # Calculate completion rate for the day
+        num_planned = len(planned_activities)
+        num_actual = len(actual_activities)
+        completion_rate = (num_actual / num_planned * 100) if num_planned > 0 else None
+
         all_days.append({
             'date': day_key,
             'weekday': current_date.strftime('%A'),
-            'activities': activities_by_day.get(day_key, [])
+            'activities': actual_activities,
+            'planned_activities': planned_activities,
+            'num_planned': num_planned,
+            'num_actual': num_actual,
+            'completion_rate': completion_rate
         })
         current_date -= timedelta(days=1)
 
     # Calculate summary statistics
     total_activities = len(rows)
+    total_planned = len(planned_activities_list)
     total_distance = sum(a.get('distance', 0) or 0 for a in [db_row_to_dict(r) for r in rows])
     total_time = sum(a.get('moving_time', 0) or 0 for a in [db_row_to_dict(r) for r in rows])
     days_with_activities = len([d for d in all_days if d['activities']])
+    days_with_planned = len([d for d in all_days if d['planned_activities']])
+    overall_completion_rate = (total_activities / total_planned * 100) if total_planned > 0 else None
 
     # Get day feelings for all days in range
     day_feelings = {}
@@ -579,9 +603,12 @@ def report():
         start_date=start_date_str,
         end_date=end_date_str,
         total_activities=total_activities,
+        total_planned=total_planned,
         total_distance=total_distance,
         total_time=total_time,
         days_with_activities=days_with_activities,
+        days_with_planned=days_with_planned,
+        overall_completion_rate=overall_completion_rate,
         total_days=len(all_days)
     )
 

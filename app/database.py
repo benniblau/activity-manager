@@ -404,6 +404,7 @@ def get_planned_activities(start_date, end_date):
             p.*,
             ext.custom_name as extended_name,
             ext.color_class as extended_color,
+            ext.icon_override as extended_icon,
             ext.base_sport_type as extended_base_type,
             a.name as matched_activity_name,
             a.sport_type as matched_activity_type

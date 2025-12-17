@@ -117,6 +117,20 @@ The script is **idempotent** - safe to run multiple times. It will:
 - Skip types that are already present
 - Provide detailed output of what was added/skipped
 
+### Updating Extended Type Colors and Icons
+
+If you have existing extended types with incorrect colors, update them to match base sport colors:
+
+```bash
+# Update all extended types with correct colors and icons
+python update_extended_types_colors.py activities.db
+```
+
+This updates:
+- **Run types** → Green with activity-specific icons
+- **Ride types** → Orange with cycling-specific icons
+- **WeightTraining types** → Purple with gym-specific icons
+
 ### Other Database Updates
 
 For general database schema updates:
