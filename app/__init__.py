@@ -35,6 +35,18 @@ def create_app(config_name=None):
     # Register database teardown
     app.teardown_appcontext(close_db)
 
+    # Register custom Jinja2 filters
+    from datetime import datetime as dt
+
+    @app.template_filter('weekday')
+    def weekday_filter(date_string):
+        """Convert date string to weekday abbreviation"""
+        try:
+            date_obj = dt.strptime(date_string, '%Y-%m-%d')
+            return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date_obj.weekday()]
+        except (ValueError, TypeError):
+            return ''
+
     # Register blueprints
     from app.auth import auth_bp
     from app.activities import activities_bp

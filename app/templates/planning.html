@@ -60,8 +60,7 @@
                 <td class="fw-bold">
                     <div>{{ day }}</div>
                     <div class="small text-muted">
-                        {% set weekday = day | replace('-', '') %}
-                        {{ ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][0] }}
+                        {{ day | weekday }}
                     </div>
                 </td>
 
