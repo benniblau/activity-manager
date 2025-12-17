@@ -402,7 +402,7 @@ def migrate_database(db_path):
 def main():
     """Main execution"""
     # Determine database path
-    db_path = os.environ.get('DATABASE_PATH', 'instance/activities.db')
+    db_path = os.environ.get('DATABASE_PATH', 'activities.db')
 
     if not os.path.exists(db_path):
         print(f"❌ Database not found: {db_path}")

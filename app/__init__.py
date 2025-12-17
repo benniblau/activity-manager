@@ -16,16 +16,10 @@ def create_app(config_name=None):
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV', 'development')
 
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__)
 
     # Load configuration
     app.config.from_object(config.get(config_name, config['default']))
-
-    # Ensure the instance folder exists
-    try:
-        os.makedirs(app.instance_path)
-    except OSError:
-        pass
 
     # Initialize database
     from app.database import close_db, init_db
