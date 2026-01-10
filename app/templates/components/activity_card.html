@@ -1,0 +1,133 @@
+{# Activity Card Component
+
+   Usage:
+   {% from 'components/activity_card.html' import activity_card %}
+   {{ activity_card(activity, show_description=True, show_stats=True, show_actions=True) }}
+#}
+
+{% macro activity_card(activity, show_description=False, show_stats=True, show_actions=False, card_class='', actions_html='') %}
+<div class="d-flex justify-content-between align-items-start {{ card_class }}">
+    <div class="flex-grow-1">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <strong>{{ activity.name }}</strong>
+
+            {% if activity.extended_name %}
+            <span class="badge badge-sm {{ activity.extended_color or 'bg-secondary' }}">
+                {{ activity.extended_name }}
+            </span>
+            {% elif activity.sport_type %}
+            <span class="badge badge-sm badge-sport-{{ activity.sport_type.lower() }}">
+                {{ activity.sport_type }}
+            </span>
+            {% endif %}
+
+            {% if activity.intensity_level %}
+            <span class="badge badge-sm bg-info">{{ activity.intensity_level }}</span>
+            {% endif %}
+
+            {% if activity.manual %}
+            <span class="badge badge-sm bg-warning text-dark">Manual</span>
+            {% endif %}
+
+            {% if activity.trainer %}
+            <span class="badge badge-sm bg-secondary">Indoor</span>
+            {% endif %}
+        </div>
+
+        {% if show_stats %}
+        <div class="small text-muted">
+            {% set has_stats = False %}
+
+            {% if activity.distance %}
+                {% set has_stats = True %}
+                <i class="bi bi-signpost"></i> {{ (activity.distance / 1000)|round(2) }} km
+            {% elif activity.planned_distance %}
+                {% set has_stats = True %}
+                <i class="bi bi-signpost"></i> {{ (activity.planned_distance / 1000)|round(2) }} km
+            {% endif %}
+
+            {% if activity.moving_time %}
+                {% if has_stats %}•{% endif %}
+                {% set has_stats = True %}
+                <i class="bi bi-clock"></i>
+                {% set hours = (activity.moving_time // 3600)|int %}
+                {% set minutes = ((activity.moving_time % 3600) // 60)|int %}
+                {% if hours > 0 %}{{ hours }}h {% endif %}{{ minutes }}min
+            {% elif activity.elapsed_time %}
+                {% if has_stats %}•{% endif %}
+                {% set has_stats = True %}
+                <i class="bi bi-clock"></i>
+                {% set hours = (activity.elapsed_time // 3600)|int %}
+                {% set minutes = ((activity.elapsed_time % 3600) // 60)|int %}
+                {% if hours > 0 %}{{ hours }}h {% endif %}{{ minutes }}min
+            {% elif activity.planned_duration %}
+                {% if has_stats %}•{% endif %}
+                {% set has_stats = True %}
+                <i class="bi bi-clock"></i>
+                {% set hours = (activity.planned_duration // 3600)|int %}
+                {% set minutes = ((activity.planned_duration % 3600) // 60)|int %}
+                {% if hours > 0 %}{{ hours }}h {% endif %}{{ minutes }}min
+            {% endif %}
+
+            {% if activity.total_elevation_gain %}
+                {% if has_stats %}•{% endif %}
+                {% set has_stats = True %}
+                <i class="bi bi-graph-up"></i> {{ activity.total_elevation_gain|int }} m
+            {% elif activity.planned_elevation %}
+                {% if has_stats %}•{% endif %}
+                {% set has_stats = True %}
+                <i class="bi bi-graph-up"></i> {{ activity.planned_elevation|int }} m
+            {% endif %}
+
+            {% if activity.average_heartrate %}
+                {% if has_stats %}•{% endif %}
+                <i class="bi bi-heart-pulse"></i> {{ activity.average_heartrate|int }} bpm
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if show_description and (activity.description or activity.coaching_notes) %}
+        <div class="small mt-1">
+            {% if activity.coaching_notes %}
+            <i class="bi bi-chat-left-text text-info"></i>
+            <em>{{ activity.coaching_notes }}</em>
+            {% elif activity.description %}
+            <i class="bi bi-chat-left-text text-muted"></i>
+            <em>{{ activity.description }}</em>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if show_actions and actions_html %}
+    <div class="btn-group-vertical btn-group-sm ms-2">
+        {{ actions_html|safe }}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{# Macro for activity stat badge (reusable across different contexts) #}
+{% macro stat_badge(icon, value, unit='', color='text-muted') %}
+{% if value %}
+<span class="badge bg-light {{ color }} border">
+    <i class="bi bi-{{ icon }}"></i> {{ value }}{% if unit %} {{ unit }}{% endif %}
+</span>
+{% endif %}
+{% endmacro %}
+
+
+{# Macro for sport type badge #}
+{% macro sport_type_badge(activity) %}
+{% if activity.extended_name %}
+<span class="badge {{ activity.extended_color or 'bg-secondary' }}">
+    {% if activity.extended_icon %}<i class="fa-solid fa-{{ activity.extended_icon }}"></i>{% endif %}
+    {{ activity.extended_name }}
+</span>
+{% elif activity.sport_type %}
+<span class="badge badge-sport-{{ activity.sport_type.lower() }}">
+    {{ activity.sport_type }}
+</span>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,105 @@
+{# Activity Type Selector Component
+
+   Usage:
+   {% from 'components/activity_type_selector.html' import activity_type_selector %}
+   {{ activity_type_selector(
+       name='activity_type_selector',
+       extended_types=extended_types,
+       standard_types=sport_types,
+       selected=selected_type,
+       required=True
+   ) }}
+#}
+
+{% macro activity_type_selector(name, extended_types=[], standard_types=[], selected=None, required=False, include_extended=True, include_standard=True) %}
+<div class="mb-3">
+    <label class="form-label">Activity Type{% if required %} <span class="text-danger">*</span>{% endif %}</label>
+    <select name="{{ name }}" id="{{ name }}" class="form-select"{{ ' required' if required else '' }}>
+        <option value="">-- Select Type --</option>
+
+        {% if include_extended and extended_types %}
+            {% for base_type, types in extended_types|groupby('base_sport_type') %}
+            <optgroup label="{{ base_type }} - Extended Types">
+                {% for ext in types %}
+                <option value="ext-{{ ext.id }}"
+                        data-extended-id="{{ ext.id }}"
+                        data-base="{{ ext.base_sport_type }}"
+                        {% if selected and selected == 'ext-' ~ ext.id %}selected{% endif %}>
+                    {{ ext.custom_name }}
+                </option>
+                {% endfor %}
+            </optgroup>
+            {% endfor %}
+        {% endif %}
+
+        {% if include_standard and standard_types %}
+            <optgroup label="Standard Types">
+                {% if standard_types is mapping %}
+                    {# standard_types is a dictionary grouped by category #}
+                    {% for category, types in standard_types.items() %}
+                        {% for type in types %}
+                        <option value="sport-{{ type.name }}"
+                                data-sport-type="{{ type.name }}"
+                                {% if selected and selected == 'sport-' ~ type.name %}selected{% endif %}>
+                            {{ type.display_name or type.name }}
+                        </option>
+                        {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    {# standard_types is a simple list #}
+                    {% for sport in standard_types %}
+                        {% if sport is string %}
+                        <option value="sport-{{ sport }}"
+                                data-sport-type="{{ sport }}"
+                                {% if selected and selected == 'sport-' ~ sport %}selected{% endif %}>
+                            {{ sport }}
+                        </option>
+                        {% else %}
+                        <option value="sport-{{ sport.name }}"
+                                data-sport-type="{{ sport.name }}"
+                                {% if selected and selected == 'sport-' ~ sport.name %}selected{% endif %}>
+                            {{ sport.display_name or sport.name }}
+                        </option>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </optgroup>
+        {% endif %}
+    </select>
+
+    {# Hidden inputs for extended_type_id and sport_type #}
+    <input type="hidden" name="extended_type_id" id="{{ name }}_extended_type_id">
+    <input type="hidden" name="sport_type" id="{{ name }}_sport_type">
+</div>
+
+<script>
+(function() {
+    const selector = document.getElementById('{{ name }}');
+    const extendedInput = document.getElementById('{{ name }}_extended_type_id');
+    const sportInput = document.getElementById('{{ name }}_sport_type');
+
+    if (selector && extendedInput && sportInput) {
+        selector.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            const value = this.value;
+
+            if (value.startsWith('ext-')) {
+                extendedInput.value = selected.dataset.extendedId || '';
+                sportInput.value = '';
+            } else if (value.startsWith('sport-')) {
+                extendedInput.value = '';
+                sportInput.value = selected.dataset.sportType || '';
+            } else {
+                extendedInput.value = '';
+                sportInput.value = '';
+            }
+        });
+
+        // Trigger on page load if there's a selected value
+        if (selector.value) {
+            selector.dispatchEvent(new Event('change'));
+        }
+    }
+})();
+</script>
+{% endmacro %}

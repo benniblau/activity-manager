@@ -252,12 +252,20 @@ def get_strava_client():
     """
     # Try to ensure we have a valid token
     if ensure_valid_token():
-        return Client(access_token=session['access_token'])
+        client = Client(access_token=session['access_token'])
+        # Set refresh token if available for auto-refresh
+        if 'refresh_token' in session:
+            client.refresh_token = session['refresh_token']
+        return client
 
     # Fall back to config tokens if available (for backward compatibility)
     access_token = current_app.config.get('STRAVA_ACCESS_TOKEN')
     if access_token:
-        return Client(access_token=access_token)
+        client = Client(access_token=access_token)
+        refresh_token = current_app.config.get('STRAVA_REFRESH_TOKEN')
+        if refresh_token:
+            client.refresh_token = refresh_token
+        return client
 
     raise Exception('Not authenticated. Please login first.')
 

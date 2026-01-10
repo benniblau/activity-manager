@@ -5,9 +5,18 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from app.web import web_bp
 from app.database import (
-    get_db, db_row_to_dict, dict_to_db_values, get_extended_types,
-    get_standard_types_by_category, validate_sport_type
+    get_db, db_row_to_dict, get_extended_types,
+    get_standard_types_by_category, get_planned_activities
 )
+from app.repositories import (
+    ActivityRepository,
+    PlanningRepository,
+    TypeRepository,
+    DayRepository,
+    GearRepository
+)
+from app.services import StravaService
+from app.utils.errors import ActivityNotFoundError, ValidationError, AppError
 from app.auth.routes import get_strava_client, is_authenticated as check_strava_auth
 
 
@@ -145,235 +154,26 @@ def sync():
         client = get_strava_client()
         print(f"Got Strava client: {client}", file=sys.stderr, flush=True)
     except Exception as e:
-        print(f"Failed to get Strava client: {e}")
+        print(f"Failed to get Strava client: {e}", file=sys.stderr, flush=True)
         import traceback
-        print(traceback.format_exc())
+        print(traceback.format_exc(), file=sys.stderr, flush=True)
         session['auth_error'] = 'Please connect to Strava first'
         return redirect('/')
 
     try:
-        # Fetch activities from Strava (all activities, max 200)
-        # Removing time filter to get all activities
-        import sys
-        print("Fetching all activities from Strava (up to 200)...", file=sys.stderr, flush=True)
-        activities = client.get_activities(limit=200)
+        # Use StravaService to sync activities
+        print("Starting sync with StravaService...", file=sys.stderr, flush=True)
+        strava_service = StravaService(client)
+        result = strava_service.sync_activities(limit=200)
 
-        db = get_db()
-        created_count = 0
-        updated_count = 0
+        print(f"Sync completed: {result}", file=sys.stderr, flush=True)
 
-        print("Starting to iterate through activities...", file=sys.stderr, flush=True)
-        activity_list = list(activities)  # Convert to list to check count
-        print(f"Total activities fetched: {len(activity_list)}", file=sys.stderr, flush=True)
+        # Set success message
+        session['sync_message'] = (
+            f"Synced from Strava: {result['created']} new, "
+            f"{result['updated']} updated"
+        )
 
-        for strava_activity in activity_list:
-            try:
-                activity_id = strava_activity.id
-
-                # Check if activity already exists and get current data
-                cursor = db.execute('SELECT * FROM activities WHERE id = ?', (activity_id,))
-                existing_row = cursor.fetchone()
-
-                # Helper function to convert time values (handles both timedelta and Duration objects)
-                def to_seconds(time_value):
-                    if time_value is None:
-                        return 0
-                    if hasattr(time_value, 'total_seconds'):
-                        return int(time_value.total_seconds())
-                    # Handle Duration objects from stravalib 2.4
-                    if hasattr(time_value, 'seconds'):
-                        return int(time_value.seconds)
-                    # Try to convert directly to int
-                    return int(time_value) if time_value else 0
-
-                # Helper function to convert enum to string value
-                def enum_to_str(value):
-                    if value is None:
-                        return None
-                    # Check if it's a Pydantic RootModel (has .root attribute)
-                    if hasattr(value, 'root'):
-                        return str(value.root)
-                    # Check if it's an enum with a .value attribute
-                    if hasattr(value, 'value'):
-                        inner = value.value
-                        # Check if the value itself is a RootModel
-                        if hasattr(inner, 'root'):
-                            return str(inner.root)
-                        return str(inner)
-                    # Check if it's an enum with a .name attribute
-                    if hasattr(value, 'name'):
-                        return str(value.name)
-                    return str(value)
-
-                # Extract day_date from start_date_local
-                day_date = None
-                if getattr(strava_activity, 'start_date_local', None):
-                    day_date = strava_activity.start_date_local.strftime('%Y-%m-%d')
-
-                # Convert stravalib activity to dict
-                # Use getattr with defaults for attributes that might not exist on SummaryActivity
-                sport_type_value = enum_to_str(getattr(strava_activity, 'sport_type', None))
-
-                # Auto-create unknown sport types in standard_activity_types table
-                if sport_type_value and not validate_sport_type(sport_type_value):
-                    try:
-                        db.execute('''
-                            INSERT INTO standard_activity_types
-                            (name, category, display_name, icon, color, is_official, display_order)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', (sport_type_value, 'Other', sport_type_value, 'circle-question', 'badge-other', 1, 999))
-                        db.commit()
-                        print(f"Auto-created new sport type from Strava: {sport_type_value}", file=sys.stderr, flush=True)
-                    except Exception as e:
-                        # Ignore if already exists (race condition)
-                        print(f"Note: Could not auto-create sport type {sport_type_value}: {e}", file=sys.stderr, flush=True)
-
-                activity_data = {
-                    'id': activity_id,
-                    'name': getattr(strava_activity, 'name', None),
-                    'sport_type': sport_type_value,
-                    'type': enum_to_str(getattr(strava_activity, 'type', None)),
-                    'start_date': strava_activity.start_date.isoformat() if getattr(strava_activity, 'start_date', None) else None,
-                    'start_date_local': strava_activity.start_date_local.isoformat() if getattr(strava_activity, 'start_date_local', None) else None,
-                    'day_date': day_date,
-                    'timezone': str(strava_activity.timezone) if getattr(strava_activity, 'timezone', None) else None,
-                    'elapsed_time': to_seconds(getattr(strava_activity, 'elapsed_time', None)),
-                    'moving_time': to_seconds(getattr(strava_activity, 'moving_time', None)),
-                    'distance': float(strava_activity.distance) if getattr(strava_activity, 'distance', None) else 0,
-                    'total_elevation_gain': float(strava_activity.total_elevation_gain) if getattr(strava_activity, 'total_elevation_gain', None) else 0,
-                    'average_speed': float(strava_activity.average_speed) if getattr(strava_activity, 'average_speed', None) else 0,
-                    'max_speed': float(strava_activity.max_speed) if getattr(strava_activity, 'max_speed', None) else 0,
-                    'average_cadence': float(strava_activity.average_cadence) if getattr(strava_activity, 'average_cadence', None) else 0,
-                    'average_watts': float(strava_activity.average_watts) if getattr(strava_activity, 'average_watts', None) else 0,
-                    'average_heartrate': float(strava_activity.average_heartrate) if getattr(strava_activity, 'average_heartrate', None) else 0,
-                    'max_heartrate': int(strava_activity.max_heartrate) if getattr(strava_activity, 'max_heartrate', None) else 0,
-                    'calories': float(getattr(strava_activity, 'calories', None)) if getattr(strava_activity, 'calories', None) else 0,
-                    'description': getattr(strava_activity, 'description', None),
-                    'trainer': getattr(strava_activity, 'trainer', None),
-                    'commute': getattr(strava_activity, 'commute', None),
-                    'manual': getattr(strava_activity, 'manual', None),
-                    'private': getattr(strava_activity, 'private', None),
-                    'device_name': getattr(strava_activity, 'device_name', None),
-                    'kudos_count': getattr(strava_activity, 'kudos_count', 0) or 0,
-                    'comment_count': getattr(strava_activity, 'comment_count', 0) or 0,
-                    'gear_id': getattr(strava_activity, 'gear_id', None),
-                }
-
-                # Prepare data for database
-                db_data = dict_to_db_values(activity_data)
-
-                if existing_row:
-                    # Check if any fields have actually changed
-                    existing_data = db_row_to_dict(existing_row)
-                    update_data = {k: v for k, v in db_data.items() if k != 'id'}
-
-                    # CRITICAL: Never overwrite extended_type_id from Strava sync
-                    # This preserves user's custom activity type classifications
-                    update_data.pop('extended_type_id', None)
-
-                    # Compare values to detect actual changes
-                    has_changes = False
-                    for key, new_value in update_data.items():
-                        old_value = existing_data.get(key)
-                        # Normalize comparison (handle None vs 0, float precision, etc.)
-                        if old_value != new_value:
-                            # Check if it's just a numeric precision difference
-                            if isinstance(old_value, (int, float)) and isinstance(new_value, (int, float)):
-                                if abs(float(old_value or 0) - float(new_value or 0)) > 0.001:
-                                    has_changes = True
-                                    break
-                            else:
-                                has_changes = True
-                                break
-
-                    if has_changes:
-                        # Update existing activity, but preserve feeling annotations
-                        update_data['updated_at'] = datetime.utcnow().isoformat()
-
-                        # Build update query
-                        set_clause = ', '.join([f'{key} = ?' for key in update_data.keys()])
-                        query = f'UPDATE activities SET {set_clause} WHERE id = ?'
-
-                        db.execute(query, list(update_data.values()) + [activity_id])
-                        updated_count += 1
-                else:
-                    # Build insert query for new activity
-                    columns = ', '.join(db_data.keys())
-                    placeholders = ', '.join(['?' for _ in db_data])
-                    query = f'INSERT INTO activities ({columns}) VALUES ({placeholders})'
-
-                    db.execute(query, list(db_data.values()))
-                    created_count += 1
-
-            except Exception as e:
-                print(f"Error syncing activity {activity_id}: {e}")
-                continue
-
-        # Create days entries for all unique dates that don't exist yet
-        cursor = db.execute('''
-            SELECT DISTINCT day_date FROM activities
-            WHERE day_date IS NOT NULL
-            AND day_date NOT IN (SELECT date FROM days)
-        ''')
-        new_dates = [row[0] for row in cursor.fetchall()]
-
-        days_created = 0
-        for date in new_dates:
-            db.execute('''
-                INSERT INTO days (date, created_at, updated_at)
-                VALUES (?, ?, ?)
-            ''', (date, datetime.utcnow().isoformat(), datetime.utcnow().isoformat()))
-            days_created += 1
-
-        db.commit()
-
-        # Sync gear information for all unique gear_ids not yet in gear table
-        cursor = db.execute('''
-            SELECT DISTINCT gear_id FROM activities
-            WHERE gear_id IS NOT NULL
-            AND gear_id NOT IN (SELECT id FROM gear)
-        ''')
-        new_gear_ids = [row[0] for row in cursor.fetchall()]
-
-        gear_synced = 0
-        for gear_id in new_gear_ids:
-            try:
-                print(f"Fetching gear details for {gear_id}...", file=sys.stderr, flush=True)
-                gear = client.get_gear(gear_id)
-
-                # Determine gear type from the ID prefix (b=bike, g=shoes)
-                gear_type = 'bike' if gear_id.startswith('b') else 'shoes' if gear_id.startswith('g') else 'unknown'
-
-                db.execute('''
-                    INSERT INTO gear (id, name, brand_name, model_name, gear_type, description,
-                                     distance, primary_gear, retired, resource_state, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    gear_id,
-                    getattr(gear, 'name', None),
-                    getattr(gear, 'brand_name', None),
-                    getattr(gear, 'model_name', None),
-                    gear_type,
-                    getattr(gear, 'description', None),
-                    float(gear.distance) if getattr(gear, 'distance', None) else 0,
-                    1 if getattr(gear, 'primary', False) else 0,
-                    1 if getattr(gear, 'retired', False) else 0,
-                    getattr(gear, 'resource_state', None),
-                    datetime.utcnow().isoformat(),
-                    datetime.utcnow().isoformat()
-                ))
-                gear_synced += 1
-            except Exception as e:
-                print(f"Error fetching gear {gear_id}: {e}", file=sys.stderr, flush=True)
-                continue
-
-        if gear_synced > 0:
-            db.commit()
-            print(f"Synced {gear_synced} gear items", file=sys.stderr, flush=True)
-
-        import sys
-        print(f"Sync completed: {created_count} created, {updated_count} updated, {days_created} days added, {gear_synced} gear synced", file=sys.stderr, flush=True)
-        session['sync_message'] = f"Synced from Strava: {created_count} new, {updated_count} updated, {gear_synced} gear."
         return redirect('/')
 
     except Exception as e:

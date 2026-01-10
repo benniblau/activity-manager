@@ -1,7 +1,7 @@
 from flask import render_template, request, jsonify, redirect, url_for, flash
 from app.admin import admin_bp
-from app.database import get_db, get_extended_types, validate_sport_type
-from collections import defaultdict
+from app.repositories import TypeRepository
+from app.utils.errors import ValidationError, AppError
 
 
 @admin_bp.route('/')
@@ -13,91 +13,59 @@ def index():
 @admin_bp.route('/types')
 def manage_types():
     """Extended activity types management page"""
-    extended_types = get_extended_types()
+    type_repo = TypeRepository()
 
-    # Group by base_sport_type for display
-    types_by_base = defaultdict(list)
-    for ext_type in extended_types:
-        types_by_base[ext_type['base_sport_type']].append(ext_type)
+    # Get extended types grouped by base sport type
+    types_by_base = type_repo.get_extended_types_grouped_by_base()
+    all_types = type_repo.get_extended_types()
 
     return render_template('admin/manage_types.html',
-                           types_by_base=dict(types_by_base),
-                           all_types=extended_types)
+                           types_by_base=types_by_base,
+                           all_types=all_types)
 
 
 @admin_bp.route('/types', methods=['POST'])
 def create_extended_type():
     """Create a new extended activity type"""
-    db = get_db()
-    data = request.get_json() if request.is_json else request.form
-
-    # Validate required fields
-    if not data.get('base_sport_type') or not data.get('custom_name'):
-        return jsonify({'error': 'Base sport type and custom name are required'}), 400
-
-    # Validate base_sport_type exists in standard types
-    if not validate_sport_type(data['base_sport_type']):
-        return jsonify({'error': f'Invalid base_sport_type: {data["base_sport_type"]}'}), 400
-
     try:
-        # Insert new extended type
-        cursor = db.execute('''
-            INSERT INTO extended_activity_types
-            (base_sport_type, custom_name, description, icon_override, color_class, display_order)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            data['base_sport_type'],
-            data['custom_name'],
-            data.get('description'),
-            data.get('icon_override'),
-            data.get('color_class'),
-            data.get('display_order', 0)
-        ))
+        data = request.get_json() if request.is_json else request.form.to_dict()
 
-        db.commit()
-        type_id = cursor.lastrowid
+        # Create extended type using repository
+        type_repo = TypeRepository()
+        extended_type = type_repo.create_extended_type(data)
 
         if request.is_json:
-            return jsonify({'id': type_id, 'message': 'Extended type created successfully'}), 201
+            return jsonify({
+                'id': extended_type['id'],
+                'message': 'Extended type created successfully'
+            }), 201
         else:
             flash('Extended type created successfully', 'success')
             return redirect(url_for('admin.manage_types'))
 
-    except Exception as e:
-        # Handle unique constraint violation (duplicate custom_name)
-        if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'An extended type with this name already exists'}), 409
-        return jsonify({'error': str(e)}), 500
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('admin.manage_types'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('admin.manage_types'))
 
 
 @admin_bp.route('/types/<int:type_id>', methods=['PUT', 'POST'])
 def update_extended_type(type_id):
     """Update an extended activity type"""
-    db = get_db()
-    data = request.get_json() if request.is_json else request.form
-
-    # Check if type exists
-    cursor = db.execute('SELECT * FROM extended_activity_types WHERE id = ?', (type_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Extended type not found'}), 404
-
     try:
-        # Update extended type
-        db.execute('''
-            UPDATE extended_activity_types
-            SET custom_name = ?, description = ?, icon_override = ?,
-                color_class = ?, display_order = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ''', (
-            data.get('custom_name'),
-            data.get('description'),
-            data.get('icon_override'),
-            data.get('color_class'),
-            data.get('display_order', 0),
-            type_id
-        ))
+        data = request.get_json() if request.is_json else request.form.to_dict()
 
-        db.commit()
+        # Update extended type using repository
+        type_repo = TypeRepository()
+        type_repo.update_extended_type(type_id, data)
 
         if request.is_json:
             return jsonify({'message': 'Extended type updated successfully'}), 200
@@ -105,33 +73,42 @@ def update_extended_type(type_id):
             flash('Extended type updated successfully', 'success')
             return redirect(url_for('admin.manage_types'))
 
-    except Exception as e:
-        if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'An extended type with this name already exists'}), 409
-        return jsonify({'error': str(e)}), 500
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('admin.manage_types'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('admin.manage_types'))
 
 
 @admin_bp.route('/types/<int:type_id>', methods=['DELETE'])
 def delete_extended_type(type_id):
     """Soft delete an extended activity type (set is_active = 0)"""
-    db = get_db()
+    try:
+        type_repo = TypeRepository()
+        type_repo.delete_extended_type(type_id)
 
-    # Check if type exists
-    cursor = db.execute('SELECT * FROM extended_activity_types WHERE id = ?', (type_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Extended type not found'}), 404
+        if request.is_json:
+            return jsonify({'message': 'Extended type deleted successfully'}), 200
+        else:
+            flash('Extended type deleted successfully', 'success')
+            return redirect(url_for('admin.manage_types'))
 
-    # Soft delete (set is_active = 0)
-    db.execute('''
-        UPDATE extended_activity_types
-        SET is_active = 0, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (type_id,))
-
-    db.commit()
-
-    if request.is_json:
-        return jsonify({'message': 'Extended type deleted successfully'}), 200
-    else:
-        flash('Extended type deleted successfully', 'success')
-        return redirect(url_for('admin.manage_types'))
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('admin.manage_types'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('admin.manage_types'))

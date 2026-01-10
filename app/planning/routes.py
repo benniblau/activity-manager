@@ -1,8 +1,16 @@
 from flask import render_template, request, jsonify, redirect, url_for, session, flash
 from app.planning import planning_bp
-from app.database import (
-    get_db, db_row_to_dict, get_extended_types, get_planned_activities,
-    get_standard_types_by_category, validate_sport_type
+from app.repositories import (
+    PlanningRepository,
+    ActivityRepository,
+    TypeRepository,
+    DayRepository
+)
+from app.utils.errors import (
+    PlannedActivityNotFoundError,
+    ValidationError,
+    InvalidOperationError,
+    AppError
 )
 from datetime import datetime, timedelta
 from collections import defaultdict
@@ -11,7 +19,10 @@ from collections import defaultdict
 @planning_bp.route('/')
 def index():
     """Main planning calendar view (daily list)"""
-    db = get_db()
+    # Initialize repositories
+    planning_repo = PlanningRepository()
+    activity_repo = ActivityRepository()
+    type_repo = TypeRepository()
 
     # Get page and per_page parameters
     page = request.args.get('page', 1, type=int)
@@ -38,7 +49,7 @@ def index():
 
     # Fetch planned activities for the displayed days
     if sorted_days:
-        planned_activities_list = get_planned_activities(sorted_days[0], sorted_days[-1])
+        planned_activities_list = planning_repo.get_planned_activities(sorted_days[0], sorted_days[-1])
     else:
         planned_activities_list = []
 
@@ -47,38 +58,32 @@ def index():
     for planned in planned_activities_list:
         planned_by_day[planned['date']].append(planned)
 
-    # Fetch actual activities for the same date range (to show for comparison)
-    activities_query = '''
-        SELECT
-            a.*,
-            ext.custom_name as extended_name,
-            ext.color_class as extended_color,
-            ext.icon_override as extended_icon
-        FROM activities a
-        LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
-        WHERE a.day_date >= ? AND a.day_date <= ?
-        ORDER BY a.start_date_local
-    '''
-    cursor = db.execute(activities_query, (sorted_days[0] if sorted_days else today.strftime('%Y-%m-%d'),
-                                            sorted_days[-1] if sorted_days else today.strftime('%Y-%m-%d')))
-    activities = [db_row_to_dict(row) for row in cursor.fetchall()]
+    # Fetch actual activities for the same date range
+    if sorted_days:
+        filters = {
+            'start_date': sorted_days[0],
+            'end_date': sorted_days[-1]
+        }
+        activities = activity_repo.get_activities(filters=filters)
+    else:
+        activities = []
 
     # Group activities by day using day_date field
     activities_by_day = defaultdict(list)
     for activity in activities:
-        day_date = activity.get('day_date')  # Use day_date consistently
+        day_date = activity.get('day_date')
         if day_date:
             activities_by_day[day_date].append(activity)
 
     # Fetch all extended types for dropdowns
-    extended_types = get_extended_types()
+    extended_types = type_repo.get_extended_types()
 
     # Get standard types grouped by category
-    standard_types_by_category = get_standard_types_by_category()
+    standard_types_by_category = type_repo.get_types_by_category()
 
     # Get distinct sport types for filter
-    cursor = db.execute('SELECT DISTINCT sport_type FROM activities ORDER BY sport_type')
-    sport_types = [row[0] for row in cursor.fetchall()]
+    all_activities = activity_repo.get_activities()
+    sport_types = sorted(set(act['sport_type'] for act in all_activities if act.get('sport_type')))
 
     return render_template('planning.html',
                            sorted_days=sorted_days,
@@ -97,333 +102,257 @@ def index():
 @planning_bp.route('/activity', methods=['POST'])
 def create_planned_activity():
     """Create a new planned activity"""
-    db = get_db()
-    data = request.get_json() if request.is_json else request.form
+    try:
+        data = request.get_json() if request.is_json else request.form.to_dict()
 
-    # Validate required fields
-    if not data.get('date') or not data.get('name'):
-        return jsonify({'error': 'Date and name are required'}), 400
+        # Create planned activity using repository
+        planning_repo = PlanningRepository()
+        planned = planning_repo.create_planned_activity(data)
 
-    # Validate activity type (either extended_type_id or sport_type must be provided)
-    extended_type_id = data.get('extended_type_id')
-    sport_type = data.get('sport_type')
+        if request.is_json:
+            return jsonify({
+                'id': planned['id'],
+                'message': 'Planned activity created successfully'
+            }), 201
+        else:
+            flash('Planned activity created successfully', 'success')
+            return redirect(url_for('planning.index'))
 
-    if not extended_type_id and not sport_type:
-        return jsonify({'error': 'Either extended_type_id or sport_type must be provided'}), 400
-
-    # Validate sport_type if provided
-    if sport_type and not validate_sport_type(sport_type):
-        return jsonify({'error': f'Invalid sport_type: {sport_type}'}), 400
-
-    # Insert planned activity
-    cursor = db.execute('''
-        INSERT INTO planned_activities
-        (date, name, description, extended_type_id, sport_type,
-         planned_distance, planned_duration, planned_elevation,
-         coaching_notes, intensity_level)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        data['date'],
-        data['name'],
-        data.get('description'),
-        extended_type_id if extended_type_id else None,
-        sport_type if not extended_type_id else None,
-        data.get('planned_distance'),
-        data.get('planned_duration'),
-        data.get('planned_elevation'),
-        data.get('coaching_notes'),
-        data.get('intensity_level')
-    ))
-
-    db.commit()
-    planned_id = cursor.lastrowid
-
-    if request.is_json:
-        return jsonify({'id': planned_id, 'message': 'Planned activity created successfully'}), 201
-    else:
-        flash('Planned activity created successfully', 'success')
-        return redirect(url_for('planning.index'))
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
 
 
 @planning_bp.route('/activity/<int:planned_id>', methods=['PUT', 'POST'])
 def update_planned_activity(planned_id):
     """Update a planned activity"""
-    db = get_db()
-    data = request.get_json() if request.is_json else request.form
+    try:
+        data = request.get_json() if request.is_json else request.form.to_dict()
 
-    # Check if planned activity exists
-    cursor = db.execute('SELECT * FROM planned_activities WHERE id = ?', (planned_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Planned activity not found'}), 404
+        # Update planned activity using repository
+        planning_repo = PlanningRepository()
+        planning_repo.update_planned_activity(planned_id, data)
 
-    # Update planned activity
-    db.execute('''
-        UPDATE planned_activities
-        SET name = ?, description = ?, extended_type_id = ?, sport_type = ?,
-            planned_distance = ?, planned_duration = ?, planned_elevation = ?,
-            coaching_notes = ?, intensity_level = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (
-        data.get('name'),
-        data.get('description'),
-        data.get('extended_type_id') if data.get('extended_type_id') else None,
-        data.get('sport_type') if not data.get('extended_type_id') else None,
-        data.get('planned_distance'),
-        data.get('planned_duration'),
-        data.get('planned_elevation'),
-        data.get('coaching_notes'),
-        data.get('intensity_level'),
-        planned_id
-    ))
+        if request.is_json:
+            return jsonify({'message': 'Planned activity updated successfully'}), 200
+        else:
+            flash('Planned activity updated successfully', 'success')
+            return redirect(url_for('planning.index'))
 
-    db.commit()
-
-    if request.is_json:
-        return jsonify({'message': 'Planned activity updated successfully'}), 200
-    else:
-        flash('Planned activity updated successfully', 'success')
-        return redirect(url_for('planning.index'))
+    except PlannedActivityNotFoundError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
 
 
 @planning_bp.route('/activity/<int:planned_id>', methods=['DELETE'])
 def delete_planned_activity(planned_id):
     """Delete a planned activity"""
-    db = get_db()
+    try:
+        planning_repo = PlanningRepository()
+        planning_repo.delete_planned_activity(planned_id)
 
-    # Check if planned activity exists
-    cursor = db.execute('SELECT * FROM planned_activities WHERE id = ?', (planned_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Planned activity not found'}), 404
+        if request.is_json:
+            return jsonify({'message': 'Planned activity deleted successfully'}), 200
+        else:
+            flash('Planned activity deleted successfully', 'success')
+            return redirect(url_for('planning.index'))
 
-    # Delete planned activity
-    db.execute('DELETE FROM planned_activities WHERE id = ?', (planned_id,))
-    db.commit()
-
-    if request.is_json:
-        return jsonify({'message': 'Planned activity deleted successfully'}), 200
-    else:
-        flash('Planned activity deleted successfully', 'success')
-        return redirect(url_for('planning.index'))
+    except PlannedActivityNotFoundError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
 
 
 @planning_bp.route('/activity/<int:planned_id>/copy', methods=['POST'])
 def copy_planned_activity(planned_id):
     """Copy a planned activity to other dates"""
-    db = get_db()
-    data = request.get_json() if request.is_json else request.form
+    try:
+        data = request.get_json() if request.is_json else request.form.to_dict()
 
-    # Fetch the original planned activity
-    cursor = db.execute('SELECT * FROM planned_activities WHERE id = ?', (planned_id,))
-    original = cursor.fetchone()
+        # Get target dates
+        target_dates = data.get('target_dates', [])
 
-    if not original:
-        return jsonify({'error': 'Planned activity not found'}), 404
+        # Copy using repository
+        planning_repo = PlanningRepository()
+        copied_count = planning_repo.copy_planned_activity(planned_id, target_dates)
 
-    # Get target dates
-    target_dates = data.get('target_dates', [])
-    if isinstance(target_dates, str):
-        target_dates = [target_dates]
+        if request.is_json:
+            return jsonify({
+                'message': f'Copied to {copied_count} dates',
+                'count': copied_count
+            }), 201
+        else:
+            flash(f'Copied to {copied_count} dates successfully', 'success')
+            return redirect(url_for('planning.index'))
 
-    if not target_dates:
-        return jsonify({'error': 'No target dates provided'}), 400
-
-    # Copy to each target date
-    copied_count = 0
-    for target_date in target_dates:
-        db.execute('''
-            INSERT INTO planned_activities
-            (date, name, description, extended_type_id, sport_type,
-             planned_distance, planned_duration, planned_elevation,
-             coaching_notes, intensity_level)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            target_date,
-            original['name'],
-            original['description'],
-            original['extended_type_id'],
-            original['sport_type'],
-            original['planned_distance'],
-            original['planned_duration'],
-            original['planned_elevation'],
-            original['coaching_notes'],
-            original['intensity_level']
-        ))
-        copied_count += 1
-
-    db.commit()
-
-    if request.is_json:
-        return jsonify({'message': f'Copied to {copied_count} dates', 'count': copied_count}), 201
-    else:
-        flash(f'Copied to {copied_count} dates successfully', 'success')
-        return redirect(url_for('planning.index'))
+    except PlannedActivityNotFoundError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
 
 
 @planning_bp.route('/activity/<int:planned_id>/match/<int:activity_id>', methods=['POST'])
 def match_planned_to_actual(planned_id, activity_id):
     """Link a planned activity to an actual activity"""
-    db = get_db()
+    try:
+        planning_repo = PlanningRepository()
+        planning_repo.match_to_actual(planned_id, activity_id)
 
-    # Verify planned activity exists and get its date
-    cursor = db.execute('SELECT id, date, name FROM planned_activities WHERE id = ?', (planned_id,))
-    planned = cursor.fetchone()
-    if not planned:
-        return jsonify({'error': 'Planned activity not found'}), 404
+        if request.is_json:
+            return jsonify({'message': 'Activities matched successfully'}), 200
+        else:
+            flash('Activities matched successfully', 'success')
+            return redirect(url_for('planning.index'))
 
-    # Verify actual activity exists and get its date
-    cursor = db.execute('SELECT id, day_date, name FROM activities WHERE id = ?', (activity_id,))
-    actual = cursor.fetchone()
-    if not actual:
-        return jsonify({'error': 'Actual activity not found'}), 404
-
-    # VALIDATION 1: Check dates match
-    if planned['date'] != actual['day_date']:
-        return jsonify({
-            'error': f'Date mismatch: Planned activity is on {planned["date"]} but actual activity is on {actual["day_date"]}'
-        }), 400
-
-    # VALIDATION 2: Check if actual activity is already matched to a different planned activity
-    cursor = db.execute('''
-        SELECT id, name FROM planned_activities
-        WHERE matched_activity_id = ? AND id != ?
-    ''', (activity_id, planned_id))
-    existing_match = cursor.fetchone()
-
-    if existing_match:
-        return jsonify({
-            'error': f'This activity is already matched to "{existing_match["name"]}". Please unmatch it first.'
-        }), 409  # 409 Conflict
-
-    # Update the match
-    db.execute('''
-        UPDATE planned_activities
-        SET matched_activity_id = ?, match_type = 'manual', updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (activity_id, planned_id))
-
-    db.commit()
-
-    if request.is_json:
-        return jsonify({'message': 'Activities matched successfully'}), 200
-    else:
-        flash('Activities matched successfully', 'success')
-        return redirect(url_for('planning.index'))
+    except PlannedActivityNotFoundError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except InvalidOperationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
 
 
 @planning_bp.route('/activity/<int:planned_id>/match', methods=['DELETE'])
 def unmatch_planned_activity(planned_id):
     """Unlink a planned activity from its matched actual activity"""
-    db = get_db()
+    try:
+        planning_repo = PlanningRepository()
+        planning_repo.unmatch_activity(planned_id)
 
-    # Check if planned activity exists
-    cursor = db.execute('SELECT * FROM planned_activities WHERE id = ?', (planned_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Planned activity not found'}), 404
+        if request.is_json:
+            return jsonify({'message': 'Activities unmatched successfully'}), 200
+        else:
+            flash('Activities unmatched successfully', 'success')
+            return redirect(url_for('planning.index'))
 
-    # Remove the match
-    db.execute('''
-        UPDATE planned_activities
-        SET matched_activity_id = NULL, match_type = NULL, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (planned_id,))
-
-    db.commit()
-
-    if request.is_json:
-        return jsonify({'message': 'Activities unmatched successfully'}), 200
-    else:
-        flash('Activities unmatched successfully', 'success')
-        return redirect(url_for('planning.index'))
+    except PlannedActivityNotFoundError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.index'))
 
 
 @planning_bp.route('/types')
 def manage_types():
     """Extended activity types management page"""
-    extended_types = get_extended_types()
+    type_repo = TypeRepository()
 
-    # Group by base_sport_type for display
-    types_by_base = defaultdict(list)
-    for ext_type in extended_types:
-        types_by_base[ext_type['base_sport_type']].append(ext_type)
+    # Get extended types grouped by base sport type
+    types_by_base = type_repo.get_extended_types_grouped_by_base()
+    all_types = type_repo.get_extended_types()
 
     return render_template('planning_types.html',
-                           types_by_base=dict(types_by_base),
-                           all_types=extended_types)
+                           types_by_base=types_by_base,
+                           all_types=all_types)
 
 
 @planning_bp.route('/types', methods=['POST'])
 def create_extended_type():
     """Create a new extended activity type"""
-    db = get_db()
-    data = request.get_json() if request.is_json else request.form
-
-    # Validate required fields
-    if not data.get('base_sport_type') or not data.get('custom_name'):
-        return jsonify({'error': 'Base sport type and custom name are required'}), 400
-
-    # Validate base_sport_type exists in standard types
-    if not validate_sport_type(data['base_sport_type']):
-        return jsonify({'error': f'Invalid base_sport_type: {data["base_sport_type"]}'}), 400
-
     try:
-        # Insert new extended type
-        cursor = db.execute('''
-            INSERT INTO extended_activity_types
-            (base_sport_type, custom_name, description, icon_override, color_class, display_order)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            data['base_sport_type'],
-            data['custom_name'],
-            data.get('description'),
-            data.get('icon_override'),
-            data.get('color_class'),
-            data.get('display_order', 0)
-        ))
+        data = request.get_json() if request.is_json else request.form.to_dict()
 
-        db.commit()
-        type_id = cursor.lastrowid
+        # Create extended type using repository
+        type_repo = TypeRepository()
+        extended_type = type_repo.create_extended_type(data)
 
         if request.is_json:
-            return jsonify({'id': type_id, 'message': 'Extended type created successfully'}), 201
+            return jsonify({
+                'id': extended_type['id'],
+                'message': 'Extended type created successfully'
+            }), 201
         else:
             flash('Extended type created successfully', 'success')
             return redirect(url_for('planning.manage_types'))
 
-    except Exception as e:
-        # Handle unique constraint violation (duplicate custom_name)
-        if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'An extended type with this name already exists'}), 409
-        return jsonify({'error': str(e)}), 500
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.manage_types'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.manage_types'))
 
 
 @planning_bp.route('/types/<int:type_id>', methods=['PUT', 'POST'])
 def update_extended_type(type_id):
     """Update an extended activity type"""
-    db = get_db()
-    data = request.get_json() if request.is_json else request.form
-
-    # Check if type exists
-    cursor = db.execute('SELECT * FROM extended_activity_types WHERE id = ?', (type_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Extended type not found'}), 404
-
     try:
-        # Update extended type
-        db.execute('''
-            UPDATE extended_activity_types
-            SET custom_name = ?, description = ?, icon_override = ?,
-                color_class = ?, display_order = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ''', (
-            data.get('custom_name'),
-            data.get('description'),
-            data.get('icon_override'),
-            data.get('color_class'),
-            data.get('display_order', 0),
-            type_id
-        ))
+        data = request.get_json() if request.is_json else request.form.to_dict()
 
-        db.commit()
+        # Update extended type using repository
+        type_repo = TypeRepository()
+        type_repo.update_extended_type(type_id, data)
 
         if request.is_json:
             return jsonify({'message': 'Extended type updated successfully'}), 200
@@ -431,33 +360,42 @@ def update_extended_type(type_id):
             flash('Extended type updated successfully', 'success')
             return redirect(url_for('planning.manage_types'))
 
-    except Exception as e:
-        if 'UNIQUE constraint failed' in str(e):
-            return jsonify({'error': 'An extended type with this name already exists'}), 409
-        return jsonify({'error': str(e)}), 500
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.manage_types'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.manage_types'))
 
 
 @planning_bp.route('/types/<int:type_id>', methods=['DELETE'])
 def delete_extended_type(type_id):
     """Soft delete an extended activity type (set is_active = 0)"""
-    db = get_db()
+    try:
+        type_repo = TypeRepository()
+        type_repo.delete_extended_type(type_id)
 
-    # Check if type exists
-    cursor = db.execute('SELECT * FROM extended_activity_types WHERE id = ?', (type_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Extended type not found'}), 404
+        if request.is_json:
+            return jsonify({'message': 'Extended type deleted successfully'}), 200
+        else:
+            flash('Extended type deleted successfully', 'success')
+            return redirect(url_for('planning.manage_types'))
 
-    # Soft delete (set is_active = 0)
-    db.execute('''
-        UPDATE extended_activity_types
-        SET is_active = 0, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-    ''', (type_id,))
-
-    db.commit()
-
-    if request.is_json:
-        return jsonify({'message': 'Extended type deleted successfully'}), 200
-    else:
-        flash('Extended type deleted successfully', 'success')
-        return redirect(url_for('planning.manage_types'))
+    except ValidationError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.manage_types'))
+    except AppError as e:
+        if request.is_json:
+            return jsonify(e.to_dict()), e.status_code
+        else:
+            flash(e.message, 'error')
+            return redirect(url_for('planning.manage_types'))

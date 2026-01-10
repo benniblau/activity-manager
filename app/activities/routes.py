@@ -1,8 +1,14 @@
-from datetime import datetime
 from flask import request, jsonify
 from app.activities import activities_bp
-from app.database import get_db, dict_to_db_values, db_row_to_dict
+from app.repositories import ActivityRepository
+from app.services import StravaService
 from app.auth.routes import get_strava_client
+from app.utils.errors import (
+    ActivityNotFoundError,
+    ValidationError,
+    StravaAPIError,
+    AppError
+)
 
 
 @activities_bp.route('/', methods=['GET'])
@@ -14,57 +20,35 @@ def get_activities():
         - sport_type: Filter by sport type (e.g., 'Run', 'Ride')
         - start_date: Filter activities after this date (ISO format)
         - end_date: Filter activities before this date (ISO format)
+        - day_date: Filter by specific day
+        - gear_id: Filter by gear
+        - extended_type_id: Filter by extended type
         - limit: Maximum number of activities to return
         - offset: Number of activities to skip
     """
-    db = get_db()
+    activity_repo = ActivityRepository()
 
-    # Build query
-    query = 'SELECT * FROM activities WHERE 1=1'
-    params = []
-
-    # Filter by sport type
-    sport_type = request.args.get('sport_type')
-    if sport_type:
-        query += ' AND sport_type = ?'
-        params.append(sport_type)
-
-    # Filter by day_date (preferred for planning view) or start_date
-    day_date = request.args.get('day_date')
-    if day_date:
-        query += ' AND day_date = ?'
-        params.append(day_date)
-    else:
-        # Filter by date range using start_date
-        start_date = request.args.get('start_date')
-        if start_date:
-            query += ' AND start_date >= ?'
-            params.append(start_date)
-
-        end_date = request.args.get('end_date')
-        if end_date:
-            query += ' AND start_date <= ?'
-            params.append(end_date)
-
-    # Order by start date (most recent first)
-    query += ' ORDER BY start_date DESC'
+    # Build filters from query params
+    filters = {}
+    if request.args.get('sport_type'):
+        filters['sport_type'] = request.args.get('sport_type')
+    if request.args.get('day_date'):
+        filters['day_date'] = request.args.get('day_date')
+    if request.args.get('start_date'):
+        filters['start_date'] = request.args.get('start_date')
+    if request.args.get('end_date'):
+        filters['end_date'] = request.args.get('end_date')
+    if request.args.get('gear_id'):
+        filters['gear_id'] = request.args.get('gear_id')
+    if request.args.get('extended_type_id'):
+        filters['extended_type_id'] = request.args.get('extended_type_id', type=int)
 
     # Pagination
     limit = request.args.get('limit', type=int)
     offset = request.args.get('offset', type=int, default=0)
 
-    if limit:
-        query += ' LIMIT ?'
-        params.append(limit)
-
-    if offset:
-        query += ' OFFSET ?'
-        params.append(offset)
-
-    cursor = db.execute(query, params)
-    rows = cursor.fetchall()
-
-    activities = [db_row_to_dict(row) for row in rows]
+    # Get activities
+    activities = activity_repo.get_activities(filters=filters, limit=limit, offset=offset)
 
     return jsonify({
         'count': len(activities),
@@ -75,14 +59,18 @@ def get_activities():
 @activities_bp.route('/<int:activity_id>', methods=['GET'])
 def get_activity(activity_id):
     """Get a single activity by ID"""
-    db = get_db()
-    cursor = db.execute('SELECT * FROM activities WHERE id = ?', (activity_id,))
-    row = cursor.fetchone()
+    try:
+        activity_repo = ActivityRepository()
+        activity = activity_repo.get_activity(activity_id)
 
-    if not row:
-        return jsonify({'error': 'Activity not found'}), 404
+        if not activity:
+            raise ActivityNotFoundError(activity_id)
 
-    return jsonify(db_row_to_dict(row))
+        return jsonify(activity)
+    except ActivityNotFoundError as e:
+        return jsonify(e.to_dict()), e.status_code
+    except AppError as e:
+        return jsonify(e.to_dict()), e.status_code
 
 
 @activities_bp.route('/', methods=['POST'])
@@ -93,51 +81,40 @@ def create_activity():
     Request body should contain activity data (JSON).
     Required fields: name, sport_type, start_date_local, elapsed_time
     """
-    data = request.get_json()
-
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
-    # Validate required fields
-    required_fields = ['name', 'sport_type', 'start_date_local', 'elapsed_time']
-    missing_fields = [field for field in required_fields if field not in data]
-
-    if missing_fields:
-        return jsonify({'error': f'Missing required fields: {", ".join(missing_fields)}'}), 400
-
     try:
-        # Prepare data for database
-        db_data = dict_to_db_values(data)
+        data = request.get_json()
+
+        if not data:
+            raise ValidationError('No data provided')
+
+        # Validate required fields
+        required_fields = ['name', 'sport_type', 'start_date_local', 'elapsed_time']
+        missing_fields = [field for field in required_fields if field not in data]
+
+        if missing_fields:
+            raise ValidationError(f'Missing required fields: {", ".join(missing_fields)}')
 
         # Set defaults
-        if 'start_date' not in db_data:
-            db_data['start_date'] = db_data['start_date_local']
-        if 'moving_time' not in db_data:
-            db_data['moving_time'] = db_data['elapsed_time']
-        if 'manual' not in db_data:
-            db_data['manual'] = 1
+        if 'start_date' not in data:
+            data['start_date'] = data['start_date_local']
+        if 'moving_time' not in data:
+            data['moving_time'] = data['elapsed_time']
+        if 'manual' not in data:
+            data['manual'] = True
 
-        # Build insert query
-        columns = ', '.join(db_data.keys())
-        placeholders = ', '.join(['?' for _ in db_data])
-        query = f'INSERT INTO activities ({columns}) VALUES ({placeholders})'
-
-        db = get_db()
-        cursor = db.execute(query, list(db_data.values()))
-        db.commit()
-
-        # Get the created activity
-        activity_id = cursor.lastrowid
-        cursor = db.execute('SELECT * FROM activities WHERE id = ?', (activity_id,))
-        row = cursor.fetchone()
+        # Create activity
+        activity_repo = ActivityRepository()
+        activity = activity_repo.create_activity(data)
 
         return jsonify({
             'message': 'Activity created successfully',
-            'activity': db_row_to_dict(row)
+            'activity': activity
         }), 201
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except ValidationError as e:
+        return jsonify(e.to_dict()), e.status_code
+    except AppError as e:
+        return jsonify(e.to_dict()), e.status_code
 
 
 @activities_bp.route('/<int:activity_id>', methods=['PUT'])
@@ -147,67 +124,45 @@ def update_activity(activity_id):
 
     Request body should contain fields to update (JSON).
     """
-    db = get_db()
-
-    # Check if activity exists
-    cursor = db.execute('SELECT * FROM activities WHERE id = ?', (activity_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Activity not found'}), 404
-
-    data = request.get_json()
-
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
     try:
-        # Prepare data for database
-        db_data = dict_to_db_values(data)
+        data = request.get_json()
+
+        if not data:
+            raise ValidationError('No data provided')
 
         # Remove id if present
-        db_data.pop('id', None)
+        data.pop('id', None)
 
-        # Add updated timestamp
-        db_data['updated_at'] = datetime.utcnow().isoformat()
-
-        # Build update query
-        set_clause = ', '.join([f'{key} = ?' for key in db_data.keys()])
-        query = f'UPDATE activities SET {set_clause} WHERE id = ?'
-
-        values = list(db_data.values()) + [activity_id]
-        db.execute(query, values)
-        db.commit()
-
-        # Get the updated activity
-        cursor = db.execute('SELECT * FROM activities WHERE id = ?', (activity_id,))
-        row = cursor.fetchone()
+        # Update activity
+        activity_repo = ActivityRepository()
+        activity = activity_repo.update_activity(activity_id, data)
 
         return jsonify({
             'message': 'Activity updated successfully',
-            'activity': db_row_to_dict(row)
+            'activity': activity
         })
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except ActivityNotFoundError as e:
+        return jsonify(e.to_dict()), e.status_code
+    except ValidationError as e:
+        return jsonify(e.to_dict()), e.status_code
+    except AppError as e:
+        return jsonify(e.to_dict()), e.status_code
 
 
 @activities_bp.route('/<int:activity_id>', methods=['DELETE'])
 def delete_activity(activity_id):
     """Delete an activity"""
-    db = get_db()
-
-    # Check if activity exists
-    cursor = db.execute('SELECT * FROM activities WHERE id = ?', (activity_id,))
-    if not cursor.fetchone():
-        return jsonify({'error': 'Activity not found'}), 404
-
     try:
-        db.execute('DELETE FROM activities WHERE id = ?', (activity_id,))
-        db.commit()
+        activity_repo = ActivityRepository()
+        activity_repo.delete_activity(activity_id)
 
         return jsonify({'message': 'Activity deleted successfully'})
 
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except ActivityNotFoundError as e:
+        return jsonify(e.to_dict()), e.status_code
+    except AppError as e:
+        return jsonify(e.to_dict()), e.status_code
 
 
 @activities_bp.route('/sync', methods=['POST'])
@@ -221,69 +176,27 @@ def sync_from_strava():
         - before: Fetch activities before this timestamp (Unix epoch)
     """
     try:
+        # Get authenticated Strava client
         client = get_strava_client()
-    except Exception as e:
-        return jsonify({'error': str(e)}), 401
 
-    limit = request.args.get('limit', 30, type=int)
-    after = request.args.get('after', type=int)
-    before = request.args.get('before', type=int)
+        # Parse query parameters
+        limit = request.args.get('limit', 30, type=int)
+        after = request.args.get('after', type=int)
+        before = request.args.get('before', type=int)
 
-    if limit > 200:
-        limit = 200
+        if limit > 200:
+            limit = 200
 
-    try:
-        # Fetch activities from Strava
-        strava_activities = client.get_activities(limit=limit, after=after, before=before)
+        # Use StravaService to perform sync
+        strava_service = StravaService(client)
+        result = strava_service.sync_activities(limit=limit, after=after, before=before)
 
-        db = get_db()
-        created_count = 0
-        updated_count = 0
-        errors = []
+        return jsonify(result)
 
-        for strava_activity in strava_activities:
-            try:
-                # Convert to dict
-                if hasattr(strava_activity, 'to_dict'):
-                    activity_data = strava_activity.to_dict()
-                else:
-                    activity_data = dict(strava_activity)
-
-                activity_id = activity_data.get('id')
-
-                # Check if activity already exists
-                cursor = db.execute('SELECT id FROM activities WHERE id = ?', (activity_id,))
-                exists = cursor.fetchone()
-
-                # Prepare data
-                db_data = dict_to_db_values(activity_data)
-
-                if exists:
-                    # Update existing activity (skip for now)
-                    updated_count += 1
-                else:
-                    # Insert new activity
-                    columns = ', '.join(db_data.keys())
-                    placeholders = ', '.join(['?' for _ in db_data])
-                    query = f'INSERT INTO activities ({columns}) VALUES ({placeholders})'
-                    db.execute(query, list(db_data.values()))
-                    created_count += 1
-
-            except Exception as e:
-                errors.append({
-                    'activity_id': activity_id,
-                    'error': str(e)
-                })
-
-        db.commit()
-
-        return jsonify({
-            'message': 'Sync completed',
-            'created': created_count,
-            'updated': updated_count,
-            'errors': errors
-        })
-
+    except StravaAPIError as e:
+        return jsonify(e.to_dict()), e.status_code
+    except AppError as e:
+        return jsonify(e.to_dict()), e.status_code
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -298,49 +211,21 @@ def get_stats():
         - start_date: Start of date range
         - end_date: End of date range
     """
-    db = get_db()
+    try:
+        # Build filters from query params
+        filters = {}
+        if request.args.get('sport_type'):
+            filters['sport_type'] = request.args.get('sport_type')
+        if request.args.get('start_date'):
+            filters['start_date'] = request.args.get('start_date')
+        if request.args.get('end_date'):
+            filters['end_date'] = request.args.get('end_date')
 
-    # Build query
-    query = '''
-        SELECT
-            COUNT(*) as total_activities,
-            SUM(distance) as total_distance,
-            SUM(total_elevation_gain) as total_elevation,
-            SUM(moving_time) as total_time
-        FROM activities WHERE 1=1
-    '''
-    params = []
+        # Get stats from repository
+        activity_repo = ActivityRepository()
+        stats = activity_repo.get_stats(filters=filters)
 
-    # Apply filters
-    sport_type = request.args.get('sport_type')
-    if sport_type:
-        query += ' AND sport_type = ?'
-        params.append(sport_type)
+        return jsonify(stats)
 
-    start_date = request.args.get('start_date')
-    if start_date:
-        query += ' AND start_date >= ?'
-        params.append(start_date)
-
-    end_date = request.args.get('end_date')
-    if end_date:
-        query += ' AND start_date <= ?'
-        params.append(end_date)
-
-    cursor = db.execute(query, params)
-    row = cursor.fetchone()
-
-    total_activities = row['total_activities'] or 0
-    total_distance = row['total_distance'] or 0
-    total_elevation = row['total_elevation'] or 0
-    total_time = row['total_time'] or 0
-
-    return jsonify({
-        'total_activities': total_activities,
-        'total_distance_meters': total_distance,
-        'total_distance_km': round(total_distance / 1000, 2),
-        'total_elevation_meters': total_elevation,
-        'total_time_seconds': total_time,
-        'total_time_hours': round(total_time / 3600, 2),
-        'average_distance_km': round(total_distance / 1000 / total_activities, 2) if total_activities > 0 else 0
-    })
+    except AppError as e:
+        return jsonify(e.to_dict()), e.status_code

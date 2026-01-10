@@ -1,0 +1,174 @@
+{# Form Field Components
+
+   Usage:
+   {% from 'components/form_fields.html' import text_input, textarea, number_input, date_input, submit_button %}
+   {{ text_input('name', 'Activity Name', value=activity.name, required=True) }}
+#}
+
+{% macro text_input(name, label, value='', placeholder='', required=False, help_text='', input_class='', disabled=False) %}
+<div class="mb-3">
+    <label for="{{ name }}" class="form-label">
+        {{ label }}
+        {% if required %}<span class="text-danger">*</span>{% endif %}
+    </label>
+    <input type="text"
+           class="form-control {{ input_class }}"
+           id="{{ name }}"
+           name="{{ name }}"
+           value="{{ value }}"
+           placeholder="{{ placeholder }}"
+           {{ 'required' if required else '' }}
+           {{ 'disabled' if disabled else '' }}>
+    {% if help_text %}
+    <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro textarea(name, label, value='', placeholder='', rows=3, required=False, help_text='', input_class='', disabled=False) %}
+<div class="mb-3">
+    <label for="{{ name }}" class="form-label">
+        {{ label }}
+        {% if required %}<span class="text-danger">*</span>{% endif %}
+    </label>
+    <textarea class="form-control {{ input_class }}"
+              id="{{ name }}"
+              name="{{ name }}"
+              rows="{{ rows }}"
+              placeholder="{{ placeholder }}"
+              {{ 'required' if required else '' }}
+              {{ 'disabled' if disabled else '' }}>{{ value }}</textarea>
+    {% if help_text %}
+    <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro number_input(name, label, value='', min='', max='', step='', placeholder='', required=False, help_text='', input_class='', disabled=False) %}
+<div class="mb-3">
+    <label for="{{ name }}" class="form-label">
+        {{ label }}
+        {% if required %}<span class="text-danger">*</span>{% endif %}
+    </label>
+    <input type="number"
+           class="form-control {{ input_class }}"
+           id="{{ name }}"
+           name="{{ name }}"
+           value="{{ value }}"
+           {% if min %}min="{{ min }}"{% endif %}
+           {% if max %}max="{{ max }}"{% endif %}
+           {% if step %}step="{{ step }}"{% endif %}
+           placeholder="{{ placeholder }}"
+           {{ 'required' if required else '' }}
+           {{ 'disabled' if disabled else '' }}>
+    {% if help_text %}
+    <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro date_input(name, label, value='', required=False, help_text='', input_class='', disabled=False) %}
+<div class="mb-3">
+    <label for="{{ name }}" class="form-label">
+        {{ label }}
+        {% if required %}<span class="text-danger">*</span>{% endif %}
+    </label>
+    <input type="date"
+           class="form-control {{ input_class }}"
+           id="{{ name }}"
+           name="{{ name }}"
+           value="{{ value }}"
+           {{ 'required' if required else '' }}
+           {{ 'disabled' if disabled else '' }}>
+    {% if help_text %}
+    <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro datetime_input(name, label, value='', required=False, help_text='', input_class='', disabled=False) %}
+<div class="mb-3">
+    <label for="{{ name }}" class="form-label">
+        {{ label }}
+        {% if required %}<span class="text-danger">*</span>{% endif %}
+    </label>
+    <input type="datetime-local"
+           class="form-control {{ input_class }}"
+           id="{{ name }}"
+           name="{{ name }}"
+           value="{{ value }}"
+           {{ 'required' if required else '' }}
+           {{ 'disabled' if disabled else '' }}>
+    {% if help_text %}
+    <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro select_input(name, label, options, selected='', required=False, help_text='', input_class='', disabled=False) %}
+<div class="mb-3">
+    <label for="{{ name }}" class="form-label">
+        {{ label }}
+        {% if required %}<span class="text-danger">*</span>{% endif %}
+    </label>
+    <select class="form-select {{ input_class }}"
+            id="{{ name }}"
+            name="{{ name }}"
+            {{ 'required' if required else '' }}
+            {{ 'disabled' if disabled else '' }}>
+        <option value="">-- Select --</option>
+        {% for option in options %}
+            {% if option is string %}
+            <option value="{{ option }}" {% if option == selected %}selected{% endif %}>{{ option }}</option>
+            {% else %}
+            <option value="{{ option.value }}" {% if option.value == selected %}selected{% endif %}>{{ option.label }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+    {% if help_text %}
+    <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro checkbox_input(name, label, checked=False, value='1', help_text='', input_class='', disabled=False) %}
+<div class="mb-3 form-check">
+    <input type="checkbox"
+           class="form-check-input {{ input_class }}"
+           id="{{ name }}"
+           name="{{ name }}"
+           value="{{ value }}"
+           {{ 'checked' if checked else '' }}
+           {{ 'disabled' if disabled else '' }}>
+    <label class="form-check-label" for="{{ name }}">
+        {{ label }}
+    </label>
+    {% if help_text %}
+    <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{% macro submit_button(text='Submit', variant='primary', icon='', btn_class='', disabled=False) %}
+<button type="submit"
+        class="btn btn-{{ variant }} {{ btn_class }}"
+        {{ 'disabled' if disabled else '' }}>
+    {% if icon %}<i class="bi bi-{{ icon }}"></i> {% endif %}{{ text }}
+</button>
+{% endmacro %}
+
+
+{% macro cancel_button(text='Cancel', variant='secondary', data_dismiss='modal', btn_class='') %}
+<button type="button"
+        class="btn btn-{{ variant }} {{ btn_class }}"
+        {% if data_dismiss %}data-bs-dismiss="{{ data_dismiss }}"{% endif %}>
+    {{ text }}
+</button>
+{% endmacro %}

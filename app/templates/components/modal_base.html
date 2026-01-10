@@ -1,0 +1,90 @@
+{# Modal Base Component
+
+   Usage:
+   {% from 'components/modal_base.html' import modal %}
+   {% call modal('addModal', 'Add Activity', size='lg', form_action='/activities', form_id='addForm') %}
+       <!-- Modal body content goes here -->
+       {{ text_input('name', 'Name', required=True) }}
+   {% endcall %}
+#}
+
+{% macro modal(id, title, size='', form_action='', form_id='', form_method='POST', close_btn_text='Close', submit_btn_text='Save', submit_btn_variant='primary', static_backdrop=False) %}
+<div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}Label" aria-hidden="true"
+     {% if static_backdrop %}data-bs-backdrop="static" data-bs-keyboard="false"{% endif %}>
+    <div class="modal-dialog {{ 'modal-' + size if size else '' }}">
+        <div class="modal-content">
+            {% if form_action %}
+            <form action="{{ form_action }}" method="{{ form_method }}" {% if form_id %}id="{{ form_id }}"{% endif %}>
+            {% endif %}
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="{{ id }}Label">{{ title }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    {{ caller() }}
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ close_btn_text }}</button>
+                    {% if form_action %}
+                    <button type="submit" class="btn btn-{{ submit_btn_variant }}">{{ submit_btn_text }}</button>
+                    {% endif %}
+                </div>
+
+            {% if form_action %}
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+
+{# Simple modal without form #}
+{% macro simple_modal(id, title, size='', close_btn_text='Close', static_backdrop=False) %}
+<div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}Label" aria-hidden="true"
+     {% if static_backdrop %}data-bs-backdrop="static" data-bs-keyboard="false"{% endif %}>
+    <div class="modal-dialog {{ 'modal-' + size if size else '' }}">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ id }}Label">{{ title }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                {{ caller() }}
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ close_btn_text }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+
+{# Confirmation modal #}
+{% macro confirm_modal(id, title, message, confirm_btn_text='Confirm', confirm_btn_variant='danger', cancel_btn_text='Cancel') %}
+<div class="modal fade" id="{{ id }}" tabindex="-1" aria-labelledby="{{ id }}Label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="{{ id }}Label">{{ title }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                {% if message %}{{ message }}{% else %}{{ caller() }}{% endif %}
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ cancel_btn_text }}</button>
+                <button type="button" class="btn btn-{{ confirm_btn_variant }}" id="{{ id }}Confirm">{{ confirm_btn_text }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
