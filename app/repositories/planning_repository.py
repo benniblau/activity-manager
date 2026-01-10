@@ -111,13 +111,22 @@ class PlanningRepository(BaseRepository):
         if not data.get('name'):
             raise ValidationError('Name is required', field='name')
 
+        # Clean up empty strings to None
+        extended_type_id = data.get('extended_type_id')
+        if extended_type_id == '' or extended_type_id == 'null':
+            extended_type_id = None
+
+        sport_type = data.get('sport_type')
+        if sport_type == '' or sport_type == 'null':
+            sport_type = None
+
         # Must have either extended_type_id or sport_type
-        if not data.get('extended_type_id') and not data.get('sport_type'):
+        if not extended_type_id and not sport_type:
             raise ValidationError('Either extended_type_id or sport_type must be provided')
 
-        # If extended_type_id is provided, clear sport_type
-        if data.get('extended_type_id'):
-            data['sport_type'] = None
+        # Set the cleaned values
+        data['extended_type_id'] = extended_type_id
+        data['sport_type'] = sport_type if not extended_type_id else None
 
         # Insert
         planned_id = self.insert('planned_activities', data)
@@ -142,6 +151,15 @@ class PlanningRepository(BaseRepository):
         existing = self.get_by_id('planned_activities', planned_id)
         if not existing:
             raise PlannedActivityNotFoundError(planned_id)
+
+        # Clean up empty strings to None for type fields
+        if 'extended_type_id' in data:
+            if data['extended_type_id'] == '' or data['extended_type_id'] == 'null':
+                data['extended_type_id'] = None
+
+        if 'sport_type' in data:
+            if data['sport_type'] == '' or data['sport_type'] == 'null':
+                data['sport_type'] = None
 
         # If extended_type_id is being set, clear sport_type
         if data.get('extended_type_id'):

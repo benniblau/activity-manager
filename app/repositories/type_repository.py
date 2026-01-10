@@ -203,6 +203,11 @@ class TypeRepository(BaseRepository):
         if existing:
             raise DuplicateError('Extended type', data['custom_name'])
 
+        # Clean up empty strings for optional fields
+        for field in ['description', 'icon_override', 'color_class']:
+            if field in data and (data[field] == '' or data[field] == 'null'):
+                data[field] = None
+
         # Insert
         try:
             type_id = self.insert('extended_activity_types', data)
@@ -239,6 +244,11 @@ class TypeRepository(BaseRepository):
             )
             if duplicate:
                 raise DuplicateError('Extended type', data['custom_name'])
+
+        # Clean up empty strings for optional fields
+        for field in ['description', 'icon_override', 'color_class']:
+            if field in data and (data[field] == '' or data[field] == 'null'):
+                data[field] = None
 
         # Update
         try:
