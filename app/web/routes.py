@@ -168,7 +168,16 @@ def _clean_strava_value(value):
 
     # Handle enums - try to get the value attribute first
     if hasattr(value, 'value'):
-        return value.value
+        val = value.value
+        # Clean up Strava enum string values like "relax/weighttraining" -> "WeightTraining"
+        if isinstance(val, str) and '/' in val:
+            # Extract the part after the slash and capitalize properly
+            parts = val.split('/')
+            if len(parts) == 2:
+                sport = parts[1]
+                # Convert to PascalCase (e.g., "weighttraining" -> "WeightTraining")
+                return ''.join(word.capitalize() for word in sport.replace('(', '').replace(')', '').split())
+        return val
     elif hasattr(value, 'name'):
         return value.name
 
