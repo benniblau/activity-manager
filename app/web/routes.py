@@ -159,12 +159,34 @@ def sync():
         created_count = 0
         updated_count = 0
 
+        # Define allowed columns based on activities table schema
+        allowed_columns = {
+            'id', 'resource_state', 'external_id', 'upload_id',
+            'start_date', 'start_date_local', 'timezone', 'utc_offset', 'elapsed_time', 'moving_time',
+            'start_latlng', 'end_latlng', 'location_city', 'location_state', 'location_country', 'map',
+            'name', 'description', 'type', 'sport_type', 'workout_type',
+            'distance', 'total_elevation_gain', 'average_speed', 'max_speed', 'average_cadence',
+            'average_watts', 'weighted_average_watts', 'kilojoules', 'device_watts', 'max_watts',
+            'average_heartrate', 'max_heartrate', 'has_heartrate', 'average_temp', 'calories',
+            'elev_high', 'elev_low',
+            'kudos_count', 'comment_count', 'athlete_count', 'photo_count', 'total_photo_count',
+            'pr_count', 'achievement_count',
+            'trainer', 'commute', 'manual', 'private', 'flagged', 'has_kudoed',
+            'segment_leaderboard_opt_out', 'leaderboard_opt_out',
+            'device_name', 'athlete_id', 'gear_id',
+            'segment_efforts', 'splits_metric', 'splits_standard', 'laps', 'best_efforts', 'gear',
+            'day_date', 'extended_type_id'
+        }
+
         for strava_activity in strava_activities:
             # Convert to dict
             if hasattr(strava_activity, 'to_dict'):
                 activity_data = strava_activity.to_dict()
             else:
                 activity_data = dict(strava_activity)
+
+            # Filter to only include allowed columns (remove internal Strava fields)
+            activity_data = {k: v for k, v in activity_data.items() if k in allowed_columns}
 
             # Ensure sport_type exists and convert to string
             if 'sport_type' not in activity_data or not activity_data['sport_type']:
