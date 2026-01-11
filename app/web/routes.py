@@ -166,12 +166,15 @@ def sync():
             else:
                 activity_data = dict(strava_activity)
 
-            # Ensure sport_type exists
+            # Ensure sport_type exists and convert to string
             if 'sport_type' not in activity_data or not activity_data['sport_type']:
                 activity_data['sport_type'] = activity_data.get('type', 'Workout')
 
+            # Convert sport_type to string (it might be a RelaxedSportType enum from Strava)
+            sport_type = str(activity_data['sport_type'])
+            activity_data['sport_type'] = sport_type
+
             # Check if sport type exists in standard_activity_types
-            sport_type = activity_data['sport_type']
             cursor = db.execute(
                 'SELECT name FROM standard_activity_types WHERE name = ?',
                 (sport_type,)
