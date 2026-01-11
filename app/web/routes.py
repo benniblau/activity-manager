@@ -173,14 +173,14 @@ def sync():
             # Check if sport type exists in standard_activity_types
             sport_type = activity_data['sport_type']
             cursor = db.execute(
-                'SELECT sport_type FROM standard_activity_types WHERE sport_type = ?',
+                'SELECT name FROM standard_activity_types WHERE name = ?',
                 (sport_type,)
             )
             if not cursor.fetchone():
                 # Auto-create sport type with minimal data
                 db.execute(
-                    'INSERT OR IGNORE INTO standard_activity_types (sport_type, category, icon, color_class) VALUES (?, ?, ?, ?)',
-                    (sport_type, 'Other', 'fa-dumbbell', 'secondary')
+                    'INSERT OR IGNORE INTO standard_activity_types (name, category, display_name, icon, color) VALUES (?, ?, ?, ?, ?)',
+                    (sport_type, 'Other', sport_type, 'circle-question', 'badge-other')
                 )
 
             # Calculate day_date from start_date_local
