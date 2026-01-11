@@ -140,6 +140,36 @@ def index():
     )
 
 
+def _clean_strava_value(value):
+    """Convert Strava API objects to JSON-serializable primitives"""
+    # Handle None
+    if value is None:
+        return None
+
+    # Handle primitives
+    if isinstance(value, (str, int, float, bool)):
+        return value
+
+    # Handle datetime objects
+    if hasattr(value, 'isoformat'):
+        return value.isoformat()
+
+    # Handle lists
+    if isinstance(value, list):
+        return [_clean_strava_value(item) for item in value]
+
+    # Handle dicts
+    if isinstance(value, dict):
+        return {k: _clean_strava_value(v) for k, v in value.items()}
+
+    # Handle Strava API objects with to_dict
+    if hasattr(value, 'to_dict'):
+        return _clean_strava_value(value.to_dict())
+
+    # Convert everything else to string (enums, custom objects)
+    return str(value)
+
+
 @web_bp.route('/sync')
 def sync():
     """Sync activities from Strava"""
@@ -188,11 +218,14 @@ def sync():
             # Filter to only include allowed columns (remove internal Strava fields)
             activity_data = {k: v for k, v in activity_data.items() if k in allowed_columns}
 
-            # Ensure sport_type exists and convert to string
+            # Clean all Strava API objects/enums to primitives
+            activity_data = {k: _clean_strava_value(v) for k, v in activity_data.items()}
+
+            # Ensure sport_type exists
             if 'sport_type' not in activity_data or not activity_data['sport_type']:
                 activity_data['sport_type'] = activity_data.get('type', 'Workout')
 
-            # Convert sport_type to string (it might be a RelaxedSportType enum from Strava)
+            # Ensure sport_type is a string
             sport_type = str(activity_data['sport_type'])
             activity_data['sport_type'] = sport_type
 
