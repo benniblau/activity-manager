@@ -166,7 +166,13 @@ def _clean_strava_value(value):
     if hasattr(value, 'to_dict'):
         return _clean_strava_value(value.to_dict())
 
-    # Convert everything else to string (enums, custom objects)
+    # Handle enums - try to get the value attribute first
+    if hasattr(value, 'value'):
+        return value.value
+    elif hasattr(value, 'name'):
+        return value.name
+
+    # Convert everything else to string (custom objects)
     return str(value)
 
 
