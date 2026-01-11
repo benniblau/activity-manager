@@ -50,6 +50,40 @@ setupTypeSelector('add_type_selector', 'add_extended_type_id', 'add_sport_type')
 setupUnitConversions('edit');
 setupTypeSelector('edit_type_selector', 'edit_extended_type_id', 'edit_sport_type');
 
+// Add form submission handler - ensure conversions happen before submit
+document.getElementById('addPlannedForm').addEventListener('submit', (e) => {
+    // Convert distance km to meters
+    const distanceKm = document.getElementById('add_distance_km').value;
+    if (distanceKm) {
+        document.getElementById('add_distance_meters').value = Math.round(parseFloat(distanceKm) * 1000);
+    }
+
+    // Convert duration minutes to seconds
+    const durationMin = document.getElementById('add_duration_min').value;
+    if (durationMin) {
+        document.getElementById('add_duration_seconds').value = Math.round(parseFloat(durationMin) * 60);
+    }
+
+    // Let form submit normally
+});
+
+// Edit form submission handler - ensure conversions happen before submit
+document.getElementById('editPlannedForm').addEventListener('submit', (e) => {
+    // Convert distance km to meters
+    const distanceKm = document.getElementById('edit_distance_km').value;
+    if (distanceKm) {
+        document.getElementById('edit_distance_meters').value = Math.round(parseFloat(distanceKm) * 1000);
+    }
+
+    // Convert duration minutes to seconds
+    const durationMin = document.getElementById('edit_duration_min').value;
+    if (durationMin) {
+        document.getElementById('edit_duration_seconds').value = Math.round(parseFloat(durationMin) * 60);
+    }
+
+    // Let form submit normally
+});
+
 // Add for day button - pre-populate date
 document.querySelectorAll('.add-planned-for-day').forEach(btn => {
     btn.addEventListener('click', () => {

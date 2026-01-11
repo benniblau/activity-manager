@@ -105,6 +105,11 @@ def create_planned_activity():
     try:
         data = request.get_json() if request.is_json else request.form.to_dict()
 
+        # Remove UI-only fields that don't belong in the database
+        ui_fields = ['planned_duration_min', 'planned_distance_km', 'activity_type_selector']
+        for field in ui_fields:
+            data.pop(field, None)
+
         # Create planned activity using repository
         planning_repo = PlanningRepository()
         planned = planning_repo.create_planned_activity(data)
@@ -137,6 +142,11 @@ def update_planned_activity(planned_id):
     """Update a planned activity"""
     try:
         data = request.get_json() if request.is_json else request.form.to_dict()
+
+        # Remove UI-only fields that don't belong in the database
+        ui_fields = ['planned_duration_min', 'planned_distance_km', 'activity_type_selector', '_method']
+        for field in ui_fields:
+            data.pop(field, None)
 
         # Update planned activity using repository
         planning_repo = PlanningRepository()
