@@ -15,7 +15,6 @@ from app.repositories import (
     DayRepository,
     GearRepository
 )
-from app.services import StravaService
 from app.utils.errors import ActivityNotFoundError, ValidationError, AppError
 from app.auth.routes import get_strava_client, is_authenticated as check_strava_auth
 
@@ -144,42 +143,91 @@ def index():
 @web_bp.route('/sync')
 def sync():
     """Sync activities from Strava"""
-    import sys
-    print("=" * 80, file=sys.stderr, flush=True)
-    print("SYNC ROUTE CALLED", file=sys.stderr, flush=True)
-    print("=" * 80, file=sys.stderr, flush=True)
-
     try:
-        print("Attempting to get Strava client...", file=sys.stderr, flush=True)
         client = get_strava_client()
-        print(f"Got Strava client: {client}", file=sys.stderr, flush=True)
     except Exception as e:
-        print(f"Failed to get Strava client: {e}", file=sys.stderr, flush=True)
-        import traceback
-        print(traceback.format_exc(), file=sys.stderr, flush=True)
         session['auth_error'] = 'Please connect to Strava first'
         return redirect('/')
 
     try:
-        # Use StravaService to sync activities
-        print("Starting sync with StravaService...", file=sys.stderr, flush=True)
-        strava_service = StravaService(client)
-        result = strava_service.sync_activities(limit=200)
+        from app.utils.database_helpers import dict_to_db_values
 
-        print(f"Sync completed: {result}", file=sys.stderr, flush=True)
+        # Fetch activities from Strava (summary data only, no descriptions)
+        strava_activities = client.get_activities(limit=200)
 
-        # Set success message
-        session['sync_message'] = (
-            f"Synced from Strava: {result['created']} new, "
-            f"{result['updated']} updated"
-        )
+        db = get_db()
+        created_count = 0
+        updated_count = 0
 
+        for strava_activity in strava_activities:
+            # Convert to dict
+            if hasattr(strava_activity, 'to_dict'):
+                activity_data = strava_activity.to_dict()
+            else:
+                activity_data = dict(strava_activity)
+
+            # Ensure sport_type exists
+            if 'sport_type' not in activity_data or not activity_data['sport_type']:
+                activity_data['sport_type'] = activity_data.get('type', 'Workout')
+
+            # Check if sport type exists in standard_activity_types
+            sport_type = activity_data['sport_type']
+            cursor = db.execute(
+                'SELECT sport_type FROM standard_activity_types WHERE sport_type = ?',
+                (sport_type,)
+            )
+            if not cursor.fetchone():
+                # Auto-create sport type with minimal data
+                db.execute(
+                    'INSERT OR IGNORE INTO standard_activity_types (sport_type, category, icon, color_class) VALUES (?, ?, ?, ?)',
+                    (sport_type, 'Other', 'fa-dumbbell', 'secondary')
+                )
+
+            # Calculate day_date from start_date_local
+            if 'start_date_local' in activity_data:
+                try:
+                    if isinstance(activity_data['start_date_local'], str):
+                        dt = datetime.fromisoformat(
+                            activity_data['start_date_local'].replace('Z', '+00:00')
+                        )
+                    else:
+                        dt = activity_data['start_date_local']
+                    activity_data['day_date'] = dt.date().isoformat()
+                except Exception:
+                    pass
+
+            # Check if activity exists
+            activity_id = activity_data.get('id')
+            cursor = db.execute('SELECT id FROM activities WHERE id = ?', (activity_id,))
+            existing = cursor.fetchone()
+
+            # Prepare database values
+            columns, values = dict_to_db_values(activity_data)
+
+            if existing:
+                # Update existing activity
+                set_clause = ', '.join([f"{col} = ?" for col in columns])
+                db.execute(
+                    f'UPDATE activities SET {set_clause}, updated_at = ? WHERE id = ?',
+                    values + [datetime.utcnow().isoformat(), activity_id]
+                )
+                updated_count += 1
+            else:
+                # Insert new activity
+                placeholders = ', '.join(['?' for _ in columns])
+                db.execute(
+                    f'INSERT INTO activities ({", ".join(columns)}, created_at, updated_at) VALUES ({placeholders}, ?, ?)',
+                    values + [datetime.utcnow().isoformat(), datetime.utcnow().isoformat()]
+                )
+                created_count += 1
+
+        # Commit all changes at once
+        db.commit()
+
+        session['sync_message'] = f"Synced from Strava: {created_count} new, {updated_count} updated"
         return redirect('/')
 
     except Exception as e:
-        import sys, traceback
-        print(f"Sync failed with error: {e}", file=sys.stderr, flush=True)
-        print(traceback.format_exc(), file=sys.stderr, flush=True)
         session['auth_error'] = f"Sync failed: {str(e)}"
         return redirect('/')
 
