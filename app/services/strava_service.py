@@ -59,12 +59,9 @@ class StravaService:
             # Process each activity
             for strava_activity in strava_activities:
                 try:
-                    # Get full activity details (includes description and all fields)
-                    activity_id = strava_activity.id
-                    full_activity = self.client.get_activity(activity_id)
-
-                    # Transform and upsert
-                    activity_data = self.transform_strava_data(full_activity)
+                    # Use summary data directly (no additional API call for details)
+                    # This is much faster but won't include description field
+                    activity_data = self.transform_strava_data(strava_activity)
                     created, _ = self.upsert_activity(activity_data)
 
                     if created:
