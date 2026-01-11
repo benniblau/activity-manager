@@ -111,17 +111,17 @@ class BaseRepository(ABC):
             DatabaseError: If insert fails
         """
         try:
-            # Convert data to DB-friendly format
-            db_data = dict_to_db_values(data)
+            # Convert data to DB-friendly format - returns (columns, values) tuple
+            columns, values = dict_to_db_values(data)
 
             # Build query
-            columns = ', '.join(db_data.keys())
-            placeholders = ', '.join(['?' for _ in db_data])
-            query = f'INSERT INTO {table} ({columns}) VALUES ({placeholders})'
+            columns_str = ', '.join(columns)
+            placeholders = ', '.join(['?' for _ in columns])
+            query = f'INSERT INTO {table} ({columns_str}) VALUES ({placeholders})'
 
             # Execute
             db = self.get_db()
-            cursor = db.execute(query, list(db_data.values()))
+            cursor = db.execute(query, values)
             if self._auto_commit:
                 db.commit()
 
@@ -145,24 +145,29 @@ class BaseRepository(ABC):
             DatabaseError: If update fails
         """
         try:
-            # Convert data to DB-friendly format
-            db_data = dict_to_db_values(data)
+            # Add updated timestamp if not present
+            if 'updated_at' not in data:
+                data['updated_at'] = datetime.utcnow().isoformat()
+
+            # Convert data to DB-friendly format - returns (columns, values) tuple
+            columns, values = dict_to_db_values(data)
 
             # Remove ID from update data if present
-            db_data.pop(id_column, None)
-
-            # Add updated timestamp if not present
-            if 'updated_at' not in db_data:
-                db_data['updated_at'] = datetime.utcnow().isoformat()
+            filtered_columns = []
+            filtered_values = []
+            for col, val in zip(columns, values):
+                if col != id_column:
+                    filtered_columns.append(col)
+                    filtered_values.append(val)
 
             # Build query
-            set_clause = ', '.join([f'{key} = ?' for key in db_data.keys()])
+            set_clause = ', '.join([f'{col} = ?' for col in filtered_columns])
             query = f'UPDATE {table} SET {set_clause} WHERE {id_column} = ?'
 
             # Execute
             db = self.get_db()
-            values = list(db_data.values()) + [id_value]
-            cursor = db.execute(query, values)
+            all_values = filtered_values + [id_value]
+            cursor = db.execute(query, all_values)
             if self._auto_commit:
                 db.commit()
 
