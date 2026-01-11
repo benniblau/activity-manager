@@ -11,7 +11,7 @@ def dict_to_db_values(data):
         data: Dictionary with potentially complex values
 
     Returns:
-        Dictionary with JSON-serialized fields and boolean conversions
+        Tuple of (columns, values) ready for database insertion
     """
     json_fields = ['start_latlng', 'end_latlng', 'map', 'segment_efforts',
                    'splits_metric', 'splits_standard', 'laps', 'best_efforts', 'gear']
@@ -19,13 +19,21 @@ def dict_to_db_values(data):
     result = {}
     for key, value in data.items():
         if key in json_fields and value is not None:
+            # Convert Strava API objects to dict before JSON serialization
+            if hasattr(value, 'to_dict'):
+                value = value.to_dict()
+            elif not isinstance(value, (dict, list, str, int, float, bool, type(None))):
+                value = str(value)
             result[key] = json.dumps(value)
         elif isinstance(value, bool):
             result[key] = 1 if value else 0
         else:
             result[key] = value
 
-    return result
+    # Return as (columns, values) tuple
+    columns = list(result.keys())
+    values = list(result.values())
+    return columns, values
 
 
 def db_row_to_dict(row):
