@@ -146,8 +146,14 @@ def _clean_strava_value(value):
     if value is None:
         return None
 
-    # Handle primitives
-    if isinstance(value, (str, int, float, bool)):
+    # Handle primitives - but check for string patterns first
+    if isinstance(value, str):
+        # Handle "root='Value'" pattern from XML/enum string representation
+        if value.startswith("root='") and value.endswith("'"):
+            return value[6:-1]  # Extract 'Value' from "root='Value'"
+        return value
+
+    if isinstance(value, (int, float, bool)):
         return value
 
     # Handle datetime objects
@@ -169,20 +175,33 @@ def _clean_strava_value(value):
     # Handle enums - try to get the value attribute first
     if hasattr(value, 'value'):
         val = value.value
+        # Recursively clean the value (might be another enum or object)
+        val = _clean_strava_value(val)
+
         # Clean up Strava enum string values like "relax/weighttraining" -> "WeightTraining"
-        if isinstance(val, str) and '/' in val:
-            # Extract the part after the slash and capitalize properly
-            parts = val.split('/')
-            if len(parts) == 2:
-                sport = parts[1]
-                # Convert to PascalCase (e.g., "weighttraining" -> "WeightTraining")
-                return ''.join(word.capitalize() for word in sport.replace('(', '').replace(')', '').split())
+        if isinstance(val, str):
+            if '/' in val:
+                # Extract the part after the slash and capitalize properly
+                parts = val.split('/')
+                if len(parts) == 2:
+                    sport = parts[1]
+                    # Convert to PascalCase (e.g., "weighttraining" -> "WeightTraining")
+                    return ''.join(word.capitalize() for word in sport.replace('(', '').replace(')', '').split())
+            # Handle "root='Value'" pattern
+            if val.startswith("root='") and val.endswith("'"):
+                return val[6:-1]
         return val
     elif hasattr(value, 'name'):
-        return value.name
+        name = value.name
+        # Clean the name recursively
+        return _clean_strava_value(name)
 
-    # Convert everything else to string (custom objects)
-    return str(value)
+    # Convert everything else to string and clean it
+    str_value = str(value)
+    # Handle "root='Value'" pattern from string representation
+    if str_value.startswith("root='") and str_value.endswith("'"):
+        return str_value[6:-1]
+    return str_value
 
 
 @web_bp.route('/sync')

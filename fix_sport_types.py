@@ -17,7 +17,11 @@ from pathlib import Path
 
 
 def clean_sport_type(sport_type):
-    """Clean up Strava enum string values like 'relax/weighttraining' -> 'WeightTraining'
+    """Clean up Strava enum string values
+
+    Handles patterns like:
+    - 'relax/weighttraining' -> 'WeightTraining'
+    - "root='WeightTraining'" -> 'WeightTraining'
 
     Args:
         sport_type: Original sport type string
@@ -27,6 +31,10 @@ def clean_sport_type(sport_type):
     """
     if not sport_type or not isinstance(sport_type, str):
         return sport_type
+
+    # Handle "root='Value'" pattern from XML/enum string representation
+    if sport_type.startswith("root='") and sport_type.endswith("'"):
+        return sport_type[6:-1]  # Extract 'Value' from "root='Value'"
 
     # Check if it has the relax/ prefix
     if '/' in sport_type:
@@ -53,18 +61,21 @@ def main():
     cursor = conn.cursor()
 
     try:
-        # Find all activities with 'relax/' prefix in either type or sport_type
-        print("\n=== Scanning for activities with 'relax/' in type or sport_type ===")
+        # Find all activities with problematic patterns in type or sport_type
+        print("\n=== Scanning for activities with problematic type patterns ===")
         cursor.execute("""
             SELECT id, type, sport_type, name
             FROM activities
-            WHERE type LIKE '%/%' OR sport_type LIKE '%/%'
+            WHERE type LIKE '%/%'
+               OR sport_type LIKE '%/%'
+               OR type LIKE "root='%'"
+               OR sport_type LIKE "root='%'"
         """)
 
         activities_to_fix = cursor.fetchall()
 
         if not activities_to_fix:
-            print("No activities found with 'relax/' prefix. Database is clean!")
+            print("No activities found with problematic patterns. Database is clean!")
         else:
             print(f"Found {len(activities_to_fix)} activities to fix:")
 
