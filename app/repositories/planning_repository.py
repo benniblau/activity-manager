@@ -128,6 +128,9 @@ class PlanningRepository(BaseRepository):
         data['extended_type_id'] = extended_type_id
         data['sport_type'] = sport_type if not extended_type_id else None
 
+        # Convert numeric fields from strings (form data) to appropriate types
+        self._convert_numeric_fields(data)
+
         # Insert
         planned_id = self.insert('planned_activities', data)
 
@@ -164,6 +167,9 @@ class PlanningRepository(BaseRepository):
         # If extended_type_id is being set, clear sport_type
         if data.get('extended_type_id'):
             data['sport_type'] = None
+
+        # Convert numeric fields from strings (form data) to appropriate types
+        self._convert_numeric_fields(data)
 
         # Update
         self.update('planned_activities', data, id_value=planned_id)
@@ -390,3 +396,30 @@ class PlanningRepository(BaseRepository):
             'completed': completed,
             'completion_rate': round(rate, 1)
         }
+
+    def _convert_numeric_fields(self, data):
+        """Convert numeric fields from strings to appropriate types
+
+        Args:
+            data: Dictionary of activity data (modified in place)
+        """
+        # Convert planned_duration to integer (seconds)
+        if 'planned_duration' in data and data['planned_duration'] not in (None, ''):
+            try:
+                data['planned_duration'] = int(data['planned_duration'])
+            except (ValueError, TypeError):
+                data['planned_duration'] = None
+
+        # Convert planned_distance to float (meters)
+        if 'planned_distance' in data and data['planned_distance'] not in (None, ''):
+            try:
+                data['planned_distance'] = float(data['planned_distance'])
+            except (ValueError, TypeError):
+                data['planned_distance'] = None
+
+        # Convert planned_elevation to float (meters)
+        if 'planned_elevation' in data and data['planned_elevation'] not in (None, ''):
+            try:
+                data['planned_elevation'] = float(data['planned_elevation'])
+            except (ValueError, TypeError):
+                data['planned_elevation'] = None
