@@ -53,12 +53,12 @@ def main():
     cursor = conn.cursor()
 
     try:
-        # Find all activities with 'relax/' prefix in sport_type
-        print("\n=== Scanning for activities with 'relax/' sport types ===")
+        # Find all activities with 'relax/' prefix in either type or sport_type
+        print("\n=== Scanning for activities with 'relax/' in type or sport_type ===")
         cursor.execute("""
-            SELECT id, sport_type, name
+            SELECT id, type, sport_type, name
             FROM activities
-            WHERE sport_type LIKE '%/%'
+            WHERE type LIKE '%/%' OR sport_type LIKE '%/%'
         """)
 
         activities_to_fix = cursor.fetchall()
@@ -71,9 +71,16 @@ def main():
             # Preview changes
             print("\nPreview of changes:")
             for activity in activities_to_fix[:10]:  # Show first 10
-                old_type = activity['sport_type']
-                new_type = clean_sport_type(old_type)
-                print(f"  ID {activity['id']}: '{old_type}' -> '{new_type}' ({activity['name']})")
+                old_type = activity['type']
+                new_type_cleaned = clean_sport_type(old_type)
+                old_sport = activity['sport_type']
+                new_sport_cleaned = clean_sport_type(old_sport)
+
+                print(f"  ID {activity['id']}: ({activity['name']})")
+                if '/' in old_type:
+                    print(f"    type: '{old_type}' -> '{new_type_cleaned}'")
+                if '/' in old_sport:
+                    print(f"    sport_type: '{old_sport}' -> '{new_sport_cleaned}'")
 
             if len(activities_to_fix) > 10:
                 print(f"  ... and {len(activities_to_fix) - 10} more")
@@ -91,14 +98,17 @@ def main():
             updated_count = 0
 
             for activity in activities_to_fix:
-                old_type = activity['sport_type']
+                old_type = activity['type']
                 new_type = clean_sport_type(old_type)
+                old_sport = activity['sport_type']
+                new_sport = clean_sport_type(old_sport)
 
+                # Update both type and sport_type columns
                 cursor.execute("""
                     UPDATE activities
-                    SET sport_type = ?
+                    SET type = ?, sport_type = ?
                     WHERE id = ?
-                """, (new_type, activity['id']))
+                """, (new_type, new_sport, activity['id']))
 
                 updated_count += 1
                 if updated_count % 50 == 0:
