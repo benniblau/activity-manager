@@ -20,6 +20,7 @@ class StravaService:
         self.client = strava_client
         self.activity_repo = ActivityRepository(db)
         self.type_repo = TypeRepository(db)
+        self._validated_sport_types = set()  # Cache for validated sport types
 
     def sync_activities(self, limit=30, after=None, before=None):
         """Sync activities from Strava
@@ -56,24 +57,38 @@ class StravaService:
             updated_count = 0
             errors = []
 
-            # Process each activity
-            for strava_activity in strava_activities:
-                try:
-                    # Use summary data directly (no additional API call for details)
-                    # This is much faster but won't include description field
-                    activity_data = self.transform_strava_data(strava_activity)
-                    created, _ = self.upsert_activity(activity_data)
+            # Disable auto-commit for batch operation (much faster)
+            self.activity_repo.set_auto_commit(False)
+            self.type_repo.set_auto_commit(False)
 
-                    if created:
-                        created_count += 1
-                    else:
-                        updated_count += 1
+            try:
+                # Process each activity
+                for strava_activity in strava_activities:
+                    try:
+                        # Use summary data directly (no additional API call for details)
+                        # This is much faster but won't include description field
+                        activity_data = self.transform_strava_data(strava_activity)
+                        created, _ = self.upsert_activity(activity_data)
 
-                except Exception as e:
-                    errors.append({
-                        'activity_id': strava_activity.id,
-                        'error': str(e)
-                    })
+                        if created:
+                            created_count += 1
+                        else:
+                            updated_count += 1
+
+                    except Exception as e:
+                        errors.append({
+                            'activity_id': strava_activity.id,
+                            'error': str(e)
+                        })
+
+                # Commit all changes at once
+                self.activity_repo.commit()
+                self.type_repo.commit()
+
+            finally:
+                # Re-enable auto-commit
+                self.activity_repo.set_auto_commit(True)
+                self.type_repo.set_auto_commit(True)
 
             return {
                 'created': created_count,
@@ -138,9 +153,12 @@ class StravaService:
             activity_data['sport_type'] = activity_data.get('type', 'Workout')
 
         # Auto-create sport type if it doesn't exist in standard types
+        # Use cache to avoid repeated database queries
         sport_type = activity_data['sport_type']
-        if not self.type_repo.validate_sport_type(sport_type):
-            self.type_repo.auto_create_type(sport_type)
+        if sport_type not in self._validated_sport_types:
+            if not self.type_repo.validate_sport_type(sport_type):
+                self.type_repo.auto_create_type(sport_type)
+            self._validated_sport_types.add(sport_type)
 
         # Calculate day_date from start_date_local
         if 'start_date_local' in activity_data:

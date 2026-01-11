@@ -22,6 +22,7 @@ class BaseRepository(ABC):
             db: Optional database connection. If None, will use Flask g.db
         """
         self._db = db
+        self._auto_commit = True  # Auto-commit by default
 
     def get_db(self):
         """Get database connection from Flask g object or use provided connection
@@ -32,6 +33,19 @@ class BaseRepository(ABC):
         if self._db is not None:
             return self._db
         return get_db()
+
+    def set_auto_commit(self, auto_commit):
+        """Enable or disable auto-commit for batch operations
+
+        Args:
+            auto_commit: Boolean - True to commit after each operation, False to batch
+        """
+        self._auto_commit = auto_commit
+
+    def commit(self):
+        """Manually commit the current transaction"""
+        db = self.get_db()
+        db.commit()
 
     def execute(self, query, params=None):
         """Execute a query and return cursor
@@ -108,7 +122,8 @@ class BaseRepository(ABC):
             # Execute
             db = self.get_db()
             cursor = db.execute(query, list(db_data.values()))
-            db.commit()
+            if self._auto_commit:
+                db.commit()
 
             return cursor.lastrowid
         except Exception as e:
@@ -148,7 +163,8 @@ class BaseRepository(ABC):
             db = self.get_db()
             values = list(db_data.values()) + [id_value]
             cursor = db.execute(query, values)
-            db.commit()
+            if self._auto_commit:
+                db.commit()
 
             return cursor.rowcount
         except Exception as e:
