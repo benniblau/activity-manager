@@ -363,3 +363,10 @@ document.querySelectorAll('.unmatch-btn').forEach(btn => {
         });
     });
 });
+
+// Mobile: Prevent action buttons in details from affecting collapse
+document.querySelectorAll('.planned-item-details .btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+});

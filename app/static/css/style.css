@@ -331,3 +331,256 @@ body {
 .day-row-expanded .day-header:hover {
     background-color: #1c2128;
 }
+
+/* ======================================
+   MOBILE ACTIVITY LIST STYLES
+   ====================================== */
+
+/* Mobile/Desktop visibility toggle */
+.activities-mobile {
+    display: block;
+}
+
+.activities-desktop {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .activities-mobile {
+        display: none;
+    }
+    .activities-desktop {
+        display: block;
+    }
+}
+
+/* Day Card */
+.day-card {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.day-card.rest-day-card {
+    background-color: rgba(22, 27, 34, 0.6);
+}
+
+.day-card-header {
+    padding: 12px 16px;
+    background-color: #0d1117;
+    border-bottom: 1px solid #30363d;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.day-card-date {
+    display: flex;
+    flex-direction: column;
+}
+
+.day-card-date .date-main {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #c9d1d9;
+}
+
+.day-card-date .date-weekday {
+    font-size: 0.75rem;
+    color: #8b949e;
+}
+
+.day-card-feeling {
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.day-card-feeling:hover,
+.day-card-feeling:active {
+    background-color: rgba(88, 166, 255, 0.1);
+}
+
+.day-card-feeling i {
+    font-size: 1.75rem;
+}
+
+/* Activity Items (Mobile) */
+.day-card-activities {
+    padding: 12px 16px;
+}
+
+.activity-item-mobile {
+    padding: 10px 0;
+    border-bottom: 1px solid #21262d;
+}
+
+.activity-item-mobile:last-child {
+    border-bottom: none;
+}
+
+.activity-item-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.activity-item-mobile .activity-name {
+    font-weight: 500;
+    color: #c9d1d9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    font-size: 0.95rem;
+}
+
+.activity-item-metrics {
+    display: flex;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: #8b949e;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.activity-feelings-mini {
+    display: flex;
+    gap: 2px;
+    margin-left: auto;
+}
+
+.activity-feelings-mini i {
+    font-size: 0.85rem;
+}
+
+/* Rest Day Label */
+.rest-day-label {
+    padding: 12px 0;
+    font-style: italic;
+    color: #6c757d;
+    text-align: center;
+}
+
+/* Day Card Details (Collapsible) */
+.day-card-details {
+    background-color: #0d1117;
+    border-top: 1px solid #30363d;
+}
+
+.day-card-details .detail-content {
+    padding: 12px 16px;
+}
+
+.detail-row {
+    display: flex;
+    gap: 8px;
+    padding: 8px 0;
+    font-size: 0.9rem;
+    color: #8b949e;
+    border-bottom: 1px solid #21262d;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row i {
+    flex-shrink: 0;
+    width: 20px;
+}
+
+.detail-row.coach-note {
+    background-color: rgba(139, 92, 246, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    margin: 4px 0;
+    border-bottom: none;
+}
+
+/* Expand Toggle Button */
+.day-card-toggle {
+    width: 100%;
+    padding: 10px 16px;
+    background-color: transparent;
+    border: none;
+    border-top: 1px solid #30363d;
+    color: #58a6ff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.2s;
+}
+
+.day-card-toggle:hover {
+    background-color: rgba(88, 166, 255, 0.1);
+}
+
+.day-card-toggle i {
+    transition: transform 0.3s ease;
+}
+
+.day-card-toggle[aria-expanded="true"] i {
+    transform: rotate(180deg);
+}
+
+/* Activity Links in Expanded View */
+.activity-link-mobile {
+    display: block;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 8px 0;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.2s;
+}
+
+.activity-link-mobile:hover {
+    border-color: #58a6ff;
+    color: inherit;
+}
+
+/* Mobile Touch-Friendly Adjustments */
+@media (max-width: 767.98px) {
+    .btn-sm {
+        min-height: 44px;
+        padding: 10px 16px;
+    }
+
+    .activity-badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+
+    .modal-body {
+        padding: 16px;
+    }
+
+    .pagination {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .pagination .page-link {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+}

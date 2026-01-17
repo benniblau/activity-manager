@@ -434,3 +434,229 @@
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* ======================================
+   MOBILE PLANNING STYLES
+   ====================================== */
+
+/* Mobile/Desktop visibility toggle */
+.planning-mobile {
+    display: block;
+}
+
+.planning-desktop {
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .planning-mobile {
+        display: none;
+    }
+    .planning-desktop {
+        display: block;
+    }
+}
+
+/* Planning Day Card (Mobile) */
+.planning-day-card {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+}
+
+.planning-day-card.today {
+    border-color: #58a6ff;
+}
+
+.planning-day-card.today .planning-day-header {
+    background-color: rgba(88, 166, 255, 0.1);
+}
+
+.planning-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background-color: #0d1117;
+    border-bottom: 1px solid #30363d;
+}
+
+.planning-day-date {
+    display: flex;
+    flex-direction: column;
+}
+
+.planning-day-date .date-weekday {
+    font-size: 0.7rem;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.planning-day-date .date-value {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #c9d1d9;
+}
+
+/* Planning Activities Container */
+.planning-day-activities {
+    padding: 12px 16px;
+}
+
+/* Planned Item (Mobile) */
+.planned-item-mobile {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-left: 3px solid #fbbf24;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.planned-item-mobile.matched {
+    border-left-color: #10b981;
+}
+
+.planned-item-summary {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    cursor: pointer;
+    gap: 10px;
+    transition: background-color 0.2s;
+}
+
+.planned-item-summary:active {
+    background-color: rgba(88, 166, 255, 0.05);
+}
+
+.planned-item-type {
+    flex-shrink: 0;
+}
+
+.planned-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.planned-item-name {
+    font-weight: 500;
+    color: #c9d1d9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.95rem;
+}
+
+.planned-item-metrics {
+    display: flex;
+    gap: 10px;
+    font-size: 0.8rem;
+    color: #8b949e;
+    margin-top: 4px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.planned-item-metrics .badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+}
+
+.expand-indicator {
+    color: #58a6ff;
+    transition: transform 0.3s ease;
+    flex-shrink: 0;
+}
+
+.planned-item-summary[aria-expanded="true"] .expand-indicator {
+    transform: rotate(180deg);
+}
+
+/* Planned Item Details (Collapsible) */
+.planned-item-details {
+    background-color: #161b22;
+    border-top: 1px solid #30363d;
+}
+
+.planned-item-details .detail-content {
+    padding: 12px;
+}
+
+.planned-detail-section {
+    padding: 8px 0;
+    font-size: 0.9rem;
+    color: #8b949e;
+    border-bottom: 1px solid #21262d;
+}
+
+.planned-detail-section:last-child {
+    border-bottom: none;
+}
+
+.planned-detail-section.coaching-note {
+    background-color: rgba(139, 92, 246, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    margin: 4px 0;
+    border-bottom: none;
+}
+
+.planned-detail-section.coaching-note i {
+    color: #8b5cf6;
+    margin-right: 6px;
+}
+
+/* Match Status (Mobile) */
+.planned-match-status {
+    padding: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.planned-match-status.matched {
+    color: #10b981;
+}
+
+.planned-match-status .btn {
+    font-size: 0.8rem;
+}
+
+/* Action Buttons (Mobile) */
+.planned-item-actions {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #30363d;
+    margin-top: 10px;
+}
+
+.planned-item-actions .btn {
+    flex: 1;
+    font-size: 0.75rem;
+    padding: 8px 6px;
+}
+
+/* No Planned Activities */
+.no-planned-mobile {
+    padding: 16px 0;
+    text-align: center;
+    font-style: italic;
+    color: #6c757d;
+}
+
+/* Add Button (Mobile) */
+.add-planned-mobile {
+    margin-top: 8px;
+}
+
+.add-planned-mobile .btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.85rem;
+}

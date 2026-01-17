@@ -14,7 +14,14 @@ document.querySelectorAll('.pain-scale-selector').forEach(selector => {
     });
 });
 
-// Day row expand/collapse functionality
+// Mobile: Prevent day feeling icon click from affecting card
+document.querySelectorAll('.day-card-feeling').forEach(feeling => {
+    feeling.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+});
+
+// Day row expand/collapse functionality (Desktop)
 document.querySelectorAll('.day-row-collapsed').forEach(collapsedRow => {
     const dayId = collapsedRow.dataset.day;
     const expandedRow = document.querySelector(`.day-row-expanded[data-day="${dayId}"]`);

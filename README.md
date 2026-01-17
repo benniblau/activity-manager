@@ -48,7 +48,9 @@ When training for performance or recovering from injury (like Achilles tendiniti
 ### User Interface
 - **Dark Theme** - Clean, responsive Bootstrap 5 interface optimized for readability
 - **Collapsible Days** - Compact view with expandable activity details
-- **Responsive Design** - Works on desktop, tablet, and mobile
+- **Mobile-First Design** - Card-based layouts on mobile showing priority information at a glance
+- **Progressive Disclosure** - Tap to expand details on mobile, keeping initial views clean
+- **Responsive Design** - Separate optimized layouts for desktop tables and mobile cards
 - **Font Awesome Icons** - Modern icon set for activities and pain scale
 
 ## Screenshots
@@ -99,49 +101,27 @@ The app will be available at `http://localhost:5000`
 5. Click on any activity to add your feeling annotations
 6. Use the "Report" page to review your progress over time
 
-## Database Migrations
+## Database Utilities
 
-The app includes migration scripts to update existing databases:
+The app includes utility scripts for database maintenance:
 
-### Adding Extended Activity Types
-
-To add the new gym-related extended types (HYROX, Weight Training, LAG, Stretching):
-
-```bash
-# Recommended: Create a backup first
-cp activities.db activities.db.backup
-
-# Run the migration
-python migrate_extended_types.py activities.db
-```
-
-The script is **idempotent** - safe to run multiple times. It will:
-- Check if each extended type already exists
-- Only add missing types
-- Skip types that are already present
-- Provide detailed output of what was added/skipped
-
-### Updating Extended Type Colors and Icons
-
-If you have existing extended types with incorrect colors, update them to match base sport colors:
-
-```bash
-# Update all extended types with correct colors and icons
-python update_extended_types_colors.py activities.db
-```
-
-This updates:
-- **Run types** → Green with activity-specific icons
-- **Ride types** → Orange with cycling-specific icons
-- **WeightTraining types** → Purple with gym-specific icons
-
-### Other Database Updates
+### Schema Migrations
 
 For general database schema updates:
 
 ```bash
 python migrate_db.py activities.db
 ```
+
+### Fixing Sport Types
+
+If sport types from Strava sync incorrectly, clean them up:
+
+```bash
+python fix_sport_types.py activities.db
+```
+
+This script normalizes sport type values and removes any formatting artifacts.
 
 ## Configuration
 
@@ -233,29 +213,42 @@ activity-manager/
 ├── app/
 │   ├── __init__.py              # Flask app factory
 │   ├── database.py              # SQLite database layer
-│   ├── auth/                     # Strava OAuth
-│   ├── activities/               # REST API endpoints
-│   ├── planning/                 # Planning and extended types
-│   ├── web/                      # Web UI routes
+│   ├── repositories/            # Data access layer
+│   │   ├── activity_repository.py
+│   │   ├── day_repository.py
+│   │   ├── planned_activity_repository.py
+│   │   └── extended_type_repository.py
+│   ├── services/                # Business logic layer
+│   │   ├── strava_service.py
+│   │   └── sync_service.py
+│   ├── utils/                   # Shared utilities
+│   │   └── formatters.py
+│   ├── auth/                    # Strava OAuth
+│   ├── activities/              # REST API endpoints
+│   ├── planning/                # Planning and extended types
+│   ├── web/                     # Web UI routes
 │   ├── static/
-│   │   ├── css/style.css        # Custom dark theme styles
+│   │   ├── css/
+│   │   │   ├── style.css       # Main dark theme styles
+│   │   │   └── planning.css    # Planning-specific styles
 │   │   ├── js/
-│   │   │   ├── activities.js    # Activities view interactions
-│   │   │   └── planning.js      # Planning view interactions
-│   │   └── fontawesome/         # Font Awesome icon library
-│   └── templates/               # Jinja2 templates
-│       ├── activities.html      # Main activities overview
+│   │   │   ├── activities.js   # Activities view interactions
+│   │   │   └── planning.js     # Planning view interactions
+│   │   └── fontawesome/        # Font Awesome icon library
+│   └── templates/              # Jinja2 templates
+│       ├── activities.html     # Main activities overview
 │       ├── activity_detail.html # Individual activity view
-│       ├── planning.html        # Training calendar
+│       ├── planning.html       # Training calendar
 │       ├── planning_modals.html # Planning UI modals
-│       ├── planning_types.html  # Extended types management
-│       ├── report.html          # Comprehensive report view
-│       ├── macros.html          # Reusable template macros
-│       └── base.html            # Base template with navigation
-├── activities.db                # SQLite database
-├── requirements.txt             # Dependencies
-├── run.py                       # Development entry point
-└── wsgi.py                      # Production entry point
+│       ├── planning_types.html # Extended types management
+│       ├── report.html         # Comprehensive report view
+│       ├── macros.html         # Reusable template macros
+│       └── base.html           # Base template with navigation
+├── activities.db               # SQLite database
+├── requirements.txt            # Dependencies
+├── config.py                   # Configuration settings
+├── run.py                      # Development entry point
+└── wsgi.py                     # Production entry point
 ```
 
 ## Technical Notes

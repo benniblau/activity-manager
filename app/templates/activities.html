@@ -90,6 +90,160 @@
 
 <!-- Activities Table -->
 {% if sorted_days %}
+
+<!-- Mobile View -->
+<div class="activities-mobile d-md-none">
+    {% for day in sorted_days %}
+    {% set day_activities = activities_by_day[day] %}
+    {% set total_distance = day_activities | sum(attribute='distance') | default(0) %}
+    {% set total_time = day_activities | sum(attribute='moving_time') | default(0) %}
+    {% set day_feeling = day_feelings.get(day, {}) %}
+
+    <div class="day-card {% if not day_activities %}rest-day-card{% endif %}">
+        <!-- Day Header -->
+        <div class="day-card-header">
+            <div class="day-card-date">
+                <span class="date-main">{{ day }}</span>
+            </div>
+            <div class="day-card-feeling"
+                 data-bs-toggle="modal"
+                 data-bs-target="#dayFeelingModal-{{ day | replace('-', '') }}">
+                {% if day_feeling and day_feeling.feeling_pain is not none %}
+                {{ pain_icon(day_feeling.feeling_pain, 'lg') }}
+                {% else %}
+                <i class="bi bi-plus-circle text-muted fs-4"></i>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Activities List -->
+        <div class="day-card-activities">
+            {% if day_activities %}
+            {% for activity in day_activities %}
+            {% set has_feelings = activity.feeling_before_pain is not none or activity.feeling_during_pain is not none or activity.feeling_after_pain is not none %}
+            <div class="activity-item-mobile">
+                <div class="activity-item-main">
+                    {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
+                    <span class="activity-name">{{ activity.name }}</span>
+                </div>
+                <div class="activity-item-metrics">
+                    {% if activity.distance %}
+                    <span><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(activity.distance / 1000) }}km</span>
+                    {% endif %}
+                    {% if activity.moving_time %}
+                    <span><i class="bi bi-clock"></i> {{ (activity.moving_time // 60)|int }}m</span>
+                    {% endif %}
+                    {% if has_feelings %}
+                    <span class="activity-feelings-mini">
+                        {{ pain_icon(activity.feeling_before_pain, 'sm') }}
+                        {{ pain_icon(activity.feeling_during_pain, 'sm') }}
+                        {{ pain_icon(activity.feeling_after_pain, 'sm') }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="rest-day-label">Rest day</div>
+            {% endif %}
+        </div>
+
+        <!-- Collapsible Details -->
+        <div class="collapse day-card-details" id="dayDetails-{{ day | replace('-', '') }}">
+            <div class="detail-content">
+                {% if day_feeling and day_feeling.feeling_text %}
+                <div class="detail-row">
+                    <i class="bi bi-journal-text"></i>
+                    <span>{{ day_feeling.feeling_text }}</span>
+                </div>
+                {% endif %}
+                {% if day_feeling and day_feeling.coach_comment %}
+                <div class="detail-row coach-note">
+                    <i class="bi bi-chat-left-text text-info"></i>
+                    <span>{{ day_feeling.coach_comment }}</span>
+                </div>
+                {% endif %}
+
+                {% if day_activities %}
+                <!-- Full Activity Cards -->
+                {% for activity in day_activities %}
+                {% set has_feelings = activity.feeling_before_pain is not none or activity.feeling_during_pain is not none or activity.feeling_after_pain is not none %}
+                <a href="/activity/{{ activity.id }}" class="activity-link-mobile">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
+                        <span class="small text-muted">
+                            {{ activity.start_date_local.split('T')[1][:5] if 'T' in activity.start_date_local else '' }}
+                        </span>
+                    </div>
+                    <div class="fw-medium mb-2">{{ activity.name }}</div>
+                    <div class="small text-muted">
+                        {% if activity.distance %}
+                        <span class="me-3"><i class="bi bi-arrow-left-right"></i> {{ "%.2f"|format(activity.distance / 1000) }} km</span>
+                        {% endif %}
+                        {% if activity.moving_time %}
+                        <span class="me-3"><i class="bi bi-clock"></i> {{ (activity.moving_time // 3600)|int }}h {{ ((activity.moving_time % 3600) // 60)|int }}m</span>
+                        {% endif %}
+                    </div>
+                    {% if activity.total_elevation_gain %}
+                    <div class="small text-muted mt-1">
+                        <i class="bi bi-graph-up"></i> {{ "%.0f"|format(activity.total_elevation_gain) }} m elevation
+                    </div>
+                    {% endif %}
+                    {% if activity.average_heartrate %}
+                    <div class="small text-muted mt-1">
+                        <i class="bi bi-heart-pulse"></i> {{ "%.0f"|format(activity.average_heartrate) }} bpm avg
+                    </div>
+                    {% endif %}
+                    {% if has_feelings %}
+                    <div class="d-flex justify-content-around mt-2 pt-2" style="border-top: 1px solid #30363d;">
+                        <div class="text-center">
+                            {{ pain_icon(activity.feeling_before_pain) }}
+                            <div class="feeling-label text-muted">Before</div>
+                        </div>
+                        <div class="text-center">
+                            {{ pain_icon(activity.feeling_during_pain) }}
+                            <div class="feeling-label text-muted">During</div>
+                        </div>
+                        <div class="text-center">
+                            {{ pain_icon(activity.feeling_after_pain) }}
+                            <div class="feeling-label text-muted">After</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </a>
+                {% endfor %}
+                {% endif %}
+
+                <!-- Summary -->
+                {% if day_activities %}
+                <div class="d-flex justify-content-between mt-2 pt-2 small text-muted" style="border-top: 1px solid #30363d;">
+                    <span>{{ day_activities|length }} activit{{ 'ies' if day_activities|length != 1 else 'y' }}</span>
+                    <span>
+                        {% if total_distance > 0 %}{{ "%.1f"|format(total_distance / 1000) }} km{% endif %}
+                        {% if total_distance > 0 and total_time > 0 %} &middot; {% endif %}
+                        {% if total_time > 0 %}{{ (total_time // 3600)|int }}h {{ ((total_time % 3600) // 60)|int }}m{% endif %}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Expand Toggle -->
+        <button class="day-card-toggle"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#dayDetails-{{ day | replace('-', '') }}"
+                aria-expanded="false"
+                aria-controls="dayDetails-{{ day | replace('-', '') }}">
+            <i class="bi bi-chevron-down"></i>
+            <span>Details</span>
+        </button>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Desktop View -->
+<div class="activities-desktop d-none d-md-block">
 <div class="table-responsive">
     <table class="table table-hover">
         <thead>
@@ -365,6 +519,7 @@
         </tbody>
     </table>
 </div>
+</div><!-- End activities-desktop -->
 
 <!-- Pagination -->
 {% if total_pages > 1 %}
