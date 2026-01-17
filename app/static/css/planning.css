@@ -457,28 +457,34 @@
     }
 }
 
-/* Planning Day Card (Mobile) */
+/* Planning Day Card (Mobile) - matches activity day-card styling */
 .planning-day-card {
     background-color: #161b22;
     border: 1px solid #30363d;
     border-radius: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .planning-day-card.today {
     border-color: #58a6ff;
+    border-width: 2px;
 }
 
 .planning-day-card.today .planning-day-header {
     background-color: rgba(88, 166, 255, 0.1);
 }
 
+.planning-day-card.rest-day {
+    background-color: rgba(22, 27, 34, 0.6);
+}
+
 .planning-day-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
+    padding: 14px 16px;
     background-color: #0d1117;
     border-bottom: 1px solid #30363d;
 }
@@ -493,31 +499,55 @@
     color: #8b949e;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin-bottom: 2px;
 }
 
 .planning-day-date .date-value {
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 1.1rem;
     color: #c9d1d9;
+}
+
+/* Status badges in header */
+.planning-day-status .badge {
+    font-size: 0.75rem;
+    padding: 6px 10px;
 }
 
 /* Planning Activities Container */
 .planning-day-activities {
-    padding: 12px 16px;
+    padding: 14px 16px;
+}
+
+/* Section Labels */
+.planning-section-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8b949e;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.planning-section-label i {
+    font-size: 0.8rem;
 }
 
 /* Planned Item (Mobile) */
 .planned-item-mobile {
     background-color: #0d1117;
     border: 1px solid #30363d;
-    border-left: 3px solid #fbbf24;
+    border-left: 4px solid #fbbf24;
     border-radius: 6px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     overflow: hidden;
 }
 
 .planned-item-mobile.matched {
     border-left-color: #10b981;
+    background-color: rgba(16, 185, 129, 0.05);
 }
 
 .planned-item-summary {
@@ -529,8 +559,12 @@
     transition: background-color 0.2s;
 }
 
+.planned-item-summary:hover {
+    background-color: rgba(88, 166, 255, 0.03);
+}
+
 .planned-item-summary:active {
-    background-color: rgba(88, 166, 255, 0.05);
+    background-color: rgba(88, 166, 255, 0.08);
 }
 
 .planned-item-type {
@@ -566,6 +600,13 @@
     padding: 2px 6px;
 }
 
+/* Match indicator icon */
+.planned-item-match-icon {
+    color: #10b981;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
 .expand-indicator {
     color: #58a6ff;
     transition: transform 0.3s ease;
@@ -574,6 +615,39 @@
 
 .planned-item-summary[aria-expanded="true"] .expand-indicator {
     transform: rotate(180deg);
+}
+
+/* Actual Activities Section (Mobile) */
+.actual-activities-section {
+    border-top: 1px solid #30363d;
+    padding-top: 12px;
+    margin-top: 4px;
+}
+
+.actual-activity-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #21262d;
+}
+
+.actual-activity-item:last-child {
+    border-bottom: none;
+}
+
+.actual-activity-item .activity-name {
+    flex: 1;
+    font-size: 0.9rem;
+    color: #c9d1d9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.actual-activity-item .activity-metrics {
+    font-size: 0.8rem;
+    color: #8b949e;
 }
 
 /* Planned Item Details (Collapsible) */
@@ -644,7 +718,7 @@
 
 /* No Planned Activities */
 .no-planned-mobile {
-    padding: 16px 0;
+    padding: 20px 0;
     text-align: center;
     font-style: italic;
     color: #6c757d;
@@ -652,11 +726,52 @@
 
 /* Add Button (Mobile) */
 .add-planned-mobile {
-    margin-top: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #30363d;
 }
 
 .add-planned-mobile .btn {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     font-size: 0.85rem;
+}
+
+/* Day Card Toggle (similar to activities view) */
+.planning-day-toggle {
+    width: 100%;
+    padding: 10px 16px;
+    background-color: transparent;
+    border: none;
+    border-top: 1px solid #30363d;
+    color: #58a6ff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.2s;
+}
+
+.planning-day-toggle:hover {
+    background-color: rgba(88, 166, 255, 0.1);
+}
+
+.planning-day-toggle i {
+    transition: transform 0.3s ease;
+}
+
+.planning-day-toggle[aria-expanded="true"] i {
+    transform: rotate(180deg);
+}
+
+/* Day Details Collapsible */
+.planning-day-details {
+    background-color: #0d1117;
+    border-top: 1px solid #30363d;
+}
+
+.planning-day-details .detail-content {
+    padding: 12px 16px;
 }

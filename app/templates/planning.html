@@ -50,7 +50,7 @@
     {% set matched_count = planned_list | selectattr('matched_activity_id') | list | length %}
     {% set total_planned = planned_list | length %}
 
-    <div class="planning-day-card {% if day == today %}today{% endif %}">
+    <div class="planning-day-card {% if day == today %}today{% endif %}{% if not planned_list and not actual_list %} rest-day{% endif %}">
         <!-- Day Header -->
         <div class="planning-day-header">
             <div class="planning-day-date">
@@ -60,12 +60,14 @@
             <div class="planning-day-status">
                 {% if total_planned > 0 %}
                     {% if matched_count == total_planned %}
-                    <span class="badge bg-success">Complete</span>
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Complete</span>
                     {% elif matched_count > 0 %}
-                    <span class="badge bg-warning">Partial</span>
+                    <span class="badge bg-warning text-dark"><i class="bi bi-circle-half me-1"></i>Partial</span>
                     {% else %}
-                    <span class="badge bg-secondary">Planned</span>
+                    <span class="badge bg-secondary"><i class="bi bi-calendar-event me-1"></i>Planned</span>
                     {% endif %}
+                {% elif actual_list %}
+                <span class="badge bg-info"><i class="bi bi-activity me-1"></i>Unplanned</span>
                 {% endif %}
             </div>
         </div>
@@ -73,6 +75,9 @@
         <!-- Planned Activities -->
         <div class="planning-day-activities">
             {% if planned_list %}
+            <div class="planning-section-label">
+                <i class="bi bi-calendar-check"></i> Planned
+            </div>
             {% for planned in planned_list %}
             <div class="planned-item-mobile {% if planned.matched_activity_id %}matched{% endif %}">
                 <!-- Summary (Always Visible) -->
@@ -99,16 +104,19 @@
                         <div class="planned-item-name">{{ planned.name }}</div>
                         <div class="planned-item-metrics">
                             {% if planned.planned_distance %}
-                            <span>{{ "%.1f"|format(planned.planned_distance / 1000) }} km</span>
+                            <span><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(planned.planned_distance / 1000) }}km</span>
                             {% endif %}
                             {% if planned.planned_duration %}
-                            <span>{{ (planned.planned_duration // 60)|int }} min</span>
+                            <span><i class="bi bi-clock"></i> {{ (planned.planned_duration // 60)|int }}m</span>
                             {% endif %}
                             {% if planned.intensity_level %}
                             <span class="badge bg-info">{{ planned.intensity_level }}</span>
                             {% endif %}
                         </div>
                     </div>
+                    {% if planned.matched_activity_id %}
+                    <i class="bi bi-check-circle-fill planned-item-match-icon"></i>
+                    {% endif %}
                     <i class="bi bi-chevron-down expand-indicator"></i>
                 </div>
 
@@ -183,7 +191,28 @@
             </div>
             {% endfor %}
             {% else %}
-            <div class="no-planned-mobile">No activities planned</div>
+            <div class="no-planned-mobile">
+                <i class="bi bi-calendar-x text-muted d-block mb-2" style="font-size: 1.5rem;"></i>
+                No activities planned
+            </div>
+            {% endif %}
+
+            <!-- Actual Activities Section -->
+            {% if actual_list %}
+            <div class="actual-activities-section">
+                <div class="planning-section-label">
+                    <i class="bi bi-activity"></i> Actual Activities
+                </div>
+                {% for activity in actual_list %}
+                <div class="actual-activity-item">
+                    {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
+                    <span class="activity-name">{{ activity.name }}</span>
+                    <span class="activity-metrics">
+                        {% if activity.distance %}{{ "%.1f"|format(activity.distance / 1000) }}km{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
             {% endif %}
 
             <!-- Add Button -->
