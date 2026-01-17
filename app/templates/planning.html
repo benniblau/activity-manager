@@ -50,36 +50,35 @@
     {% set matched_count = planned_list | selectattr('matched_activity_id') | list | length %}
     {% set total_planned = planned_list | length %}
 
-    <div class="planning-day-card {% if day == today %}today{% endif %}{% if not planned_list and not actual_list %} rest-day{% endif %}">
+    <div class="day-card {% if not planned_list and not actual_list %}rest-day-card{% endif %}">
         <!-- Day Header -->
-        <div class="planning-day-header">
-            <div class="planning-day-date">
+        <div class="day-card-header">
+            <div class="day-card-date">
                 <span class="date-main">{{ day }}</span>
-                <span class="date-weekday">{{ day | weekday }}</span>
             </div>
-            <div class="planning-day-status">
+            <div class="planning-status-icon">
                 {% if total_planned > 0 %}
                     {% if matched_count == total_planned %}
-                    <span class="status-icon complete"><i class="bi bi-check-circle-fill"></i></span>
+                    <i class="bi bi-check-circle-fill text-success fs-4"></i>
                     {% elif matched_count > 0 %}
-                    <span class="status-icon partial"><i class="bi bi-circle-half"></i></span>
+                    <i class="bi bi-circle-half text-warning fs-4"></i>
                     {% else %}
-                    <span class="status-icon planned"><i class="bi bi-calendar-check"></i></span>
+                    <i class="bi bi-calendar-check text-info fs-4"></i>
                     {% endif %}
                 {% elif actual_list %}
-                <span class="status-icon unplanned"><i class="bi bi-activity"></i></span>
+                <i class="bi bi-activity text-primary fs-4"></i>
                 {% else %}
-                <span class="status-icon rest"><i class="bi bi-moon"></i></span>
+                <i class="bi bi-moon text-muted fs-4"></i>
                 {% endif %}
             </div>
         </div>
 
         <!-- Planned Activities List -->
-        <div class="planning-day-content">
+        <div class="day-card-activities">
             {% if planned_list %}
             {% for planned in planned_list %}
-            <div class="planned-item-compact {% if planned.matched_activity_id %}matched{% endif %}">
-                <div class="planned-item-row">
+            <div class="activity-item-mobile {% if planned.matched_activity_id %}matched{% endif %}">
+                <div class="activity-item-main">
                     {% if planned.extended_type_id %}
                     <span class="badge {{ planned.extended_color or 'bg-secondary' }}">
                         {% if planned.extended_icon %}<i class="{{ planned.extended_icon }}"></i>{% endif %}
@@ -88,36 +87,33 @@
                     {% else %}
                     {{ sport_badge(planned.sport_type) }}
                     {% endif %}
-                    <span class="planned-name">{{ planned.name }}</span>
-                    <span class="planned-metrics">
-                        {% if planned.planned_duration %}{{ (planned.planned_duration // 60)|int }}m{% endif %}
-                    </span>
+                    <span class="activity-name">{{ planned.name }}</span>
                     {% if planned.matched_activity_id %}
                     <i class="bi bi-check-circle-fill text-success"></i>
+                    {% endif %}
+                </div>
+                <div class="activity-item-metrics">
+                    {% if planned.planned_duration %}
+                    <span><i class="bi bi-clock"></i> {{ (planned.planned_duration // 60)|int }}m</span>
+                    {% endif %}
+                    {% if planned.planned_distance %}
+                    <span><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(planned.planned_distance / 1000) }}km</span>
                     {% endif %}
                 </div>
             </div>
             {% endfor %}
             {% else %}
-            <div class="no-planned-compact">No activities planned</div>
-            {% endif %}
-
-            <!-- Show actual activities count if any -->
-            {% if actual_list %}
-            <div class="actual-count-badge">
-                <i class="bi bi-activity"></i> {{ actual_list|length }} actual
-            </div>
+            <div class="rest-day-label">No activities planned</div>
             {% endif %}
         </div>
 
         <!-- Collapsible Details Section -->
-        <div class="collapse planning-day-details" id="planningDetails-{{ day | replace('-', '') }}">
+        <div class="collapse day-card-details" id="planningDetails-{{ day | replace('-', '') }}">
             <div class="detail-content">
                 {% if planned_list %}
-                <div class="detail-section-label">Planned Activities</div>
                 {% for planned in planned_list %}
-                <div class="planned-detail-card {% if planned.matched_activity_id %}matched{% endif %}">
-                    <div class="d-flex align-items-center gap-2 mb-2">
+                <div class="planning-detail-card {% if planned.matched_activity_id %}matched{% endif %}">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
                         {% if planned.extended_type_id %}
                         <span class="badge {{ planned.extended_color or 'bg-secondary' }}">
                             {% if planned.extended_icon %}<i class="{{ planned.extended_icon }}"></i>{% endif %}
@@ -126,18 +122,17 @@
                         {% else %}
                         {{ sport_badge(planned.sport_type) }}
                         {% endif %}
-                        <span class="fw-medium">{{ planned.name }}</span>
                         {% if planned.matched_activity_id %}
-                        <i class="bi bi-check-circle-fill text-success ms-auto"></i>
+                        <i class="bi bi-check-circle-fill text-success"></i>
                         {% endif %}
                     </div>
-
-                    <div class="planned-detail-metrics">
+                    <div class="fw-medium mb-2">{{ planned.name }}</div>
+                    <div class="small text-muted">
                         {% if planned.planned_distance %}
-                        <span><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(planned.planned_distance / 1000) }}km</span>
+                        <span class="me-3"><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(planned.planned_distance / 1000) }} km</span>
                         {% endif %}
                         {% if planned.planned_duration %}
-                        <span><i class="bi bi-clock"></i> {{ (planned.planned_duration // 60)|int }}m</span>
+                        <span class="me-3"><i class="bi bi-clock"></i> {{ (planned.planned_duration // 60)|int }}m</span>
                         {% endif %}
                         {% if planned.intensity_level %}
                         <span class="badge bg-info">{{ planned.intensity_level }}</span>
@@ -145,19 +140,20 @@
                     </div>
 
                     {% if planned.description %}
-                    <div class="planned-description mt-2">{{ planned.description }}</div>
+                    <div class="small text-muted mt-2">{{ planned.description }}</div>
                     {% endif %}
 
                     {% if planned.coaching_notes %}
-                    <div class="coaching-note-box mt-2">
-                        <i class="bi bi-chat-left-text"></i> {{ planned.coaching_notes }}
+                    <div class="detail-row coach-note mt-2">
+                        <i class="bi bi-chat-left-text text-info"></i>
+                        <span>{{ planned.coaching_notes }}</span>
                     </div>
                     {% endif %}
 
                     <!-- Match Status -->
                     {% if planned.matched_activity_id %}
-                    <div class="match-status-row mt-2">
-                        <span class="text-success"><i class="bi bi-link-45deg"></i> {{ planned.matched_activity_name }}</span>
+                    <div class="d-flex align-items-center justify-content-between mt-2 pt-2" style="border-top: 1px solid #30363d;">
+                        <span class="text-success small"><i class="bi bi-link-45deg"></i> {{ planned.matched_activity_name }}</span>
                         <button class="btn btn-sm btn-outline-warning unmatch-btn" data-id="{{ planned.id }}">Unmatch</button>
                     </div>
                     {% elif actual_list %}
@@ -173,7 +169,7 @@
                     {% endif %}
 
                     <!-- Action Buttons -->
-                    <div class="planned-actions mt-2">
+                    <div class="d-flex gap-2 mt-2 pt-2" style="border-top: 1px solid #30363d;">
                         <button class="btn btn-sm btn-outline-primary edit-planned-btn"
                                 data-id="{{ planned.id }}"
                                 data-date="{{ planned.date }}"
@@ -186,10 +182,10 @@
                                 data-elevation="{{ planned.planned_elevation or '' }}"
                                 data-notes="{{ planned.coaching_notes or '' }}"
                                 data-intensity="{{ planned.intensity_level or '' }}">
-                            <i class="bi bi-pencil"></i>
+                            <i class="bi bi-pencil"></i> Edit
                         </button>
                         <button class="btn btn-sm btn-outline-secondary copy-planned-btn" data-id="{{ planned.id }}">
-                            <i class="bi bi-files"></i>
+                            <i class="bi bi-files"></i> Copy
                         </button>
                         <button class="btn btn-sm btn-outline-danger delete-planned-btn"
                                 data-id="{{ planned.id }}" data-name="{{ planned.name }}">
@@ -203,13 +199,20 @@
                 {% if actual_list %}
                 <div class="detail-section-label mt-3">Actual Activities</div>
                 {% for activity in actual_list %}
-                <div class="actual-activity-card">
-                    {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
-                    <span class="activity-name">{{ activity.name }}</span>
-                    <span class="activity-metrics">
-                        {% if activity.distance %}{{ "%.1f"|format(activity.distance / 1000) }}km{% endif %}
-                    </span>
-                </div>
+                <a href="/activity/{{ activity.id }}" class="activity-link-mobile">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
+                    </div>
+                    <div class="fw-medium mb-2">{{ activity.name }}</div>
+                    <div class="small text-muted">
+                        {% if activity.distance %}
+                        <span class="me-3"><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(activity.distance / 1000) }} km</span>
+                        {% endif %}
+                        {% if activity.moving_time %}
+                        <span><i class="bi bi-clock"></i> {{ (activity.moving_time // 60)|int }}m</span>
+                        {% endif %}
+                    </div>
+                </a>
                 {% endfor %}
                 {% endif %}
 
@@ -221,11 +224,12 @@
         </div>
 
         <!-- Details Toggle -->
-        <button class="planning-day-toggle"
+        <button class="day-card-toggle"
                 type="button"
                 data-bs-toggle="collapse"
                 data-bs-target="#planningDetails-{{ day | replace('-', '') }}"
-                aria-expanded="false">
+                aria-expanded="false"
+                aria-controls="planningDetails-{{ day | replace('-', '') }}">
             <i class="bi bi-chevron-down"></i>
             <span>Details</span>
         </button>
