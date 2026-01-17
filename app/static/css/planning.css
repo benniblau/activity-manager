@@ -462,9 +462,8 @@
     background-color: #161b22;
     border: 1px solid #30363d;
     border-radius: 8px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .planning-day-card.today {
@@ -484,7 +483,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 16px;
+    padding: 12px 16px;
     background-color: #0d1117;
     border-bottom: 1px solid #30363d;
 }
@@ -494,149 +493,195 @@
     flex-direction: column;
 }
 
-.planning-day-date .date-weekday {
-    font-size: 0.7rem;
-    color: #8b949e;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 2px;
-}
-
-.planning-day-date .date-value {
+.planning-day-date .date-main {
     font-weight: 600;
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: #c9d1d9;
 }
 
-/* Status badges in header */
-.planning-day-status .badge {
+.planning-day-date .date-weekday {
     font-size: 0.75rem;
-    padding: 6px 10px;
-}
-
-/* Planning Activities Container */
-.planning-day-activities {
-    padding: 14px 16px;
-}
-
-/* Section Labels */
-.planning-section-label {
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     color: #8b949e;
-    margin-bottom: 8px;
+}
+
+/* Status icons in header */
+.status-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    font-size: 1.1rem;
 }
 
-.planning-section-label i {
-    font-size: 0.8rem;
+.status-icon.complete {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #10b981;
 }
 
-/* Planned Item (Mobile) */
-.planned-item-mobile {
-    background-color: #0d1117;
-    border: 1px solid #30363d;
-    border-left: 4px solid #fbbf24;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    overflow: hidden;
+.status-icon.partial {
+    background-color: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
 }
 
-.planned-item-mobile.matched {
-    border-left-color: #10b981;
-    background-color: rgba(16, 185, 129, 0.05);
+.status-icon.planned {
+    background-color: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
 }
 
-.planned-item-summary {
+.status-icon.unplanned {
+    background-color: rgba(88, 166, 255, 0.15);
+    color: #58a6ff;
+}
+
+.status-icon.rest {
+    background-color: rgba(139, 148, 158, 0.1);
+    color: #8b949e;
+}
+
+/* Planning Day Content */
+.planning-day-content {
+    padding: 12px 16px;
+}
+
+/* Compact Planned Item */
+.planned-item-compact {
+    padding: 8px 0;
+    border-bottom: 1px solid #21262d;
+}
+
+.planned-item-compact:last-child {
+    border-bottom: none;
+}
+
+.planned-item-compact.matched {
+    opacity: 0.8;
+}
+
+.planned-item-row {
     display: flex;
     align-items: center;
-    padding: 12px;
-    cursor: pointer;
-    gap: 10px;
-    transition: background-color 0.2s;
+    gap: 8px;
 }
 
-.planned-item-summary:hover {
-    background-color: rgba(88, 166, 255, 0.03);
-}
-
-.planned-item-summary:active {
-    background-color: rgba(88, 166, 255, 0.08);
-}
-
-.planned-item-type {
-    flex-shrink: 0;
-}
-
-.planned-item-info {
+.planned-item-row .planned-name {
     flex: 1;
-    min-width: 0;
-}
-
-.planned-item-name {
     font-weight: 500;
     color: #c9d1d9;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
-.planned-item-metrics {
-    display: flex;
-    gap: 10px;
+.planned-item-row .planned-metrics {
     font-size: 0.8rem;
     color: #8b949e;
-    margin-top: 4px;
-    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+/* No planned compact */
+.no-planned-compact {
+    padding: 8px 0;
+    font-style: italic;
+    color: #6c757d;
+    text-align: center;
+}
+
+/* Actual count badge */
+.actual-count-badge {
+    display: inline-flex;
     align-items: center;
-}
-
-.planned-item-metrics .badge {
-    font-size: 0.7rem;
-    padding: 2px 6px;
-}
-
-/* Match indicator icon */
-.planned-item-match-icon {
-    color: #10b981;
-    font-size: 1rem;
-    flex-shrink: 0;
-}
-
-.expand-indicator {
+    gap: 4px;
+    font-size: 0.75rem;
     color: #58a6ff;
-    transition: transform 0.3s ease;
-    flex-shrink: 0;
+    margin-top: 8px;
+    padding: 4px 8px;
+    background-color: rgba(88, 166, 255, 0.1);
+    border-radius: 4px;
 }
 
-.planned-item-summary[aria-expanded="true"] .expand-indicator {
-    transform: rotate(180deg);
+/* Detail section labels */
+.detail-section-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8b949e;
+    margin-bottom: 8px;
+    font-weight: 600;
 }
 
-/* Actual Activities Section (Mobile) */
-.actual-activities-section {
-    border-top: 1px solid #30363d;
-    padding-top: 12px;
-    margin-top: 4px;
+/* Planned detail card in expanded view */
+.planned-detail-card {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-left: 3px solid #fbbf24;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
 }
 
-.actual-activity-item {
+.planned-detail-card.matched {
+    border-left-color: #10b981;
+}
+
+.planned-detail-metrics {
+    display: flex;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: #8b949e;
+    flex-wrap: wrap;
+}
+
+.planned-description {
+    font-size: 0.85rem;
+    color: #8b949e;
+}
+
+.coaching-note-box {
+    background-color: rgba(139, 92, 246, 0.1);
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #c9d1d9;
+}
+
+.coaching-note-box i {
+    color: #8b5cf6;
+    margin-right: 6px;
+}
+
+.match-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.planned-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.planned-actions .btn {
+    padding: 6px 10px;
+}
+
+/* Actual activity card in expanded view */
+.actual-activity-card {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 0;
-    border-bottom: 1px solid #21262d;
+    padding: 10px;
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    margin-bottom: 8px;
 }
 
-.actual-activity-item:last-child {
-    border-bottom: none;
-}
-
-.actual-activity-item .activity-name {
+.actual-activity-card .activity-name {
     flex: 1;
     font-size: 0.9rem;
     color: #c9d1d9;
@@ -645,7 +690,7 @@
     text-overflow: ellipsis;
 }
 
-.actual-activity-item .activity-metrics {
+.actual-activity-card .activity-metrics {
     font-size: 0.8rem;
     color: #8b949e;
 }

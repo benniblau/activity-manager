@@ -54,157 +54,156 @@
         <!-- Day Header -->
         <div class="planning-day-header">
             <div class="planning-day-date">
+                <span class="date-main">{{ day }}</span>
                 <span class="date-weekday">{{ day | weekday }}</span>
-                <span class="date-value">{{ day }}</span>
             </div>
             <div class="planning-day-status">
                 {% if total_planned > 0 %}
                     {% if matched_count == total_planned %}
-                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Complete</span>
+                    <span class="status-icon complete"><i class="bi bi-check-circle-fill"></i></span>
                     {% elif matched_count > 0 %}
-                    <span class="badge bg-warning text-dark"><i class="bi bi-circle-half me-1"></i>Partial</span>
+                    <span class="status-icon partial"><i class="bi bi-circle-half"></i></span>
                     {% else %}
-                    <span class="badge bg-secondary"><i class="bi bi-calendar-event me-1"></i>Planned</span>
+                    <span class="status-icon planned"><i class="bi bi-calendar-check"></i></span>
                     {% endif %}
                 {% elif actual_list %}
-                <span class="badge bg-info"><i class="bi bi-activity me-1"></i>Unplanned</span>
+                <span class="status-icon unplanned"><i class="bi bi-activity"></i></span>
+                {% else %}
+                <span class="status-icon rest"><i class="bi bi-moon"></i></span>
                 {% endif %}
             </div>
         </div>
 
-        <!-- Planned Activities -->
-        <div class="planning-day-activities">
+        <!-- Planned Activities List -->
+        <div class="planning-day-content">
             {% if planned_list %}
-            <div class="planning-section-label">
-                <i class="bi bi-calendar-check"></i> Planned
-            </div>
             {% for planned in planned_list %}
-            <div class="planned-item-mobile {% if planned.matched_activity_id %}matched{% endif %}">
-                <!-- Summary (Always Visible) -->
-                <div class="planned-item-summary"
-                     data-bs-toggle="collapse"
-                     data-bs-target="#plannedDetails-{{ planned.id }}"
-                     aria-expanded="false"
-                     aria-controls="plannedDetails-{{ planned.id }}">
-                    <div class="planned-item-type">
+            <div class="planned-item-compact {% if planned.matched_activity_id %}matched{% endif %}">
+                <div class="planned-item-row">
+                    {% if planned.extended_type_id %}
+                    <span class="badge {{ planned.extended_color or 'bg-secondary' }}">
+                        {% if planned.extended_icon %}<i class="{{ planned.extended_icon }}"></i>{% endif %}
+                        {{ planned.extended_name }}
+                    </span>
+                    {% else %}
+                    {{ sport_badge(planned.sport_type) }}
+                    {% endif %}
+                    <span class="planned-name">{{ planned.name }}</span>
+                    <span class="planned-metrics">
+                        {% if planned.planned_duration %}{{ (planned.planned_duration // 60)|int }}m{% endif %}
+                    </span>
+                    {% if planned.matched_activity_id %}
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="no-planned-compact">No activities planned</div>
+            {% endif %}
+
+            <!-- Show actual activities count if any -->
+            {% if actual_list %}
+            <div class="actual-count-badge">
+                <i class="bi bi-activity"></i> {{ actual_list|length }} actual
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Collapsible Details Section -->
+        <div class="collapse planning-day-details" id="planningDetails-{{ day | replace('-', '') }}">
+            <div class="detail-content">
+                {% if planned_list %}
+                <div class="detail-section-label">Planned Activities</div>
+                {% for planned in planned_list %}
+                <div class="planned-detail-card {% if planned.matched_activity_id %}matched{% endif %}">
+                    <div class="d-flex align-items-center gap-2 mb-2">
                         {% if planned.extended_type_id %}
                         <span class="badge {{ planned.extended_color or 'bg-secondary' }}">
-                            {% if planned.extended_icon %}
-                            <i class="{{ planned.extended_icon }}"></i>
-                            {% else %}
-                            {{ sport_icon(planned.sport_type) }}
-                            {% endif %}
+                            {% if planned.extended_icon %}<i class="{{ planned.extended_icon }}"></i>{% endif %}
                             {{ planned.extended_name }}
                         </span>
                         {% else %}
                         {{ sport_badge(planned.sport_type) }}
                         {% endif %}
-                    </div>
-                    <div class="planned-item-info">
-                        <div class="planned-item-name">{{ planned.name }}</div>
-                        <div class="planned-item-metrics">
-                            {% if planned.planned_distance %}
-                            <span><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(planned.planned_distance / 1000) }}km</span>
-                            {% endif %}
-                            {% if planned.planned_duration %}
-                            <span><i class="bi bi-clock"></i> {{ (planned.planned_duration // 60)|int }}m</span>
-                            {% endif %}
-                            {% if planned.intensity_level %}
-                            <span class="badge bg-info">{{ planned.intensity_level }}</span>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% if planned.matched_activity_id %}
-                    <i class="bi bi-check-circle-fill planned-item-match-icon"></i>
-                    {% endif %}
-                    <i class="bi bi-chevron-down expand-indicator"></i>
-                </div>
-
-                <!-- Details (Collapsible) -->
-                <div class="collapse planned-item-details" id="plannedDetails-{{ planned.id }}">
-                    <div class="detail-content">
-                        {% if planned.description %}
-                        <div class="planned-detail-section">
-                            <strong>Description:</strong> {{ planned.description }}
-                        </div>
-                        {% endif %}
-
-                        {% if planned.coaching_notes %}
-                        <div class="planned-detail-section coaching-note">
-                            <i class="bi bi-chat-left-text"></i>
-                            {{ planned.coaching_notes }}
-                        </div>
-                        {% endif %}
-
-                        <!-- Match Status -->
+                        <span class="fw-medium">{{ planned.name }}</span>
                         {% if planned.matched_activity_id %}
-                        <div class="planned-match-status matched">
-                            <i class="bi bi-check-circle"></i>
-                            <span>Matched: {{ planned.matched_activity_name }}</span>
-                            <button class="btn btn-sm btn-outline-warning unmatch-btn"
-                                    data-id="{{ planned.id }}">
-                                Unmatch
-                            </button>
-                        </div>
-                        {% elif actual_list %}
-                        <div class="planned-match-status">
-                            <button class="btn btn-sm btn-success match-activity-btn w-100"
-                                    data-planned-id="{{ planned.id }}"
-                                    data-planned-name="{{ planned.name }}"
-                                    data-planned-type="{{ planned.extended_name or planned.sport_type }}"
-                                    data-planned-distance="{{ planned.planned_distance or '' }}"
-                                    data-planned-duration="{{ planned.planned_duration or '' }}"
-                                    data-date="{{ day }}">
-                                <i class="bi bi-link-45deg"></i> Match to Activity
-                            </button>
-                        </div>
+                        <i class="bi bi-check-circle-fill text-success ms-auto"></i>
                         {% endif %}
+                    </div>
 
-                        <!-- Action Buttons -->
-                        <div class="planned-item-actions">
-                            <button class="btn btn-outline-primary edit-planned-btn"
-                                    data-id="{{ planned.id }}"
-                                    data-date="{{ planned.date }}"
-                                    data-name="{{ planned.name }}"
-                                    data-description="{{ planned.description or '' }}"
-                                    data-extended-id="{{ planned.extended_type_id or '' }}"
-                                    data-sport-type="{{ planned.sport_type or '' }}"
-                                    data-distance="{{ planned.planned_distance or '' }}"
-                                    data-duration="{{ planned.planned_duration or '' }}"
-                                    data-elevation="{{ planned.planned_elevation or '' }}"
-                                    data-notes="{{ planned.coaching_notes or '' }}"
-                                    data-intensity="{{ planned.intensity_level or '' }}">
-                                <i class="bi bi-pencil"></i> Edit
-                            </button>
-                            <button class="btn btn-outline-secondary copy-planned-btn"
-                                    data-id="{{ planned.id }}">
-                                <i class="bi bi-files"></i> Copy
-                            </button>
-                            <button class="btn btn-outline-danger delete-planned-btn"
-                                    data-id="{{ planned.id }}"
-                                    data-name="{{ planned.name }}">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
+                    <div class="planned-detail-metrics">
+                        {% if planned.planned_distance %}
+                        <span><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(planned.planned_distance / 1000) }}km</span>
+                        {% endif %}
+                        {% if planned.planned_duration %}
+                        <span><i class="bi bi-clock"></i> {{ (planned.planned_duration // 60)|int }}m</span>
+                        {% endif %}
+                        {% if planned.intensity_level %}
+                        <span class="badge bg-info">{{ planned.intensity_level }}</span>
+                        {% endif %}
+                    </div>
+
+                    {% if planned.description %}
+                    <div class="planned-description mt-2">{{ planned.description }}</div>
+                    {% endif %}
+
+                    {% if planned.coaching_notes %}
+                    <div class="coaching-note-box mt-2">
+                        <i class="bi bi-chat-left-text"></i> {{ planned.coaching_notes }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Match Status -->
+                    {% if planned.matched_activity_id %}
+                    <div class="match-status-row mt-2">
+                        <span class="text-success"><i class="bi bi-link-45deg"></i> {{ planned.matched_activity_name }}</span>
+                        <button class="btn btn-sm btn-outline-warning unmatch-btn" data-id="{{ planned.id }}">Unmatch</button>
+                    </div>
+                    {% elif actual_list %}
+                    <button class="btn btn-sm btn-success w-100 mt-2 match-activity-btn"
+                            data-planned-id="{{ planned.id }}"
+                            data-planned-name="{{ planned.name }}"
+                            data-planned-type="{{ planned.extended_name or planned.sport_type }}"
+                            data-planned-distance="{{ planned.planned_distance or '' }}"
+                            data-planned-duration="{{ planned.planned_duration or '' }}"
+                            data-date="{{ day }}">
+                        <i class="bi bi-link-45deg"></i> Match to Activity
+                    </button>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="planned-actions mt-2">
+                        <button class="btn btn-sm btn-outline-primary edit-planned-btn"
+                                data-id="{{ planned.id }}"
+                                data-date="{{ planned.date }}"
+                                data-name="{{ planned.name }}"
+                                data-description="{{ planned.description or '' }}"
+                                data-extended-id="{{ planned.extended_type_id or '' }}"
+                                data-sport-type="{{ planned.sport_type or '' }}"
+                                data-distance="{{ planned.planned_distance or '' }}"
+                                data-duration="{{ planned.planned_duration or '' }}"
+                                data-elevation="{{ planned.planned_elevation or '' }}"
+                                data-notes="{{ planned.coaching_notes or '' }}"
+                                data-intensity="{{ planned.intensity_level or '' }}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary copy-planned-btn" data-id="{{ planned.id }}">
+                            <i class="bi bi-files"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger delete-planned-btn"
+                                data-id="{{ planned.id }}" data-name="{{ planned.name }}">
+                            <i class="bi bi-trash"></i>
+                        </button>
                     </div>
                 </div>
-            </div>
-            {% endfor %}
-            {% else %}
-            <div class="no-planned-mobile">
-                <i class="bi bi-calendar-x text-muted d-block mb-2" style="font-size: 1.5rem;"></i>
-                No activities planned
-            </div>
-            {% endif %}
+                {% endfor %}
+                {% endif %}
 
-            <!-- Actual Activities Section -->
-            {% if actual_list %}
-            <div class="actual-activities-section">
-                <div class="planning-section-label">
-                    <i class="bi bi-activity"></i> Actual Activities
-                </div>
+                {% if actual_list %}
+                <div class="detail-section-label mt-3">Actual Activities</div>
                 {% for activity in actual_list %}
-                <div class="actual-activity-item">
+                <div class="actual-activity-card">
                     {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
                     <span class="activity-name">{{ activity.name }}</span>
                     <span class="activity-metrics">
@@ -212,17 +211,24 @@
                     </span>
                 </div>
                 {% endfor %}
-            </div>
-            {% endif %}
+                {% endif %}
 
-            <!-- Add Button -->
-            <div class="add-planned-mobile">
-                <button class="btn btn-outline-success add-planned-for-day"
-                        data-date="{{ day }}">
+                <!-- Add Button in Details -->
+                <button class="btn btn-outline-success w-100 mt-3 add-planned-for-day" data-date="{{ day }}">
                     <i class="bi bi-plus-circle"></i> Add Planned Activity
                 </button>
             </div>
         </div>
+
+        <!-- Details Toggle -->
+        <button class="planning-day-toggle"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#planningDetails-{{ day | replace('-', '') }}"
+                aria-expanded="false">
+            <i class="bi bi-chevron-down"></i>
+            <span>Details</span>
+        </button>
     </div>
     {% endfor %}
 </div>
