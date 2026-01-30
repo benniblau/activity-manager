@@ -48,6 +48,13 @@
         </div>
     </nav>
 
+    <!-- Sync Loading Overlay -->
+    <div class="sync-overlay" id="syncOverlay">
+        <div class="sync-spinner"></div>
+        <div class="sync-message">Syncing with Strava...</div>
+        <div class="sync-submessage">Fetching activities and descriptions</div>
+    </div>
+
     <!-- Main Content -->
     <main class="container-fluid py-4">
         {% block content %}{% endblock %}

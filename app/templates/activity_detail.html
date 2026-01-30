@@ -21,22 +21,22 @@
 
 <!-- Activity Header -->
 <div class="card stats-card mb-4">
-    <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start">
+    <div class="card-body activity-detail-header">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
                 <span class="badge badge-sport-{{ activity.sport_type|lower|replace(' ', '')|replace('-', '') }} mb-2">{{ sport_icon(activity.sport_type) }} {{ activity.sport_type }}</span>
                 <h2 class="mb-1">{{ activity.name }}</h2>
                 <p class="text-muted mb-0">
-                    <i class="bi bi-calendar-date"></i> {{ activity.formatted_date }}
+                    <span><i class="bi bi-calendar-date"></i> {{ activity.formatted_date }}</span>
                     {% if activity.formatted_time %}
-                    <span class="ms-3"><i class="bi bi-clock"></i> {{ activity.formatted_time }}</span>
+                    <span class="ms-md-3"><i class="bi bi-clock"></i> {{ activity.formatted_time }}</span>
                     {% endif %}
                     {% if activity.timezone %}
-                    <span class="ms-3"><i class="bi bi-globe"></i> {{ activity.timezone }}</span>
+                    <span class="ms-md-3 d-none d-md-inline"><i class="bi bi-globe"></i> {{ activity.timezone }}</span>
                     {% endif %}
                 </p>
             </div>
-            <div class="text-end">
+            <div class="text-end d-none d-md-block">
                 <small class="text-muted">Activity ID: {{ activity.id }}</small>
             </div>
         </div>
@@ -92,22 +92,22 @@
 </div>
 
 {% if activity.description %}
-<div class="card stats-card mb-4">
+<div class="card stats-card description-card mb-4">
     <div class="card-header">
         <i class="bi bi-chat-text"></i> Description
     </div>
     <div class="card-body">
-        <p class="mb-0">{{ activity.description }}</p>
+        <p class="mb-0" style="white-space: pre-wrap;">{{ activity.description }}</p>
     </div>
 </div>
 {% endif %}
 
 <!-- Key Metrics -->
-<div class="row mb-4">
+<div class="row mb-4 g-2 g-md-3">
     {% if activity.distance %}
-    <div class="col-md-3 col-sm-6 mb-3">
+    <div class="col-6 col-md-3">
         <div class="card stats-card h-100">
-            <div class="card-body text-center">
+            <div class="card-body text-center py-3">
                 <i class="bi bi-arrow-left-right text-primary" style="font-size: 2rem;"></i>
                 <h3 class="mt-2 mb-0">{{ "%.2f"|format(activity.distance / 1000) }} km</h3>
                 <small class="text-muted">Distance</small>
@@ -117,9 +117,9 @@
     {% endif %}
 
     {% if activity.moving_time %}
-    <div class="col-md-3 col-sm-6 mb-3">
+    <div class="col-6 col-md-3">
         <div class="card stats-card h-100">
-            <div class="card-body text-center">
+            <div class="card-body text-center py-3">
                 <i class="bi bi-stopwatch text-success" style="font-size: 2rem;"></i>
                 <h3 class="mt-2 mb-0">{{ (activity.moving_time // 3600)|int }}h {{ ((activity.moving_time % 3600) // 60)|int }}m</h3>
                 <small class="text-muted">Moving Time</small>
@@ -129,9 +129,9 @@
     {% endif %}
 
     {% if activity.total_elevation_gain %}
-    <div class="col-md-3 col-sm-6 mb-3">
+    <div class="col-6 col-md-3">
         <div class="card stats-card h-100">
-            <div class="card-body text-center">
+            <div class="card-body text-center py-3">
                 <i class="bi bi-graph-up-arrow text-warning" style="font-size: 2rem;"></i>
                 <h3 class="mt-2 mb-0">{{ "%.0f"|format(activity.total_elevation_gain) }} m</h3>
                 <small class="text-muted">Elevation Gain</small>
@@ -141,9 +141,9 @@
     {% endif %}
 
     {% if activity.calories %}
-    <div class="col-md-3 col-sm-6 mb-3">
+    <div class="col-6 col-md-3">
         <div class="card stats-card h-100">
-            <div class="card-body text-center">
+            <div class="card-body text-center py-3">
                 <i class="bi bi-fire text-danger" style="font-size: 2rem;"></i>
                 <h3 class="mt-2 mb-0">{{ "%.0f"|format(activity.calories) }}</h3>
                 <small class="text-muted">Calories</small>

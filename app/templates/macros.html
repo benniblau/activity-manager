@@ -61,35 +61,49 @@
 {% endmacro %}
 
 {# Pain level to Font Awesome face icon with color gradient (green to red) #}
+{# Uses CSS classes from style.css for colors - single source of truth #}
 {% macro pain_icon(level, size='md') %}
 {%- if level is not none and level is defined -%}
 {%- set size_class = 'fa-lg' if size == 'lg' else 'fa-sm' if size == 'sm' else '' -%}
-{%- if level == 0 -%}
-<i class="fa-solid fa-face-grin-beam {{ size_class }}" style="color: #10b981;" title="Level 0"></i>
-{%- elif level == 1 -%}
-<i class="fa-solid fa-face-smile-beam {{ size_class }}" style="color: #34d399;" title="Level 1"></i>
-{%- elif level == 2 -%}
-<i class="fa-solid fa-face-meh {{ size_class }}" style="color: #84cc16;" title="Level 2"></i>
-{%- elif level == 3 -%}
-<i class="fa-solid fa-face-frown-slight {{ size_class }}" style="color: #a3e635;" title="Level 3"></i>
-{%- elif level == 4 -%}
-<i class="fa-solid fa-face-worried {{ size_class }}" style="color: #eab308;" title="Level 4"></i>
-{%- elif level == 5 -%}
-<i class="fa-solid fa-face-frown-open {{ size_class }}" style="color: #f59e0b;" title="Level 5"></i>
-{%- elif level == 6 -%}
-<i class="fa-solid fa-face-grimace {{ size_class }}" style="color: #f97316;" title="Level 6"></i>
-{%- elif level == 7 -%}
-<i class="fa-solid fa-face-sad-cry {{ size_class }}" style="color: #ea580c;" title="Level 7"></i>
-{%- elif level == 8 -%}
-<i class="fa-solid fa-face-confounded {{ size_class }}" style="color: #ef4444;" title="Level 8"></i>
-{%- elif level == 9 -%}
-<i class="fa-solid fa-face-weary {{ size_class }}" style="color: #dc2626;" title="Level 9"></i>
-{%- elif level == 10 -%}
-<i class="fa-solid fa-face-dizzy {{ size_class }}" style="color: #b91c1c;" title="Level 10"></i>
-{%- else -%}
-<i class="fa-solid fa-face-meh {{ size_class }}" style="color: #6b7280;" title="Unknown"></i>
-{%- endif -%}
+{%- set icons = {
+    0: 'fa-face-grin-beam',
+    1: 'fa-face-smile-beam',
+    2: 'fa-face-meh',
+    3: 'fa-face-frown-slight',
+    4: 'fa-face-worried',
+    5: 'fa-face-frown-open',
+    6: 'fa-face-grimace',
+    7: 'fa-face-sad-cry',
+    8: 'fa-face-confounded',
+    9: 'fa-face-weary',
+    10: 'fa-face-dizzy'
+} -%}
+<i class="fa-solid {{ icons.get(level, 'fa-face-meh') }} {{ size_class }} pain-icon--level-{{ level }}" title="Level {{ level }}"></i>
 {%- else -%}
 <span class="text-muted">-</span>
+{%- endif -%}
+{% endmacro %}
+
+{# Activity description with configurable display mode
+   Modes:
+   - 'full' (default): Full text, no truncation
+   - 'truncated': Truncated to truncate_at characters
+   - 'styled': Full text with styled box (mobile summary)
+
+   Usage:
+   {{ activity_description(activity.description) }}
+   {{ activity_description(activity.description, mode='truncated') }}
+   {{ activity_description(activity.description, mode='styled', show_icon=true) }}
+#}
+{% macro activity_description(description, mode='full', show_icon=false, truncate_at=100) %}
+{%- if description -%}
+<div class="activity-description activity-description--{{ mode }}">
+    {%- if show_icon -%}<i class="bi bi-chat-text activity-description__icon"></i>{%- endif -%}
+    {%- if mode == 'truncated' and description|length > truncate_at -%}
+        {{ description[:truncate_at] }}...
+    {%- else -%}
+        {{ description }}
+    {%- endif -%}
+</div>
 {%- endif -%}
 {% endmacro %}

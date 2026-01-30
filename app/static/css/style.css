@@ -1,7 +1,80 @@
 :root {
     --bs-body-bg: #0d1117;
     --bs-body-color: #c9d1d9;
+
+    /* Pain scale colors (0-10, green to red gradient) */
+    --pain-color-0: #10b981;
+    --pain-color-1: #34d399;
+    --pain-color-2: #84cc16;
+    --pain-color-3: #a3e635;
+    --pain-color-4: #eab308;
+    --pain-color-5: #f59e0b;
+    --pain-color-6: #f97316;
+    --pain-color-7: #ea580c;
+    --pain-color-8: #ef4444;
+    --pain-color-9: #dc2626;
+    --pain-color-10: #b91c1c;
 }
+
+/* Pain icon color classes - single source of truth */
+.pain-icon--level-0 { color: var(--pain-color-0); }
+.pain-icon--level-1 { color: var(--pain-color-1); }
+.pain-icon--level-2 { color: var(--pain-color-2); }
+.pain-icon--level-3 { color: var(--pain-color-3); }
+.pain-icon--level-4 { color: var(--pain-color-4); }
+.pain-icon--level-5 { color: var(--pain-color-5); }
+.pain-icon--level-6 { color: var(--pain-color-6); }
+.pain-icon--level-7 { color: var(--pain-color-7); }
+.pain-icon--level-8 { color: var(--pain-color-8); }
+.pain-icon--level-9 { color: var(--pain-color-9); }
+.pain-icon--level-10 { color: var(--pain-color-10); }
+
+/* ======================================
+   ACTIVITY DESCRIPTION - SINGLE SOURCE
+   ====================================== */
+
+/* Base description styles - shared across all contexts */
+.activity-description {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.5;
+    font-size: 0.85rem;
+    color: var(--bs-body-color);
+}
+
+/* Modifier: Truncated preview (desktop cards) */
+.activity-description--truncated {
+    max-height: 60px;
+    overflow: hidden;
+}
+
+/* Modifier: Full display (mobile detail, activity detail page) */
+.activity-description--full {
+    max-height: none;
+    overflow: visible;
+    height: auto;
+}
+
+/* Modifier: Styled box (mobile summary view) */
+.activity-description--styled {
+    padding: 10px 12px;
+    background: rgba(88, 166, 255, 0.1);
+    border-left: 3px solid #58a6ff;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+/* Description icon */
+.activity-description__icon {
+    margin-right: 6px;
+    color: #58a6ff;
+}
+
+/* Utility classes */
+.cursor-pointer { cursor: pointer; }
+.border-top-subtle { border-top: 1px solid #30363d; }
+.empty-state-icon { font-size: 4rem; color: #6c757d; }
 
 body {
     background-color: var(--bs-body-bg);
@@ -61,31 +134,39 @@ body {
     border-color: #58a6ff;
 }
 
-/* Sport Type Badge Colors */
-[class*="badge-sport-"] { background-color: #0d6efd; } /* Default blue for unknown types */
-.badge-sport-run, .badge-sport-virtualrun { background-color: #28a745 !important; }
-.badge-sport-ride, .badge-sport-virtualride { background-color: #fd7e14 !important; }
-.badge-sport-swim { background-color: #17a2b8 !important; }
-.badge-sport-walk, .badge-sport-hike { background-color: #8b5a2b !important; }
-.badge-sport-weighttraining { background-color: #6f42c1 !important; }
-.badge-sport-workout { background-color: #dc3545 !important; }
-.badge-sport-yoga { background-color: #e83e8c !important; }
-.badge-sport-crossfit { background-color: #ff6b6b !important; }
-.badge-sport-rowing, .badge-sport-rowindoor { background-color: #20c997 !important; }
-.badge-sport-elliptical, .badge-sport-stairstepper { background-color: #6c757d !important; }
-.badge-sport-golf { background-color: #198754 !important; }
-.badge-sport-tennis, .badge-sport-pickleball { background-color: #c9f364 !important; color: #333 !important; }
-.badge-sport-alpineski, .badge-sport-snowboard, .badge-sport-nordicski { background-color: #adb5bd !important; color: #333 !important; }
+/* Sport Type Badge Colors - using higher specificity instead of !important */
+.activity-badge[class*="badge-sport-"] { background-color: #0d6efd; } /* Default blue */
+.activity-badge.badge-sport-run,
+.activity-badge.badge-sport-virtualrun { background-color: #28a745; }
+.activity-badge.badge-sport-ride,
+.activity-badge.badge-sport-virtualride { background-color: #fd7e14; }
+.activity-badge.badge-sport-swim { background-color: #17a2b8; }
+.activity-badge.badge-sport-walk,
+.activity-badge.badge-sport-hike { background-color: #8b5a2b; }
+.activity-badge.badge-sport-weighttraining { background-color: #6f42c1; }
+.activity-badge.badge-sport-workout { background-color: #dc3545; }
+.activity-badge.badge-sport-yoga { background-color: #e83e8c; }
+.activity-badge.badge-sport-crossfit { background-color: #ff6b6b; }
+.activity-badge.badge-sport-rowing,
+.activity-badge.badge-sport-rowindoor { background-color: #20c997; }
+.activity-badge.badge-sport-elliptical,
+.activity-badge.badge-sport-stairstepper { background-color: #6c757d; }
+.activity-badge.badge-sport-golf { background-color: #198754; }
+.activity-badge.badge-sport-tennis,
+.activity-badge.badge-sport-pickleball { background-color: #c9f364; color: #333; }
+.activity-badge.badge-sport-alpineski,
+.activity-badge.badge-sport-snowboard,
+.activity-badge.badge-sport-nordicski { background-color: #adb5bd; color: #333; }
 
 /* Extended Activity Type Badge Colors */
-.badge-recovery { background-color: #28a745 !important; color: #ffffff !important; }
-.badge-easy { background-color: #34d399 !important; color: #0d1117 !important; }
-.badge-tempo { background-color: #f59e0b !important; color: #0d1117 !important; }
-.badge-interval { background-color: #ef4444 !important; color: #ffffff !important; }
-.badge-long { background-color: #6366f1 !important; color: #ffffff !important; }
-.badge-zone2 { background-color: #3b82f6 !important; color: #ffffff !important; }
-.badge-threshold { background-color: #dc2626 !important; color: #ffffff !important; }
-.badge-base { background-color: #8b5cf6 !important; color: #ffffff !important; }
+.activity-badge.badge-recovery { background-color: #28a745; color: #ffffff; }
+.activity-badge.badge-easy { background-color: #34d399; color: #0d1117; }
+.activity-badge.badge-tempo { background-color: #f59e0b; color: #0d1117; }
+.activity-badge.badge-interval { background-color: #ef4444; color: #ffffff; }
+.activity-badge.badge-long { background-color: #6366f1; color: #ffffff; }
+.activity-badge.badge-zone2 { background-color: #3b82f6; color: #ffffff; }
+.activity-badge.badge-threshold { background-color: #dc2626; color: #ffffff; }
+.activity-badge.badge-base { background-color: #8b5cf6; color: #ffffff; }
 
 /* Activity Cards */
 .activity-card {
@@ -360,7 +441,7 @@ body {
     border: 1px solid #30363d;
     border-radius: 8px;
     margin-bottom: 12px;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .day-card.rest-day-card {
@@ -416,11 +497,13 @@ body {
 /* Activity Items (Mobile) */
 .day-card-activities {
     padding: 12px 16px;
+    overflow: visible;
 }
 
 .activity-item-mobile {
     padding: 10px 0;
     border-bottom: 1px solid #21262d;
+    overflow: visible;
 }
 
 .activity-item-mobile:last-child {
@@ -583,4 +666,224 @@ body {
         padding: 8px 12px;
         font-size: 0.9rem;
     }
+}
+
+/* ======================================
+   ACTIVITY DETAIL MOBILE STYLES
+   ====================================== */
+
+/* Activity Header Mobile */
+@media (max-width: 767.98px) {
+    .activity-detail-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .activity-detail-header .text-muted {
+        font-size: 0.85rem;
+    }
+
+    .activity-detail-header .text-muted span {
+        display: block;
+        margin: 4px 0 !important;
+    }
+}
+
+/* Key Metrics Cards Mobile */
+@media (max-width: 575.98px) {
+    .stats-card .card-body.text-center h3 {
+        font-size: 1.5rem;
+    }
+
+    .stats-card .card-body.text-center i {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* Pain Scale Selector Mobile */
+.pain-scale-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: flex-start;
+}
+
+.pain-scale-option {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: #0d1117;
+}
+
+.pain-scale-option:hover {
+    background-color: #161b22;
+    border-color: #30363d;
+}
+
+.pain-scale-option.selected {
+    border-color: #58a6ff;
+    background-color: rgba(88, 166, 255, 0.1);
+}
+
+.pain-scale-option i {
+    font-size: 1.25rem;
+}
+
+@media (max-width: 767.98px) {
+    .pain-scale-selector {
+        gap: 6px;
+    }
+
+    .pain-scale-option {
+        width: 32px;
+        height: 32px;
+    }
+
+    .pain-scale-option i {
+        font-size: 1.1rem;
+    }
+}
+
+/* Feeling Section Mobile */
+.feeling-section {
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+@media (max-width: 767.98px) {
+    .feeling-section {
+        padding: 12px;
+    }
+
+    .feeling-section h5 {
+        font-size: 1rem;
+    }
+
+    .feeling-section textarea {
+        font-size: 0.9rem;
+    }
+}
+
+/* Activity Detail Tables Mobile */
+@media (max-width: 767.98px) {
+    .stats-card .table td {
+        padding: 8px 4px;
+        font-size: 0.9rem;
+    }
+
+    .stats-card .table td:first-child {
+        width: 50%;
+    }
+
+    .stats-card .table td:last-child {
+        text-align: right;
+        font-weight: 500;
+    }
+
+    .stats-card .card-header {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+}
+
+/* Activity Description Card */
+.description-card {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+}
+
+.description-card .card-body {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+@media (max-width: 767.98px) {
+    .description-card .card-body {
+        font-size: 0.95rem;
+        padding: 12px;
+    }
+}
+
+/* Activity Flags Mobile */
+@media (max-width: 767.98px) {
+    .stats-card .d-flex.flex-wrap.gap-2 .badge {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+}
+
+/* Ensure activity link cards expand to fit content */
+.activity-link-mobile {
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+}
+
+/* Ensure detail content area expands */
+.day-card-details .detail-content {
+    overflow: visible;
+}
+
+/* ======================================
+   SYNC LOADING OVERLAY
+   ====================================== */
+
+.sync-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(13, 17, 23, 0.95);
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 20px;
+}
+
+.sync-overlay.active {
+    display: flex;
+}
+
+.sync-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #30363d;
+    border-top-color: #58a6ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.sync-message {
+    color: #c9d1d9;
+    font-size: 1.2rem;
+    text-align: center;
+    font-weight: 500;
+}
+
+.sync-submessage {
+    color: #58a6ff;
+    font-size: 1rem;
+    text-align: center;
+    padding: 8px 16px;
+    background-color: rgba(88, 166, 255, 0.1);
+    border-radius: 6px;
+    min-width: 200px;
 }

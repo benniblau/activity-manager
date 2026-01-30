@@ -206,122 +206,108 @@ def _clean_strava_value(value):
 
 @web_bp.route('/sync')
 def sync():
-    """Sync activities from Strava"""
+    """Sync activities from Strava (fallback for non-JS)"""
+    # Redirect to home - actual sync is done via AJAX
+    return redirect('/')
+
+
+@web_bp.route('/api/sync/activities', methods=['POST'])
+def api_sync_activities():
+    """AJAX: Step 1 - Sync activity summary data"""
+    from flask import jsonify
+
     try:
         client = get_strava_client()
-    except Exception as e:
-        session['auth_error'] = 'Please connect to Strava first'
-        return redirect('/')
+    except Exception:
+        return jsonify({'error': 'Please connect to Strava first'}), 401
 
     try:
-        from app.utils.database_helpers import dict_to_db_values
-
-        # Fetch activities from Strava (summary data only, no descriptions)
-        strava_activities = client.get_activities(limit=200)
+        from app.services.strava_service import StravaService
 
         db = get_db()
-        created_count = 0
-        updated_count = 0
+        strava_service = StravaService(client, db)
 
-        # Define allowed columns based on activities table schema
-        allowed_columns = {
-            'id', 'resource_state', 'external_id', 'upload_id',
-            'start_date', 'start_date_local', 'timezone', 'utc_offset', 'elapsed_time', 'moving_time',
-            'start_latlng', 'end_latlng', 'location_city', 'location_state', 'location_country', 'map',
-            'name', 'description', 'type', 'sport_type', 'workout_type',
-            'distance', 'total_elevation_gain', 'average_speed', 'max_speed', 'average_cadence',
-            'average_watts', 'weighted_average_watts', 'kilojoules', 'device_watts', 'max_watts',
-            'average_heartrate', 'max_heartrate', 'has_heartrate', 'average_temp', 'calories',
-            'elev_high', 'elev_low',
-            'kudos_count', 'comment_count', 'athlete_count', 'photo_count', 'total_photo_count',
-            'pr_count', 'achievement_count',
-            'trainer', 'commute', 'manual', 'private', 'flagged', 'has_kudoed',
-            'segment_leaderboard_opt_out', 'leaderboard_opt_out',
-            'device_name', 'athlete_id', 'gear_id',
-            'segment_efforts', 'splits_metric', 'splits_standard', 'laps', 'best_efforts', 'gear',
-            'day_date', 'extended_type_id'
-        }
+        # Fast bulk sync with summary data only
+        result = strava_service.sync_activities(limit=200, fetch_details=False)
 
-        for strava_activity in strava_activities:
-            # Convert to dict
-            if hasattr(strava_activity, 'to_dict'):
-                activity_data = strava_activity.to_dict()
-            else:
-                activity_data = dict(strava_activity)
+        # Get count of activities needing descriptions
+        cursor = db.execute('''
+            SELECT COUNT(*) as count FROM activities
+            WHERE description IS NULL OR description = ''
+        ''')
+        needs_descriptions = cursor.fetchone()['count']
 
-            # Filter to only include allowed columns (remove internal Strava fields)
-            activity_data = {k: v for k, v in activity_data.items() if k in allowed_columns}
-
-            # Clean all Strava API objects/enums to primitives
-            activity_data = {k: _clean_strava_value(v) for k, v in activity_data.items()}
-
-            # Ensure sport_type exists
-            if 'sport_type' not in activity_data or not activity_data['sport_type']:
-                activity_data['sport_type'] = activity_data.get('type', 'Workout')
-
-            # Ensure sport_type is a string
-            sport_type = str(activity_data['sport_type'])
-            activity_data['sport_type'] = sport_type
-
-            # Check if sport type exists in standard_activity_types
-            cursor = db.execute(
-                'SELECT name FROM standard_activity_types WHERE name = ?',
-                (sport_type,)
-            )
-            if not cursor.fetchone():
-                # Auto-create sport type with minimal data
-                db.execute(
-                    'INSERT OR IGNORE INTO standard_activity_types (name, category, display_name, icon, color) VALUES (?, ?, ?, ?, ?)',
-                    (sport_type, 'Other', sport_type, 'circle-question', 'badge-other')
-                )
-
-            # Calculate day_date from start_date_local
-            if 'start_date_local' in activity_data:
-                try:
-                    if isinstance(activity_data['start_date_local'], str):
-                        dt = datetime.fromisoformat(
-                            activity_data['start_date_local'].replace('Z', '+00:00')
-                        )
-                    else:
-                        dt = activity_data['start_date_local']
-                    activity_data['day_date'] = dt.date().isoformat()
-                except Exception:
-                    pass
-
-            # Check if activity exists
-            activity_id = activity_data.get('id')
-            cursor = db.execute('SELECT id FROM activities WHERE id = ?', (activity_id,))
-            existing = cursor.fetchone()
-
-            # Prepare database values
-            columns, values = dict_to_db_values(activity_data)
-
-            if existing:
-                # Update existing activity
-                set_clause = ', '.join([f"{col} = ?" for col in columns])
-                db.execute(
-                    f'UPDATE activities SET {set_clause}, updated_at = ? WHERE id = ?',
-                    values + [datetime.utcnow().isoformat(), activity_id]
-                )
-                updated_count += 1
-            else:
-                # Insert new activity
-                placeholders = ', '.join(['?' for _ in columns])
-                db.execute(
-                    f'INSERT INTO activities ({", ".join(columns)}, created_at, updated_at) VALUES ({placeholders}, ?, ?)',
-                    values + [datetime.utcnow().isoformat(), datetime.utcnow().isoformat()]
-                )
-                created_count += 1
-
-        # Commit all changes at once
-        db.commit()
-
-        session['sync_message'] = f"Synced from Strava: {created_count} new, {updated_count} updated"
-        return redirect('/')
+        return jsonify({
+            'success': True,
+            'created': result['created'],
+            'updated': result['updated'],
+            'needs_descriptions': min(needs_descriptions, 5)  # Cap at 5
+        })
 
     except Exception as e:
-        session['auth_error'] = f"Sync failed: {str(e)}"
-        return redirect('/')
+        return jsonify({'error': str(e)}), 500
+
+
+@web_bp.route('/api/sync/description/<int:activity_id>', methods=['POST'])
+def api_sync_description(activity_id):
+    """AJAX: Step 2 - Fetch description for a single activity"""
+    from flask import jsonify
+
+    try:
+        client = get_strava_client()
+    except Exception:
+        return jsonify({'error': 'Not authenticated'}), 401
+
+    try:
+        db = get_db()
+        detailed = client.get_activity(activity_id)
+
+        description = None
+        if hasattr(detailed, 'description') and detailed.description:
+            desc = detailed.description
+            if hasattr(desc, 'root'):
+                desc = desc.root
+            if desc and str(desc) not in ('None', ''):
+                description = str(desc)
+
+        if not description and hasattr(detailed, 'to_dict'):
+            data = detailed.to_dict()
+            if data.get('description'):
+                desc = data['description']
+                if hasattr(desc, 'root'):
+                    desc = desc.root
+                if desc and str(desc) not in ('None', ''):
+                    description = str(desc)
+
+        if description:
+            db.execute(
+                'UPDATE activities SET description = ?, updated_at = ? WHERE id = ?',
+                (description, datetime.utcnow().isoformat(), activity_id)
+            )
+            db.commit()
+            return jsonify({'success': True, 'has_description': True})
+
+        return jsonify({'success': True, 'has_description': False})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@web_bp.route('/api/sync/activities-needing-descriptions', methods=['GET'])
+def api_activities_needing_descriptions():
+    """AJAX: Get list of activity IDs needing descriptions"""
+    from flask import jsonify
+
+    db = get_db()
+    cursor = db.execute('''
+        SELECT id FROM activities
+        WHERE description IS NULL OR description = ''
+        ORDER BY start_date_local DESC
+        LIMIT 5
+    ''')
+    activities = [row['id'] for row in cursor.fetchall()]
+
+    return jsonify({'activity_ids': activities})
 
 
 @web_bp.route('/activity/<int:activity_id>')

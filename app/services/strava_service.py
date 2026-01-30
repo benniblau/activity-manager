@@ -22,13 +22,14 @@ class StravaService:
         self.type_repo = TypeRepository(db)
         self._validated_sport_types = set()  # Cache for validated sport types
 
-    def sync_activities(self, limit=30, after=None, before=None):
+    def sync_activities(self, limit=30, after=None, before=None, fetch_details=True):
         """Sync activities from Strava
 
         Args:
             limit: Maximum number of activities to fetch (default: 30, max: 200)
             after: Fetch activities after this Unix timestamp
             before: Fetch activities before this Unix timestamp
+            fetch_details: If True, fetch full details (including description) for new activities
 
         Returns:
             Dictionary with sync results:
@@ -65,15 +66,44 @@ class StravaService:
                 # Process each activity
                 for strava_activity in strava_activities:
                     try:
-                        # Use summary data directly (no additional API call for details)
-                        # This is much faster but won't include description field
-                        activity_data = self.transform_strava_data(strava_activity)
-                        created, _ = self.upsert_activity(activity_data)
+                        activity_id = strava_activity.id
 
-                        if created:
-                            created_count += 1
-                        else:
+                        # Check if activity already exists
+                        existing = self.activity_repo.get_by_id('activities', activity_id)
+
+                        if existing:
+                            # Check if existing activity is missing description
+                            needs_details = fetch_details and not existing.get('description')
+
+                            if needs_details:
+                                try:
+                                    # Fetch full details to get description
+                                    detailed_activity = self.client.get_activity(activity_id)
+                                    activity_data = self.transform_strava_data(detailed_activity)
+                                except Exception:
+                                    # Fall back to summary data if detail fetch fails
+                                    activity_data = self.transform_strava_data(strava_activity)
+                            else:
+                                # Update with summary data
+                                activity_data = self.transform_strava_data(strava_activity)
+
+                            self.upsert_activity(activity_data)
                             updated_count += 1
+                        else:
+                            # New activity - fetch full details if requested
+                            if fetch_details:
+                                try:
+                                    # Fetch full details (includes description)
+                                    detailed_activity = self.client.get_activity(activity_id)
+                                    activity_data = self.transform_strava_data(detailed_activity)
+                                except Exception:
+                                    # Fall back to summary data if detail fetch fails
+                                    activity_data = self.transform_strava_data(strava_activity)
+                            else:
+                                activity_data = self.transform_strava_data(strava_activity)
+
+                            self.upsert_activity(activity_data)
+                            created_count += 1
 
                     except Exception as e:
                         errors.append({
@@ -143,9 +173,26 @@ class StravaService:
             activity_data = dict(strava_activity)
 
         # Explicitly add description if it exists
-        # (to_dict() might not include it)
-        if hasattr(strava_activity, 'description') and strava_activity.description:
-            activity_data['description'] = strava_activity.description
+        # stravalib may return description as a pydantic RootModel or special type
+        if hasattr(strava_activity, 'description'):
+            desc = strava_activity.description
+            # Handle pydantic RootModel (has 'root' attribute)
+            if desc is not None:
+                if hasattr(desc, 'root'):
+                    desc = desc.root
+                # Convert to string
+                desc_str = str(desc) if desc else None
+                # Only set if we have actual content
+                if desc_str and desc_str.strip() and desc_str != 'None':
+                    activity_data['description'] = desc_str
+
+        # Also check if description came through to_dict()
+        if 'description' in activity_data and activity_data['description']:
+            desc = activity_data['description']
+            if hasattr(desc, 'root'):
+                activity_data['description'] = desc.root
+            elif desc and str(desc) != 'None':
+                activity_data['description'] = str(desc)
 
         # Ensure sport_type exists
         if 'sport_type' not in activity_data or not activity_data['sport_type']:
