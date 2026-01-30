@@ -370,7 +370,7 @@
                                         <h6 class="card-title mb-2">
                                             {{ activity.name }}
                                         </h6>
-                                        {{ activity_description(activity.description, mode='truncated', show_icon=true) }}
+                                        {{ activity_description(activity.description, mode='full', show_icon=true) }}
                                         <div class="small text-muted mb-1">
                                             {% if activity.distance %}
                                             <i class="bi bi-arrow-left-right"></i> {{ "%.2f"|format(activity.distance / 1000) }} km

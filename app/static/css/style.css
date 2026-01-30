@@ -171,13 +171,15 @@ body {
 /* Activity Cards */
 .activity-card {
     width: 280px;
-    height: 160px;
+    min-height: 160px;
+    height: auto;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .activity-card.has-feelings {
-    height: 220px;
+    min-height: 220px;
+    height: auto;
 }
 
 .activity-card:hover {
@@ -186,8 +188,8 @@ body {
 }
 
 .activity-card .card-body {
-    height: 100%;
-    overflow: hidden;
+    height: auto;
+    overflow: visible;
 }
 
 .activity-card .card-title {
