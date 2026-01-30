@@ -54,6 +54,38 @@
     max-height: none;
     overflow: visible;
     height: auto;
+    display: block;
+}
+
+/* Ensure descriptions are visible in mobile expanded cards */
+.activity-link-mobile .activity-description {
+    display: block;
+    margin: 8px 0;
+    padding: 8px 10px;
+    background: rgba(88, 166, 255, 0.08);
+    border-left: 2px solid #58a6ff;
+    border-radius: 4px;
+}
+
+/* Mobile expanded view - high specificity to ensure descriptions show */
+.activities-mobile .day-card-details .activity-link-mobile .activity-description,
+.activities-mobile .day-card-details .activity-link-mobile .activity-description.activity-description--full {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    max-height: none;
+    overflow: visible;
+    height: auto;
+    color: var(--bs-body-color);
+    margin: 10px 0;
+    padding: 10px 12px;
+    background: rgba(88, 166, 255, 0.1);
+    border-left: 3px solid #58a6ff;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 /* Modifier: Styled box (mobile summary view) */
@@ -68,6 +100,14 @@
 /* Description icon */
 .activity-description__icon {
     margin-right: 6px;
+    color: #58a6ff;
+    display: inline;
+    vertical-align: baseline;
+}
+
+/* Mobile expanded - ensure icon and text are visible */
+.activity-link-mobile .activity-description__icon {
+    display: inline;
     color: #58a6ff;
 }
 
@@ -562,8 +602,21 @@ body {
     border-top: 1px solid #30363d;
 }
 
+.day-card-details.show,
+.day-card-details.collapsing {
+    display: block;
+}
+
 .day-card-details .detail-content {
     padding: 12px 16px;
+}
+
+/* Ensure content in collapsed section is fully visible when expanded */
+.day-card-details.show .detail-content,
+.day-card-details.show .activity-link-mobile {
+    overflow: visible;
+    max-height: none;
+    height: auto;
 }
 
 .detail-row {
