@@ -116,32 +116,21 @@
             </div>
         </div>
 
-        <!-- Activities List -->
+        <!-- Day Feeling Text (if exists) -->
+        {% if day_feeling and day_feeling.feeling_text %}
+        <div class="day-feeling-text-mobile">
+            <i class="bi bi-journal-text"></i>
+            <span>{{ day_feeling.feeling_text }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Activities List (compact summary) -->
         <div class="day-card-activities">
             {% if day_activities %}
             {% for activity in day_activities %}
-            {% set has_feelings = activity.feeling_before_pain is not none or activity.feeling_during_pain is not none or activity.feeling_after_pain is not none %}
-            <div class="activity-item-mobile">
-                <div class="activity-item-main">
-                    {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
-                    <span class="activity-name">{{ activity.name }}</span>
-                </div>
-                {{ activity_description(activity.description, mode='styled', show_icon=true) }}
-                <div class="activity-item-metrics">
-                    {% if activity.distance %}
-                    <span><i class="bi bi-arrow-left-right"></i> {{ "%.1f"|format(activity.distance / 1000) }}km</span>
-                    {% endif %}
-                    {% if activity.moving_time %}
-                    <span><i class="bi bi-clock"></i> {{ (activity.moving_time // 60)|int }}m</span>
-                    {% endif %}
-                    {% if has_feelings %}
-                    <span class="activity-feelings-mini">
-                        {{ pain_icon(activity.feeling_before_pain, 'sm') }}
-                        {{ pain_icon(activity.feeling_during_pain, 'sm') }}
-                        {{ pain_icon(activity.feeling_after_pain, 'sm') }}
-                    </span>
-                    {% endif %}
-                </div>
+            <div class="activity-item-mobile-compact">
+                {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
+                <span class="activity-name">{{ activity.name }}</span>
             </div>
             {% endfor %}
             {% else %}
