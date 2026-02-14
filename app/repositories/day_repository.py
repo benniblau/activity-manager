@@ -59,6 +59,25 @@ class DayRepository(BaseRepository):
 
         return self.get_day(date)
 
+    def get_feelings_by_dates(self, dates):
+        """Get day feelings for a list of dates, keyed by date
+
+        Args:
+            dates: List of date strings (YYYY-MM-DD)
+
+        Returns:
+            Dictionary mapping date strings to day feeling dictionaries
+        """
+        if not dates:
+            return {}
+
+        placeholders = ','.join(['?' for _ in dates])
+        rows = self.fetchall(
+            f'SELECT * FROM days WHERE date IN ({placeholders})',
+            dates
+        )
+        return {row['date']: row for row in rows}
+
     def get_days_in_range(self, start_date, end_date):
         """Get all days in a date range
 
@@ -86,7 +105,6 @@ class DayRepository(BaseRepository):
             Dictionary with:
                 - day: Day information
                 - activities: List of activities for that day
-                - planned_activities: List of planned activities
         """
         day = self.get_day(date)
 
@@ -103,23 +121,9 @@ class DayRepository(BaseRepository):
         '''
         activities = self.fetchall(activities_query, (date,))
 
-        # Get planned activities
-        planned_query = '''
-            SELECT
-                p.*,
-                ext.custom_name as extended_name,
-                ext.color_class as extended_color
-            FROM planned_activities p
-            LEFT JOIN extended_activity_types ext ON p.extended_type_id = ext.id
-            WHERE p.date = ?
-            ORDER BY p.created_at
-        '''
-        planned = self.fetchall(planned_query, (date,))
-
         return {
             'day': day,
-            'activities': activities,
-            'planned_activities': planned
+            'activities': activities
         }
 
     def get_day_stats(self, date):

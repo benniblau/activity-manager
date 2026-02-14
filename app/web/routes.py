@@ -2,15 +2,14 @@ from flask import render_template, request, session, redirect, flash, Response
 import csv
 import io
 from datetime import datetime, timedelta
-from collections import defaultdict
 from app.web import web_bp
 from app.database import (
-    get_db, db_row_to_dict, get_extended_types,
-    get_standard_types_by_category, get_planned_activities
+    get_db, get_extended_types,
+    get_standard_types_by_category
 )
+from app.utils.database_helpers import db_row_to_dict, group_activities_by_day
 from app.repositories import (
     ActivityRepository,
-    PlanningRepository,
     TypeRepository,
     DayRepository,
     GearRepository
@@ -50,16 +49,7 @@ def index():
     rows = cursor.fetchall()
 
     # Group activities by day
-    activities_by_day = defaultdict(list)
-    for row in rows:
-        activity = db_row_to_dict(row)
-        # Extract date from start_date_local
-        date_str = activity['start_date_local']
-        if date_str:
-            # Parse ISO format date
-            date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-            day_key = date_obj.strftime('%Y-%m-%d')
-            activities_by_day[day_key].append(activity)
+    activities_by_day = group_activities_by_day([db_row_to_dict(row) for row in rows])
 
     # Generate all days from today back to earliest activity (or default 30 days)
     all_days = []
@@ -93,12 +83,8 @@ def index():
     paginated_activities = {day: activities_by_day.get(day, []) for day in paginated_days}
 
     # Get day feelings for paginated days
-    day_feelings = {}
-    if paginated_days:
-        placeholders = ','.join(['?' for _ in paginated_days])
-        cursor = db.execute(f'SELECT * FROM days WHERE date IN ({placeholders})', paginated_days)
-        for row in cursor.fetchall():
-            day_feelings[row['date']] = dict(row)
+    day_repo = DayRepository()
+    day_feelings = day_repo.get_feelings_by_dates(paginated_days)
 
     # Get unique sport types for filter
     cursor = db.execute('SELECT DISTINCT sport_type FROM activities ORDER BY sport_type')
@@ -485,70 +471,29 @@ def report():
     rows = cursor.fetchall()
 
     # Group activities by day
-    activities_by_day = defaultdict(list)
-    for row in rows:
-        activity = db_row_to_dict(row)
-        date_str = activity['start_date_local']
-        if date_str:
-            date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-            day_key = date_obj.strftime('%Y-%m-%d')
-            activities_by_day[day_key].append(activity)
-
-    # Fetch planned activities for date range
-    from app.database import get_planned_activities
-    planned_activities_list = get_planned_activities(start_date_str, end_date_str)
-
-    # Group planned activities by date
-    planned_by_day = defaultdict(list)
-    for planned in planned_activities_list:
-        planned_by_day[planned['date']].append(planned)
+    activities_by_day = group_activities_by_day([db_row_to_dict(row) for row in rows])
 
     # Generate all days in range (including days without activities)
     all_days = []
     current_date = end_date
     while current_date >= start_date:
         day_key = current_date.strftime('%Y-%m-%d')
-        actual_activities = activities_by_day.get(day_key, [])
-        planned_activities = planned_by_day.get(day_key, [])
-
-        # Calculate completion rate for the day
-        num_planned = len(planned_activities)
-        num_actual = len(actual_activities)
-        completion_rate = (num_actual / num_planned * 100) if num_planned > 0 else None
-
         all_days.append({
             'date': day_key,
             'weekday': current_date.strftime('%A'),
-            'activities': actual_activities,
-            'planned_activities': planned_activities,
-            'num_planned': num_planned,
-            'num_actual': num_actual,
-            'completion_rate': completion_rate
+            'activities': activities_by_day.get(day_key, [])
         })
         current_date -= timedelta(days=1)
 
     # Calculate summary statistics
     total_activities = len(rows)
-    total_planned = len(planned_activities_list)
     total_distance = sum(a.get('distance', 0) or 0 for a in [db_row_to_dict(r) for r in rows])
     total_time = sum(a.get('moving_time', 0) or 0 for a in [db_row_to_dict(r) for r in rows])
     days_with_activities = len([d for d in all_days if d['activities']])
-    days_with_planned = len([d for d in all_days if d['planned_activities']])
-
-    # Calculate overall completion rate only for days with planned activities
-    # Count actual activities only on days that had a plan
-    actual_on_planned_days = sum(d['num_actual'] for d in all_days if d['num_planned'] > 0)
-    planned_on_planned_days = sum(d['num_planned'] for d in all_days if d['num_planned'] > 0)
-    overall_completion_rate = (actual_on_planned_days / planned_on_planned_days * 100) if planned_on_planned_days > 0 else None
 
     # Get day feelings for all days in range
-    day_feelings = {}
-    day_dates = [d['date'] for d in all_days]
-    if day_dates:
-        placeholders = ','.join(['?' for _ in day_dates])
-        cursor = db.execute(f'SELECT * FROM days WHERE date IN ({placeholders})', day_dates)
-        for row in cursor.fetchall():
-            day_feelings[row['date']] = dict(row)
+    day_repo = DayRepository()
+    day_feelings = day_repo.get_feelings_by_dates([d['date'] for d in all_days])
 
     return render_template(
         'report.html',
@@ -557,12 +502,9 @@ def report():
         start_date=start_date_str,
         end_date=end_date_str,
         total_activities=total_activities,
-        total_planned=total_planned,
         total_distance=total_distance,
         total_time=total_time,
         days_with_activities=days_with_activities,
-        days_with_planned=days_with_planned,
-        overall_completion_rate=overall_completion_rate,
         total_days=len(all_days)
     )
 
@@ -595,14 +537,7 @@ def report_csv():
     rows = cursor.fetchall()
 
     # Group activities by day
-    activities_by_day = defaultdict(list)
-    for row in rows:
-        activity = db_row_to_dict(row)
-        date_str = activity['start_date_local']
-        if date_str:
-            date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-            day_key = date_obj.strftime('%Y-%m-%d')
-            activities_by_day[day_key].append(activity)
+    activities_by_day = group_activities_by_day([db_row_to_dict(row) for row in rows])
 
     # Generate all days in range
     all_days = []
@@ -617,13 +552,8 @@ def report_csv():
         current_date -= timedelta(days=1)
 
     # Get day feelings
-    day_feelings = {}
-    day_dates = [d['date'] for d in all_days]
-    if day_dates:
-        placeholders = ','.join(['?' for _ in day_dates])
-        cursor = db.execute(f'SELECT * FROM days WHERE date IN ({placeholders})', day_dates)
-        for row in cursor.fetchall():
-            day_feelings[row['date']] = dict(row)
+    day_repo = DayRepository()
+    day_feelings = day_repo.get_feelings_by_dates([d['date'] for d in all_days])
 
     # Create CSV in memory
     output = io.StringIO()

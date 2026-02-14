@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 import shutil
 from flask import g, current_app
+from app.utils.database_helpers import db_row_to_dict, dict_to_db_values
 
 
 def get_db():
@@ -178,6 +179,9 @@ def init_db():
     # Run migration to add standard activity types with FK constraints
     _migrate_add_standard_activity_types(db)
 
+    # Run migration to remove planned_activities table
+    _migrate_remove_planned_activities(db)
+
     # Create indexes for common queries
     db.execute('CREATE INDEX IF NOT EXISTS idx_start_date ON activities(start_date)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_sport_type ON activities(sport_type)')
@@ -291,35 +295,7 @@ def _migrate_add_extended_activity_types(db):
     db.execute('CREATE INDEX IF NOT EXISTS idx_extended_types_base ON extended_activity_types(base_sport_type)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_extended_types_active ON extended_activity_types(is_active)')
 
-    # 2. Create planned_activities table
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS planned_activities (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            name TEXT NOT NULL,
-            description TEXT,
-            extended_type_id INTEGER,
-            sport_type TEXT,
-            planned_distance REAL,
-            planned_duration INTEGER,
-            planned_elevation REAL,
-            coaching_notes TEXT,
-            intensity_level TEXT,
-            matched_activity_id INTEGER,
-            match_type TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (extended_type_id) REFERENCES extended_activity_types(id) ON DELETE SET NULL,
-            FOREIGN KEY (matched_activity_id) REFERENCES activities(id) ON DELETE SET NULL,
-            CHECK (extended_type_id IS NOT NULL OR sport_type IS NOT NULL)
-        )
-    ''')
-
-    db.execute('CREATE INDEX IF NOT EXISTS idx_planned_date ON planned_activities(date)')
-    db.execute('CREATE INDEX IF NOT EXISTS idx_planned_matched ON planned_activities(matched_activity_id)')
-    db.execute('CREATE INDEX IF NOT EXISTS idx_planned_extended_type ON planned_activities(extended_type_id)')
-
-    # 3. Add extended_type_id to activities table (migration-safe)
+    # 2. Add extended_type_id to activities table (migration-safe)
     cursor = db.execute("PRAGMA table_info(activities)")
     existing_columns = {row[1] for row in cursor.fetchall()}
 
@@ -695,50 +671,10 @@ def _migrate_add_standard_activity_types(db):
     db.commit()
 
 
-def dict_to_db_values(data):
-    """Convert dictionary to database-friendly values (serialize JSON fields)"""
-    json_fields = ['start_latlng', 'end_latlng', 'map', 'segment_efforts',
-                   'splits_metric', 'splits_standard', 'laps', 'best_efforts', 'gear']
-
-    result = {}
-    for key, value in data.items():
-        if key in json_fields and value is not None:
-            result[key] = json.dumps(value)
-        elif isinstance(value, bool):
-            result[key] = 1 if value else 0
-        else:
-            result[key] = value
-
-    return result
-
-
-def db_row_to_dict(row):
-    """Convert database row to dictionary with JSON fields parsed"""
-    if row is None:
-        return None
-
-    json_fields = ['start_latlng', 'end_latlng', 'map', 'segment_efforts',
-                   'splits_metric', 'splits_standard', 'laps', 'best_efforts', 'gear']
-
-    result = dict(row)
-
-    # Parse JSON fields
-    for field in json_fields:
-        if field in result and result[field]:
-            try:
-                result[field] = json.loads(result[field])
-            except:
-                pass
-
-    # Convert boolean fields
-    bool_fields = ['trainer', 'commute', 'manual', 'private', 'flagged',
-                   'has_heartrate', 'has_kudoed', 'segment_leaderboard_opt_out',
-                   'leaderboard_opt_out', 'device_watts']
-    for field in bool_fields:
-        if field in result and result[field] is not None:
-            result[field] = bool(result[field])
-
-    return result
+def _migrate_remove_planned_activities(db):
+    """Remove planned_activities table (planning feature removed)"""
+    db.execute('DROP TABLE IF EXISTS planned_activities')
+    db.commit()
 
 
 def get_extended_types(base_sport_type=None):
@@ -842,43 +778,3 @@ def validate_sport_type(sport_type):
     return cursor.fetchone()[0] > 0
 
 
-def get_planned_activities(start_date, end_date):
-    """Fetch planned activities within a date range with extended type info"""
-    db = get_db()
-
-    cursor = db.execute('''
-        SELECT
-            p.*,
-            ext.custom_name as extended_name,
-            ext.color_class as extended_color,
-            ext.icon_override as extended_icon,
-            ext.base_sport_type as extended_base_type,
-            a.name as matched_activity_name,
-            a.sport_type as matched_activity_type
-        FROM planned_activities p
-        LEFT JOIN extended_activity_types ext ON p.extended_type_id = ext.id
-        LEFT JOIN activities a ON p.matched_activity_id = a.id
-        WHERE p.date >= ? AND p.date <= ?
-        ORDER BY p.date, p.created_at
-    ''', (start_date, end_date))
-
-    return [db_row_to_dict(row) for row in cursor.fetchall()]
-
-
-def get_activity_with_extended_type(activity_id):
-    """Fetch single activity with extended type information"""
-    db = get_db()
-
-    cursor = db.execute('''
-        SELECT
-            a.*,
-            ext.custom_name as extended_name,
-            ext.color_class as extended_color,
-            ext.base_sport_type as extended_base_type
-        FROM activities a
-        LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
-        WHERE a.id = ?
-    ''', (activity_id,))
-
-    row = cursor.fetchone()
-    return db_row_to_dict(row) if row else None

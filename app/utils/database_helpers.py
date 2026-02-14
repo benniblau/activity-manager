@@ -1,6 +1,7 @@
 """Database utility functions for data transformation and formatting"""
 
 import json
+from collections import defaultdict
 from datetime import datetime
 
 
@@ -230,3 +231,22 @@ def execute_query(db, query, params=None, fetch_one=False):
     else:
         rows = cursor.fetchall()
         return [db_row_to_dict(row) for row in rows]
+
+
+def group_activities_by_day(rows):
+    """Group activity database rows by day (YYYY-MM-DD)
+
+    Args:
+        rows: Iterable of activity dictionaries with 'start_date_local' field
+
+    Returns:
+        defaultdict mapping date strings to lists of activity dictionaries
+    """
+    activities_by_day = defaultdict(list)
+    for activity in rows:
+        date_str = activity.get('start_date_local')
+        if date_str:
+            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            day_key = dt.strftime('%Y-%m-%d')
+            activities_by_day[day_key].append(activity)
+    return activities_by_day

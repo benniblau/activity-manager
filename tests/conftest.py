@@ -48,7 +48,6 @@ def db(app):
         db = get_db()
 
         # Clear all tables before each test
-        db.execute('DELETE FROM planned_activities')
         db.execute('DELETE FROM activities')
         db.execute('DELETE FROM extended_activity_types WHERE id > 100')  # Keep seed data
         db.execute('DELETE FROM days')

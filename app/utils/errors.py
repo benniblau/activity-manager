@@ -42,18 +42,6 @@ class TypeNotFoundError(AppError):
         self.type_identifier = type_identifier
 
 
-class PlannedActivityNotFoundError(AppError):
-    """Raised when a planned activity cannot be found"""
-
-    def __init__(self, planned_id):
-        super().__init__(
-            f"Planned activity with ID {planned_id} not found",
-            code="PLANNED_ACTIVITY_NOT_FOUND",
-            status_code=404
-        )
-        self.planned_id = planned_id
-
-
 class ValidationError(AppError):
     """Raised when data validation fails"""
 
@@ -130,12 +118,3 @@ class DuplicateError(AppError):
         self.identifier = identifier
 
 
-class InvalidOperationError(AppError):
-    """Raised when an invalid operation is attempted"""
-
-    def __init__(self, message):
-        super().__init__(
-            message,
-            code="INVALID_OPERATION",
-            status_code=400
-        )

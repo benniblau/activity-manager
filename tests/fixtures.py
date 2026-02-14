@@ -1,4 +1,4 @@
-"""Test data fixtures for activities, types, and planned activities"""
+"""Test data fixtures for activities and types"""
 
 from datetime import datetime, timedelta
 
@@ -69,40 +69,6 @@ def get_sample_extended_type(type_id=1, base_sport_type='Run', custom_name='Easy
 
     ext_type.update(overrides)
     return ext_type
-
-
-def get_sample_planned_activity(planned_id=1, date=None, **overrides):
-    """Get a sample planned activity
-
-    Args:
-        planned_id: Planned activity ID
-        date: Date for the planned activity (defaults to tomorrow)
-        **overrides: Override any default values
-
-    Returns:
-        Dictionary with planned activity data
-    """
-    if date is None:
-        date = (datetime.now() + timedelta(days=1)).date().isoformat()
-
-    planned = {
-        'id': planned_id,
-        'date': date,
-        'name': 'Planned Morning Run',
-        'sport_type': 'Run',
-        'description': 'Easy recovery run',
-        'extended_type_id': None,
-        'planned_distance': 5000.0,
-        'planned_duration': 1800,
-        'planned_elevation': 50.0,
-        'intensity_level': 2,
-        'coaching_notes': 'Keep it easy',
-        'matched_activity_id': None,
-        'match_type': None
-    }
-
-    planned.update(overrides)
-    return planned
 
 
 def get_sample_standard_type(name='Run', category='Foot', **overrides):
@@ -188,7 +154,3 @@ SAMPLE_EXTENDED_TYPES = [
     get_sample_extended_type(104, 'HIIT', 'Tabata'),
 ]
 
-SAMPLE_PLANNED_ACTIVITIES = [
-    get_sample_planned_activity(1, date=(datetime.now() + timedelta(days=1)).date().isoformat()),
-    get_sample_planned_activity(2, date=(datetime.now() + timedelta(days=2)).date().isoformat()),
-]
