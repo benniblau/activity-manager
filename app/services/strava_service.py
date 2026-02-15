@@ -295,20 +295,56 @@ class StravaService:
 
         # Cadence
         activity_data['average_cadence'] = self._extract_value(strava_activity, 'average_cadence')
+        activity_data['max_cadence'] = self._extract_value(strava_activity, 'max_cadence')
 
         # Calories
         activity_data['calories'] = self._extract_value(strava_activity, 'calories')
+
+        # Elevation details
+        activity_data['elev_high'] = self._extract_value(strava_activity, 'elev_high')
+        activity_data['elev_low'] = self._extract_value(strava_activity, 'elev_low')
+
+        # Temperature
+        activity_data['average_temp'] = self._extract_value(strava_activity, 'average_temp')
+
+        # Perceived exertion
+        activity_data['perceived_exertion'] = self._extract_value(strava_activity, 'perceived_exertion')
+        activity_data['prefer_perceived_exertion'] = self._extract_value(strava_activity, 'prefer_perceived_exertion')
 
         # Location
         activity_data['start_latlng'] = self._extract_value(strava_activity, 'start_latlng')
         activity_data['end_latlng'] = self._extract_value(strava_activity, 'end_latlng')
         activity_data['timezone'] = self._extract_value(strava_activity, 'timezone')
+        activity_data['utc_offset'] = self._extract_value(strava_activity, 'utc_offset')
+        activity_data['location_city'] = self._extract_value(strava_activity, 'location_city')
+        activity_data['location_state'] = self._extract_value(strava_activity, 'location_state')
+        activity_data['location_country'] = self._extract_value(strava_activity, 'location_country')
+
+        # Identifiers
+        activity_data['resource_state'] = self._extract_value(strava_activity, 'resource_state')
+        activity_data['external_id'] = self._extract_value(strava_activity, 'external_id')
+        activity_data['upload_id'] = self._extract_value(strava_activity, 'upload_id')
+        activity_data['workout_type'] = self._extract_value(strava_activity, 'workout_type')
 
         # Flags
         activity_data['trainer'] = self._extract_value(strava_activity, 'trainer')
         activity_data['commute'] = self._extract_value(strava_activity, 'commute')
         activity_data['manual'] = self._extract_value(strava_activity, 'manual')
         activity_data['private'] = self._extract_value(strava_activity, 'private')
+        activity_data['flagged'] = self._extract_value(strava_activity, 'flagged')
+        activity_data['has_kudoed'] = self._extract_value(strava_activity, 'has_kudoed')
+
+        # Social & engagement
+        activity_data['kudos_count'] = self._extract_value(strava_activity, 'kudos_count')
+        activity_data['comment_count'] = self._extract_value(strava_activity, 'comment_count')
+        activity_data['athlete_count'] = self._extract_value(strava_activity, 'athlete_count')
+        activity_data['photo_count'] = self._extract_value(strava_activity, 'photo_count')
+        activity_data['total_photo_count'] = self._extract_value(strava_activity, 'total_photo_count')
+        activity_data['pr_count'] = self._extract_value(strava_activity, 'pr_count')
+        activity_data['achievement_count'] = self._extract_value(strava_activity, 'achievement_count')
+
+        # Device
+        activity_data['device_name'] = self._extract_value(strava_activity, 'device_name')
 
         # Gear
         gear = self._extract_value(strava_activity, 'gear')

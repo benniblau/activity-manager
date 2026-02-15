@@ -1,6 +1,7 @@
-from flask import render_template, request, session, redirect, flash, Response
+from flask import render_template, request, session, redirect, flash, Response, send_from_directory, current_app
 import csv
 import io
+import os
 from datetime import datetime, timedelta
 from app.web import web_bp
 from app.database import (
@@ -336,10 +337,17 @@ def activity_detail(activity_id):
     # Get extended types for the activity's sport type
     extended_types = get_extended_types(base_sport_type=activity.get('sport_type'))
 
+    # Get media for this activity
+    media_cursor = db.execute(
+        'SELECT * FROM activity_media WHERE activity_id = ? ORDER BY sort_order',
+        (activity_id,)
+    )
+    activity_media = [db_row_to_dict(row) for row in media_cursor.fetchall()]
+
     # Get and clear flash messages from session
     success_message = session.pop('sync_message', None)
 
-    return render_template('activity_detail.html', activity=activity, extended_types=extended_types, success_message=success_message)
+    return render_template('activity_detail.html', activity=activity, extended_types=extended_types, activity_media=activity_media, success_message=success_message)
 
 
 @web_bp.route('/activity/<int:activity_id>/annotations', methods=['POST'])
@@ -722,3 +730,17 @@ def day_detail(date):
         next_date=next_date,
         success_message=success_message,
     )
+
+
+@web_bp.route('/data/media/<path:filename>')
+def serve_media(filename):
+    """Serve activity media files (photos)"""
+    media_dir = os.path.join(current_app.root_path, '..', 'data', 'media')
+    return send_from_directory(os.path.abspath(media_dir), filename)
+
+
+@web_bp.route('/data/fit/<path:filename>')
+def serve_fit(filename):
+    """Serve FIT files for download"""
+    fit_dir = os.path.join(current_app.root_path, '..', 'data', 'fit_files')
+    return send_from_directory(os.path.abspath(fit_dir), filename, as_attachment=True)

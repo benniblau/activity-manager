@@ -182,6 +182,22 @@ def init_db():
     # Run migration to remove planned_activities table
     _migrate_remove_planned_activities(db)
 
+    # Run migration to add archive-specific columns
+    _migrate_add_archive_columns(db)
+
+    # Create activity_media table for photos linked to activities
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS activity_media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+            file_path TEXT NOT NULL,
+            caption TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_activity_media_activity ON activity_media(activity_id)')
+
     # Create indexes for common queries
     db.execute('CREATE INDEX IF NOT EXISTS idx_start_date ON activities(start_date)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_sport_type ON activities(sport_type)')
@@ -674,6 +690,65 @@ def _migrate_add_standard_activity_types(db):
 def _migrate_remove_planned_activities(db):
     """Remove planned_activities table (planning feature removed)"""
     db.execute('DROP TABLE IF EXISTS planned_activities')
+    db.commit()
+
+
+def _migrate_add_archive_columns(db):
+    """Add columns for Strava archive import data (weather, grades, etc.)"""
+    cursor = db.execute("PRAGMA table_info(activities)")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+
+    new_columns = [
+        # Performance extras
+        ('max_cadence', 'REAL'),
+        ('relative_effort', 'REAL'),
+        ('total_work', 'REAL'),
+        ('training_load', 'REAL'),
+        ('intensity', 'REAL'),
+        ('perceived_exertion', 'REAL'),
+        ('perceived_relative_effort', 'REAL'),
+        ('prefer_perceived_exertion', 'INTEGER'),
+        # Elevation extras
+        ('elevation_loss', 'REAL'),
+        ('max_grade', 'REAL'),
+        ('average_grade', 'REAL'),
+        ('average_positive_grade', 'REAL'),
+        ('average_negative_grade', 'REAL'),
+        # Distance extras
+        ('grade_adjusted_distance', 'REAL'),
+        ('gravel_distance', 'REAL'),
+        ('average_grade_adjusted_pace', 'REAL'),
+        ('average_elapsed_speed', 'REAL'),
+        # Athlete/body
+        ('athlete_weight', 'REAL'),
+        ('bike_weight', 'REAL'),
+        ('total_steps', 'INTEGER'),
+        ('total_weight_lifted', 'REAL'),
+        ('pool_length', 'REAL'),
+        ('total_cycles', 'INTEGER'),
+        # Timing extras
+        ('uphill_time', 'REAL'),
+        ('downhill_time', 'REAL'),
+        ('other_time', 'REAL'),
+        ('stopwatch_time', 'REAL'),
+        # Weather (JSON blob)
+        ('weather', 'TEXT'),
+        # Tags/flags
+        ('carbon_saved', 'REAL'),
+        ('from_upload', 'INTEGER'),
+        ('with_pet', 'INTEGER'),
+        ('race', 'INTEGER'),
+        ('long_run', 'INTEGER'),
+        ('charity', 'INTEGER'),
+        ('with_child', 'INTEGER'),
+        # Linked files
+        ('fit_file_path', 'TEXT'),
+    ]
+
+    for column_name, column_type in new_columns:
+        if column_name not in existing_columns:
+            db.execute(f'ALTER TABLE activities ADD COLUMN {column_name} {column_type}')
+
     db.commit()
 
 

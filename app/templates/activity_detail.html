@@ -102,6 +102,29 @@
 </div>
 {% endif %}
 
+<!-- Activity Photos -->
+{% if activity_media %}
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-images"></i> Photos ({{ activity_media|length }})
+    </div>
+    <div class="card-body">
+        <div class="row g-2">
+            {% for media in activity_media %}
+            <div class="col-6 col-md-4">
+                <a href="/data/media/{{ media.file_path }}" target="_blank">
+                    <img src="/data/media/{{ media.file_path }}" class="img-fluid rounded" alt="Activity photo" style="width: 100%; aspect-ratio: 1; object-fit: cover;">
+                </a>
+                {% if media.caption %}
+                <small class="text-muted d-block mt-1">{{ media.caption }}</small>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Key Metrics -->
 <div class="row mb-4 g-2 g-md-3">
     {% if activity.distance %}
@@ -163,7 +186,15 @@
             </div>
             <div class="card-body">
                 <table class="table table-sm mb-0">
-                    {% if activity.average_speed %}
+                    {% if activity.average_speed and activity.average_speed > 0 %}
+                    {% set is_pace_sport = activity.sport_type in ['Run', 'TrailRun', 'VirtualRun', 'Walk', 'Hike'] %}
+                    {% if is_pace_sport %}
+                    {% set pace_total_secs = (1000 / activity.average_speed)|int %}
+                    <tr>
+                        <td class="text-muted">Average Pace</td>
+                        <td class="text-end">{{ (pace_total_secs // 60)|int }}:{{ "%02d"|format(pace_total_secs % 60) }} min/km</td>
+                    </tr>
+                    {% endif %}
                     <tr>
                         <td class="text-muted">Average Speed</td>
                         <td class="text-end">{{ "%.2f"|format(activity.average_speed * 3.6) }} km/h</td>

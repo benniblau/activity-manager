@@ -136,6 +136,10 @@
                 {% if activity.moving_time %}
                 <span class="me-3"><i class="bi bi-clock"></i> {{ (activity.moving_time // 3600)|int }}h {{ ((activity.moving_time % 3600) // 60)|int }}m</span>
                 {% endif %}
+                {% if activity.average_speed and activity.average_speed > 0 and activity.sport_type in ['Run', 'TrailRun', 'VirtualRun', 'Walk', 'Hike'] %}
+                {% set pace_secs = (1000 / activity.average_speed)|int %}
+                <span class="me-3"><i class="bi bi-stopwatch"></i> {{ (pace_secs // 60)|int }}:{{ "%02d"|format(pace_secs % 60) }} /km</span>
+                {% endif %}
             </div>
             {% if activity.total_elevation_gain %}
             <div class="small text-muted mt-1">
