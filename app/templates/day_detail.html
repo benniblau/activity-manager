@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+{% from "macros.html" import sport_icon, sport_badge, pain_icon, activity_description %}
+
+{% block title %}{{ formatted_date }} - Activity Manager{% endblock %}
+
+{% block content %}
+<!-- Flash Messages -->
+{% if success_message %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle"></i> {{ success_message }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Navigation -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="/" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Activities
+    </a>
+    <div class="d-flex gap-2">
+        <a href="/day/{{ prev_date }}" class="btn btn-outline-secondary" title="{{ prev_date }}">
+            <i class="bi bi-chevron-left"></i>
+        </a>
+        <a href="/day/{{ next_date }}" class="btn btn-outline-secondary" title="{{ next_date }}">
+            <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+</div>
+
+<!-- Day Header -->
+<div class="card stats-card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div>
+                <h2 class="mb-1">{{ formatted_date }}</h2>
+                <p class="text-muted mb-0">
+                    <i class="bi bi-calendar-date"></i> {{ weekday }}
+                    {% if stats.activity_count > 0 %}
+                    <span class="ms-3">{{ stats.activity_count }} activit{{ 'ies' if stats.activity_count != 1 else 'y' }}</span>
+                    {% else %}
+                    <span class="ms-3">Rest day</span>
+                    {% endif %}
+                </p>
+            </div>
+            <div class="text-end">
+                {% if day_feeling and day_feeling.feeling_pain is defined and day_feeling.feeling_pain is not none %}
+                {{ pain_icon(day_feeling.feeling_pain, 'lg') }}
+                {% endif %}
+            </div>
+        </div>
+        {% if day_feeling and day_feeling.feeling_text %}
+        <div class="mt-3 p-3" style="background: rgba(88, 166, 255, 0.08); border-left: 3px solid #58a6ff; border-radius: 4px;">
+            <i class="bi bi-journal-text me-2"></i>{{ day_feeling.feeling_text }}
+        </div>
+        {% endif %}
+        {% if day_feeling and day_feeling.coach_comment %}
+        <div class="mt-2 p-3" style="background: rgba(56, 189, 248, 0.08); border-left: 3px solid #38bdf8; border-radius: 4px;">
+            <i class="bi bi-chat-left-text text-info me-2"></i>{{ day_feeling.coach_comment }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Day Stats -->
+{% if stats.activity_count > 0 %}
+<div class="row mb-4 g-2 g-md-3">
+    <div class="col-6 col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-activity text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">{{ stats.activity_count }}</h3>
+                <small class="text-muted">Activities</small>
+            </div>
+        </div>
+    </div>
+    {% if stats.total_distance > 0 %}
+    <div class="col-6 col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-arrow-left-right text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">{{ "%.2f"|format(stats.total_distance / 1000) }} km</h3>
+                <small class="text-muted">Distance</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if stats.total_time > 0 %}
+    <div class="col-6 col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-stopwatch text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">{{ (stats.total_time // 3600)|int }}h {{ ((stats.total_time % 3600) // 60)|int }}m</h3>
+                <small class="text-muted">Total Time</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% if stats.total_elevation > 0 %}
+    <div class="col-6 col-md-3">
+        <div class="card stats-card h-100">
+            <div class="card-body text-center py-3">
+                <i class="bi bi-graph-up-arrow text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0">{{ "%.0f"|format(stats.total_elevation) }} m</h3>
+                <small class="text-muted">Elevation</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Activities -->
+{% if activities %}
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-list-ul"></i> Activities
+    </div>
+    <div class="card-body">
+        {% for activity in activities %}
+        {% set has_feelings = activity.feeling_before_pain is not none or activity.feeling_during_pain is not none or activity.feeling_after_pain is not none %}
+        <a href="/activity/{{ activity.id }}" class="activity-link-mobile d-block mb-3">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                {{ sport_badge(activity.sport_type, activity.extended_name, activity.extended_color) }}
+                <span class="small text-muted">
+                    {{ activity.start_date_local.split('T')[1][:5] if activity.start_date_local and 'T' in activity.start_date_local else '' }}
+                </span>
+            </div>
+            <div class="fw-medium mb-2">{{ activity.name }}</div>
+
+            {{ activity_description(activity.description, mode='full', show_icon=true) }}
+
+            <div class="small text-muted">
+                {% if activity.distance %}
+                <span class="me-3"><i class="bi bi-arrow-left-right"></i> {{ "%.2f"|format(activity.distance / 1000) }} km</span>
+                {% endif %}
+                {% if activity.moving_time %}
+                <span class="me-3"><i class="bi bi-clock"></i> {{ (activity.moving_time // 3600)|int }}h {{ ((activity.moving_time % 3600) // 60)|int }}m</span>
+                {% endif %}
+            </div>
+            {% if activity.total_elevation_gain %}
+            <div class="small text-muted mt-1">
+                <i class="bi bi-graph-up"></i> {{ "%.0f"|format(activity.total_elevation_gain) }} m elevation
+            </div>
+            {% endif %}
+            {% if activity.average_heartrate %}
+            <div class="small text-muted mt-1">
+                <i class="bi bi-heart-pulse"></i> {{ "%.0f"|format(activity.average_heartrate) }} bpm avg
+            </div>
+            {% endif %}
+
+            {% if has_feelings %}
+            <div class="d-flex justify-content-around mt-2 pt-2 border-top border-secondary">
+                <div class="text-center">
+                    {{ pain_icon(activity.feeling_before_pain) }}
+                    <div class="feeling-label text-muted">Before</div>
+                </div>
+                <div class="text-center">
+                    {{ pain_icon(activity.feeling_during_pain) }}
+                    <div class="feeling-label text-muted">During</div>
+                </div>
+                <div class="text-center">
+                    {{ pain_icon(activity.feeling_after_pain) }}
+                    <div class="feeling-label text-muted">After</div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if activity.coach_comment %}
+            <div class="mt-2 pt-2 border-top border-secondary small">
+                <i class="bi bi-chat-left-text text-info"></i> {{ activity.coach_comment }}
+            </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="card stats-card mb-4">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-moon-stars text-muted" style="font-size: 3rem;"></i>
+        <h4 class="mt-3 text-muted">Rest Day</h4>
+        <p class="text-muted mb-0">No activities recorded for this day.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Day Feeling Form -->
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-emoji-smile"></i> How Did You Feel Today?
+    </div>
+    <div class="card-body">
+        <form method="POST" action="/day/{{ date }}/annotations">
+            <input type="hidden" name="referer" value="/day/{{ date }}">
+
+            <div class="mb-3">
+                <label class="form-label small text-muted">Overall Feeling</label>
+                <div class="pain-scale-selector" data-input="feeling_pain">
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 0 %}selected{% endif %}" data-value="0" title="Level 0"><i class="fa-solid fa-face-grin-beam" style="color: #10b981;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 1 %}selected{% endif %}" data-value="1" title="Level 1"><i class="fa-solid fa-face-smile-beam" style="color: #34d399;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 2 %}selected{% endif %}" data-value="2" title="Level 2"><i class="fa-solid fa-face-meh" style="color: #84cc16;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 3 %}selected{% endif %}" data-value="3" title="Level 3"><i class="fa-solid fa-face-frown-slight" style="color: #a3e635;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 4 %}selected{% endif %}" data-value="4" title="Level 4"><i class="fa-solid fa-face-worried" style="color: #eab308;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 5 %}selected{% endif %}" data-value="5" title="Level 5"><i class="fa-solid fa-face-frown-open" style="color: #f59e0b;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 6 %}selected{% endif %}" data-value="6" title="Level 6"><i class="fa-solid fa-face-grimace" style="color: #f97316;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 7 %}selected{% endif %}" data-value="7" title="Level 7"><i class="fa-solid fa-face-sad-cry" style="color: #ea580c;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 8 %}selected{% endif %}" data-value="8" title="Level 8"><i class="fa-solid fa-face-confounded" style="color: #ef4444;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 9 %}selected{% endif %}" data-value="9" title="Level 9"><i class="fa-solid fa-face-weary" style="color: #dc2626;"></i></div>
+                    <div class="pain-scale-option {% if day_feeling and day_feeling.feeling_pain == 10 %}selected{% endif %}" data-value="10" title="Level 10"><i class="fa-solid fa-face-dizzy" style="color: #b91c1c;"></i></div>
+                </div>
+                <input type="hidden" name="feeling_pain" id="feeling_pain"
+                       value="{{ day_feeling.feeling_pain if day_feeling and day_feeling.feeling_pain is not none else '' }}">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small text-muted">Notes</label>
+                <textarea class="form-control" name="feeling_text" rows="3"
+                          placeholder="How did you feel today?">{{ day_feeling.feeling_text if day_feeling and day_feeling.feeling_text else '' }}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label small text-muted">Coach Comment</label>
+                <textarea class="form-control" name="coach_comment" rows="3"
+                          placeholder="Coach notes and recommendations...">{{ day_feeling.coach_comment if day_feeling and day_feeling.coach_comment else '' }}</textarea>
+            </div>
+
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Day Feeling
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Pain scale selector functionality
+    document.querySelectorAll('.pain-scale-selector').forEach(selector => {
+        const inputId = selector.dataset.input;
+        const hiddenInput = document.getElementById(inputId);
+
+        selector.querySelectorAll('.pain-scale-option').forEach(option => {
+            option.addEventListener('click', () => {
+                selector.querySelectorAll('.pain-scale-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                option.classList.add('selected');
+                hiddenInput.value = option.dataset.value;
+            });
+        });
+    });
+</script>
+{% endblock %}

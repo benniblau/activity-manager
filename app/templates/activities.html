@@ -219,16 +219,21 @@
             </div>
         </div>
 
-        <!-- Expand Toggle -->
-        <button class="day-card-toggle"
-                type="button"
-                data-bs-toggle="collapse"
-                data-bs-target="#dayDetails-{{ day | replace('-', '') }}"
-                aria-expanded="false"
-                aria-controls="dayDetails-{{ day | replace('-', '') }}">
-            <i class="bi bi-chevron-down"></i>
-            <span>Details</span>
-        </button>
+        <!-- Footer: Expand Toggle + Day Link -->
+        <div class="day-card-footer">
+            <button class="day-card-toggle"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#dayDetails-{{ day | replace('-', '') }}"
+                    aria-expanded="false"
+                    aria-controls="dayDetails-{{ day | replace('-', '') }}">
+                <i class="bi bi-chevron-down"></i>
+                <span>Details</span>
+            </button>
+            <a href="/day/{{ day }}" class="day-card-link" title="Open day details">
+                <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
     </div>
     {% endfor %}
 </div>
@@ -259,7 +264,7 @@
             <tr class="day-row-collapsed collapsed" data-day="{{ day | replace('-', '') }}">
                 <td class="day-header fw-bold">
                     <i class="bi bi-calendar-date"></i>
-                    {{ day }}
+                    <a href="/day/{{ day }}" class="text-decoration-none" onclick="event.stopPropagation();">{{ day }}</a>
                     <i class="bi bi-chevron-down expand-icon me-2"></i>
                 </td>
                 <td class="align-middle">
@@ -425,7 +430,7 @@
             <tr class="day-row-collapsed rest-day collapsed" data-day="{{ day | replace('-', '') }}">
                 <td class="day-header fw-bold">
                     <i class="bi bi-calendar-date"></i>
-                    {{ day }}
+                    <a href="/day/{{ day }}" class="text-decoration-none" onclick="event.stopPropagation();">{{ day }}</a>
                     <i class="bi bi-chevron-down expand-icon me-2"></i>
                 </td>
                 <td class="align-middle">

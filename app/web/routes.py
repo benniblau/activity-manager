@@ -669,3 +669,56 @@ def save_day_annotations(date):
     # Redirect back to the referring page
     referer = request.form.get('referer', '/')
     return redirect(referer)
+
+
+@web_bp.route('/day/<date>')
+def day_detail(date):
+    """Display detailed view of a specific day — shareable URL for coach"""
+    # Validate date format
+    try:
+        date_obj = datetime.strptime(date, '%Y-%m-%d')
+    except ValueError:
+        session['auth_error'] = 'Invalid date format. Use YYYY-MM-DD.'
+        return redirect('/')
+
+    # Fetch day data using repository
+    day_repo = DayRepository()
+    day_data = day_repo.get_day_with_activities(date)
+    day_feeling = day_data['day'] or {}
+    activities = day_data['activities']
+
+    # Compute stats
+    total_distance = sum((a.get('distance') or 0) for a in activities)
+    total_time = sum((a.get('moving_time') or 0) for a in activities)
+    total_elevation = sum((a.get('total_elevation_gain') or 0) for a in activities)
+
+    stats = {
+        'activity_count': len(activities),
+        'total_distance': total_distance,
+        'total_time': total_time,
+        'total_elevation': total_elevation,
+    }
+
+    # Format date for display
+    formatted_date = date_obj.strftime('%A, %B %d, %Y')
+    weekday = date_obj.strftime('%A')
+
+    # Prev/next day navigation
+    prev_date = (date_obj - timedelta(days=1)).strftime('%Y-%m-%d')
+    next_date = (date_obj + timedelta(days=1)).strftime('%Y-%m-%d')
+
+    # Flash messages
+    success_message = session.pop('sync_message', None)
+
+    return render_template(
+        'day_detail.html',
+        date=date,
+        formatted_date=formatted_date,
+        weekday=weekday,
+        day_feeling=day_feeling,
+        activities=activities,
+        stats=stats,
+        prev_date=prev_date,
+        next_date=next_date,
+        success_message=success_message,
+    )

@@ -691,9 +691,34 @@ body {
     border-bottom: none;
 }
 
+/* Day Card Footer (toggle + link) */
+.day-card-footer {
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #30363d;
+}
+
+.day-card-footer .day-card-toggle {
+    border-top: none;
+}
+
+.day-card-link {
+    padding: 10px 16px;
+    color: #8b949e;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: color 0.2s;
+    flex-shrink: 0;
+    border-left: 1px solid #30363d;
+}
+
+.day-card-link:hover {
+    color: #58a6ff;
+}
+
 /* Expand Toggle Button */
 .day-card-toggle {
-    width: 100%;
+    flex: 1;
     padding: 10px 16px;
     background-color: transparent;
     border: none;
