@@ -267,6 +267,58 @@ def map_sport_type(german_type):
     return SPORT_TYPE_MAP.get(german_type, german_type)
 
 
+# ---------- Schema migration ----------
+
+def _ensure_archive_columns(db):
+    """Add archive-specific columns if they don't exist yet."""
+    cursor = db.execute("PRAGMA table_info(activities)")
+    existing = {row[1] for row in cursor.fetchall()}
+
+    new_columns = [
+        ('max_cadence', 'REAL'), ('relative_effort', 'REAL'),
+        ('total_work', 'REAL'), ('training_load', 'REAL'),
+        ('intensity', 'REAL'), ('perceived_exertion', 'REAL'),
+        ('perceived_relative_effort', 'REAL'), ('prefer_perceived_exertion', 'INTEGER'),
+        ('elevation_loss', 'REAL'), ('max_grade', 'REAL'),
+        ('average_grade', 'REAL'), ('average_positive_grade', 'REAL'),
+        ('average_negative_grade', 'REAL'), ('grade_adjusted_distance', 'REAL'),
+        ('gravel_distance', 'REAL'), ('average_grade_adjusted_pace', 'REAL'),
+        ('average_elapsed_speed', 'REAL'), ('athlete_weight', 'REAL'),
+        ('bike_weight', 'REAL'), ('total_steps', 'INTEGER'),
+        ('total_weight_lifted', 'REAL'), ('pool_length', 'REAL'),
+        ('total_cycles', 'INTEGER'), ('uphill_time', 'REAL'),
+        ('downhill_time', 'REAL'), ('other_time', 'REAL'),
+        ('stopwatch_time', 'REAL'), ('weather', 'TEXT'),
+        ('carbon_saved', 'REAL'), ('from_upload', 'INTEGER'),
+        ('with_pet', 'INTEGER'), ('race', 'INTEGER'),
+        ('long_run', 'INTEGER'), ('charity', 'INTEGER'),
+        ('with_child', 'INTEGER'), ('fit_file_path', 'TEXT'),
+    ]
+
+    added = 0
+    for col_name, col_type in new_columns:
+        if col_name not in existing:
+            db.execute(f'ALTER TABLE activities ADD COLUMN {col_name} {col_type}')
+            added += 1
+
+    # Ensure activity_media table exists
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS activity_media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            activity_id INTEGER NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+            file_path TEXT NOT NULL,
+            caption TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_activity_media_activity ON activity_media(activity_id)')
+
+    db.commit()
+    if added:
+        print(f"Schema migration: added {added} new columns to activities table")
+
+
 # ---------- Main import logic ----------
 
 def import_archive(archive_dir=None, data_dir=None, db_path=None):
@@ -301,6 +353,9 @@ def import_archive(archive_dir=None, data_dir=None, db_path=None):
     db = sqlite3.connect(db_path)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA journal_mode=WAL")
+
+    # Run schema migration to ensure archive columns exist
+    _ensure_archive_columns(db)
 
     # Read CSV
     with open(csv_path, encoding='utf-8') as f:
