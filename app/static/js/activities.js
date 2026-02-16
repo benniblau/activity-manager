@@ -79,22 +79,6 @@ if (syncBtn) {
     });
 }
 
-// Pain scale selector functionality for day feeling modals
-document.querySelectorAll('.pain-scale-selector').forEach(selector => {
-    const inputId = selector.dataset.input;
-    const hiddenInput = document.getElementById(inputId);
-
-    selector.querySelectorAll('.pain-scale-option').forEach(option => {
-        option.addEventListener('click', () => {
-            selector.querySelectorAll('.pain-scale-option').forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            option.classList.add('selected');
-            hiddenInput.value = option.dataset.value;
-        });
-    });
-});
-
 // Mobile: Prevent day feeling icon click from affecting card
 document.querySelectorAll('.day-card-feeling').forEach(feeling => {
     feeling.addEventListener('click', (e) => {

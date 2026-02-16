@@ -547,27 +547,3 @@
 
 {% endblock %}
 
-{% block extra_js %}
-<script>
-    // Pain scale selector functionality
-    document.querySelectorAll('.pain-scale-selector').forEach(selector => {
-        const inputId = selector.dataset.input;
-        const hiddenInput = document.getElementById(inputId);
-
-        selector.querySelectorAll('.pain-scale-option').forEach(option => {
-            option.addEventListener('click', () => {
-                // Remove selected class from all options in this selector
-                selector.querySelectorAll('.pain-scale-option').forEach(opt => {
-                    opt.classList.remove('selected');
-                });
-
-                // Add selected class to clicked option
-                option.classList.add('selected');
-
-                // Update hidden input value
-                hiddenInput.value = option.dataset.value;
-            });
-        });
-    });
-</script>
-{% endblock %}

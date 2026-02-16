@@ -718,6 +718,23 @@ def day_detail(date):
     # Flash messages
     success_message = session.pop('sync_message', None)
 
+    # Build share data for JS (avoids inline Jinja2 in JavaScript)
+    share_data = {
+        'formatted_date': formatted_date,
+        'feeling_pain': day_feeling.get('feeling_pain') if day_feeling else None,
+        'feeling_text': day_feeling.get('feeling_text') if day_feeling else None,
+        'activities': [
+            {
+                'name': a.get('name'),
+                'distance': a.get('distance'),
+                'moving_time': a.get('moving_time'),
+                'average_speed': a.get('average_speed'),
+                'sport_type': a.get('sport_type'),
+            }
+            for a in activities
+        ],
+    }
+
     return render_template(
         'day_detail.html',
         date=date,
@@ -729,6 +746,7 @@ def day_detail(date):
         prev_date=prev_date,
         next_date=next_date,
         success_message=success_message,
+        share_data=share_data,
     )
 
 

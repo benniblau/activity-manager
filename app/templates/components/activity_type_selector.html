@@ -12,7 +12,7 @@
 #}
 
 {% macro activity_type_selector(name, extended_types=[], standard_types=[], selected=None, required=False, include_extended=True, include_standard=True) %}
-<div class="mb-3">
+<div class="mb-3" data-activity-type-selector="{{ name }}">
     <label class="form-label">Activity Type{% if required %} <span class="text-danger">*</span>{% endif %}</label>
     <select name="{{ name }}" id="{{ name }}" class="form-select"{{ ' required' if required else '' }}>
         <option value="">-- Select Type --</option>
@@ -72,34 +72,4 @@
     <input type="hidden" name="sport_type" id="{{ name }}_sport_type">
 </div>
 
-<script>
-(function() {
-    const selector = document.getElementById('{{ name }}');
-    const extendedInput = document.getElementById('{{ name }}_extended_type_id');
-    const sportInput = document.getElementById('{{ name }}_sport_type');
-
-    if (selector && extendedInput && sportInput) {
-        selector.addEventListener('change', function() {
-            const selected = this.options[this.selectedIndex];
-            const value = this.value;
-
-            if (value.startsWith('ext-')) {
-                extendedInput.value = selected.dataset.extendedId || '';
-                sportInput.value = '';
-            } else if (value.startsWith('sport-')) {
-                extendedInput.value = '';
-                sportInput.value = selected.dataset.sportType || '';
-            } else {
-                extendedInput.value = '';
-                sportInput.value = '';
-            }
-        });
-
-        // Trigger on page load if there's a selected value
-        if (selector.value) {
-            selector.dispatchEvent(new Event('change'));
-        }
-    }
-})();
-</script>
 {% endmacro %}
