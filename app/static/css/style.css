@@ -2,15 +2,33 @@
     --bs-body-bg: #0d1117;
     --bs-body-color: #c9d1d9;
 
-    /* Pain scale colors (0-10, green to red gradient) */
-    --pain-color-0: #10b981;
-    --pain-color-1: #34d399;
-    --pain-color-2: #84cc16;
-    --pain-color-3: #a3e635;
+    /* Logo Color Palette */
+    --logo-green-primary: #0d7140;
+    --logo-green-dark: #085333;
+    --logo-green-darker: #085332;
+    --logo-green-light: #10a159;
+    --logo-green-lighter: #14b866;
+    --logo-orange-primary: #fb910e;
+    --logo-orange-light: #fdc782;
+    --logo-orange-dark: #fb900e;
+    --logo-orange-darker: #e07c00;
+    --logo-orange-medium: #fca543;
+    --logo-neutral: #b2b3a5;
+
+    /* Brand Accent Colors (derived from logo) */
+    --accent-primary: var(--logo-green-primary);
+    --accent-secondary: var(--logo-orange-primary);
+    --accent-light: var(--logo-orange-light);
+
+    /* Pain scale colors (0-10, green to orange to red gradient - aligned with logo) */
+    --pain-color-0: #0d7140;
+    --pain-color-1: #10b981;
+    --pain-color-2: #34d399;
+    --pain-color-3: #84cc16;
     --pain-color-4: #eab308;
-    --pain-color-5: #f59e0b;
-    --pain-color-6: #f97316;
-    --pain-color-7: #ea580c;
+    --pain-color-5: #fdc782;
+    --pain-color-6: #fb910e;
+    --pain-color-7: #f97316;
     --pain-color-8: #ef4444;
     --pain-color-9: #dc2626;
     --pain-color-10: #b91c1c;
@@ -62,8 +80,8 @@
     display: block;
     margin: 8px 0;
     padding: 8px 10px;
-    background: rgba(88, 166, 255, 0.08);
-    border-left: 2px solid #58a6ff;
+    background: rgba(13, 113, 64, 0.08);
+    border-left: 2px solid var(--accent-primary);
     border-radius: 4px;
 }
 
@@ -79,8 +97,8 @@
     color: var(--bs-body-color);
     margin: 10px 0;
     padding: 10px 12px;
-    background: rgba(88, 166, 255, 0.1);
-    border-left: 3px solid #58a6ff;
+    background: rgba(13, 113, 64, 0.1);
+    border-left: 3px solid var(--accent-primary);
     border-radius: 4px;
     font-size: 0.9rem;
     line-height: 1.6;
@@ -92,7 +110,7 @@
 .activity-description--styled {
     padding: 10px 12px;
     background: rgba(88, 166, 255, 0.1);
-    border-left: 3px solid #58a6ff;
+    border-left: 3px solid var(--accent-primary);
     border-radius: 4px;
     margin: 8px 0;
 }
@@ -100,7 +118,7 @@
 /* Description icon */
 .activity-description__icon {
     margin-right: 6px;
-    color: #58a6ff;
+    color: var(--accent-primary);
     display: inline;
     vertical-align: baseline;
 }
@@ -108,7 +126,7 @@
 /* Mobile expanded - ensure icon and text are visible */
 .activity-link-mobile .activity-description__icon {
     display: inline;
-    color: #58a6ff;
+    color: var(--accent-primary);
 }
 
 /* Utility classes */
@@ -121,9 +139,83 @@ body {
     color: var(--bs-body-color);
 }
 
+/* Bootstrap Color Overrides */
+.btn-primary {
+    --bs-btn-bg: var(--accent-secondary);
+    --bs-btn-border-color: var(--accent-secondary);
+    --bs-btn-hover-bg: var(--logo-orange-dark);
+    --bs-btn-hover-border-color: var(--logo-orange-dark);
+    --bs-btn-active-bg: var(--logo-orange-dark);
+    --bs-btn-active-border-color: var(--logo-orange-dark);
+}
+
+.text-primary {
+    color: var(--accent-primary) !important;
+}
+
+.text-info {
+    color: var(--accent-secondary) !important;
+}
+
+.bg-info {
+    background-color: var(--accent-secondary) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--accent-secondary) !important;
+    color: #0d1117 !important;
+}
+
+/* Link colors */
+a {
+    color: var(--accent-primary);
+}
+
+a:hover {
+    color: var(--accent-secondary);
+}
+
+/* Focus states */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 0.25rem rgba(13, 113, 64, 0.25);
+}
+
+/* Checkbox and radio button colors */
+.form-check-input:checked {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.form-check-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 0.25rem rgba(13, 113, 64, 0.25);
+}
+
+/* Bootstrap Alert overrides */
+.alert-info {
+    --bs-alert-color: #0d1117;
+    --bs-alert-bg: rgba(251, 145, 14, 0.1);
+    --bs-alert-border-color: var(--accent-secondary);
+}
+
 .navbar {
     background-color: #161b22 !important;
     border-bottom: 1px solid #30363d;
+}
+
+.navbar-nav .nav-link {
+    color: var(--bs-body-color);
+}
+
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link:focus {
+    color: var(--accent-secondary);
+}
+
+.navbar-nav .nav-link.active {
+    color: var(--accent-primary);
 }
 
 .table {
@@ -150,7 +242,7 @@ body {
 
 .day-header {
     background-color: #161b22;
-    border-left: 3px solid #58a6ff;
+    border-left: 3px solid var(--accent-secondary);
 }
 
 .stats-card {
@@ -161,52 +253,52 @@ body {
 .pagination .page-link {
     background-color: #161b22;
     border-color: #30363d;
-    color: #58a6ff;
+    color: var(--accent-primary);
 }
 
 .pagination .page-link:hover {
     background-color: #1c2128;
-    border-color: #58a6ff;
+    border-color: var(--accent-primary);
 }
 
 .pagination .active .page-link {
-    background-color: #58a6ff;
-    border-color: #58a6ff;
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
 }
 
 /* Sport Type Badge Colors - using higher specificity instead of !important */
-.activity-badge[class*="badge-sport-"] { background-color: #0d6efd; } /* Default blue */
+.activity-badge[class*="badge-sport-"] { background-color: var(--accent-primary); } /* Default green */
 .activity-badge.badge-sport-run,
-.activity-badge.badge-sport-virtualrun { background-color: #28a745; }
-.activity-badge.badge-sport-ride,
-.activity-badge.badge-sport-virtualride { background-color: #fd7e14; }
-.activity-badge.badge-sport-swim { background-color: #17a2b8; }
+.activity-badge.badge-sport-virtualrun { background-color: var(--logo-green-primary); }
+.activity-badge.badge-sport-ride { background-color: var(--logo-orange-primary); }
+.activity-badge.badge-sport-virtualride { background-color: var(--logo-orange-medium); }
+.activity-badge.badge-sport-swim { background-color: var(--logo-green-dark); }
 .activity-badge.badge-sport-walk,
 .activity-badge.badge-sport-hike { background-color: #8b5a2b; }
-.activity-badge.badge-sport-weighttraining { background-color: #6f42c1; }
+.activity-badge.badge-sport-weighttraining { background-color: var(--logo-orange-darker); }
 .activity-badge.badge-sport-workout { background-color: #dc3545; }
-.activity-badge.badge-sport-yoga { background-color: #e83e8c; }
+.activity-badge.badge-sport-yoga { background-color: var(--logo-orange-light); color: #0d1117; }
 .activity-badge.badge-sport-crossfit { background-color: #ff6b6b; }
-.activity-badge.badge-sport-rowing,
-.activity-badge.badge-sport-rowindoor { background-color: #20c997; }
-.activity-badge.badge-sport-elliptical,
-.activity-badge.badge-sport-stairstepper { background-color: #6c757d; }
-.activity-badge.badge-sport-golf { background-color: #198754; }
-.activity-badge.badge-sport-tennis,
-.activity-badge.badge-sport-pickleball { background-color: #c9f364; color: #333; }
-.activity-badge.badge-sport-alpineski,
-.activity-badge.badge-sport-snowboard,
-.activity-badge.badge-sport-nordicski { background-color: #adb5bd; color: #333; }
+.activity-badge.badge-sport-rowing { background-color: var(--logo-green-light); }
+.activity-badge.badge-sport-rowindoor { background-color: var(--logo-green-lighter); }
+.activity-badge.badge-sport-elliptical { background-color: var(--logo-neutral); }
+.activity-badge.badge-sport-stairstepper { background-color: #9ba39b; }
+.activity-badge.badge-sport-golf { background-color: var(--logo-green-darker); }
+.activity-badge.badge-sport-tennis { background-color: var(--logo-orange-light); color: #0d1117; }
+.activity-badge.badge-sport-pickleball { background-color: #e8c56f; color: #0d1117; }
+.activity-badge.badge-sport-alpineski { background-color: var(--logo-neutral); color: #0d1117; }
+.activity-badge.badge-sport-snowboard { background-color: #c5ccc5; color: #0d1117; }
+.activity-badge.badge-sport-nordicski { background-color: #a0a89f; color: #0d1117; }
 
 /* Extended Activity Type Badge Colors */
-.activity-badge.badge-recovery { background-color: #28a745; color: #ffffff; }
-.activity-badge.badge-easy { background-color: #34d399; color: #0d1117; }
-.activity-badge.badge-tempo { background-color: #f59e0b; color: #0d1117; }
+.activity-badge.badge-recovery { background-color: var(--logo-green-lighter); color: #ffffff; }
+.activity-badge.badge-easy { background-color: var(--logo-green-light); color: #0d1117; }
+.activity-badge.badge-tempo { background-color: var(--logo-orange-medium); color: #0d1117; }
 .activity-badge.badge-interval { background-color: #ef4444; color: #ffffff; }
-.activity-badge.badge-long { background-color: #6366f1; color: #ffffff; }
-.activity-badge.badge-zone2 { background-color: #3b82f6; color: #ffffff; }
+.activity-badge.badge-long { background-color: var(--logo-green-dark); color: #ffffff; }
+.activity-badge.badge-zone2 { background-color: var(--logo-green-primary); color: #ffffff; }
 .activity-badge.badge-threshold { background-color: #dc2626; color: #ffffff; }
-.activity-badge.badge-base { background-color: #8b5cf6; color: #ffffff; }
+.activity-badge.badge-base { background-color: var(--logo-orange-light); color: #0d1117; }
 
 /* Activity Cards */
 .activity-card {
@@ -276,7 +368,7 @@ body {
 
 .pain-scale-option.selected {
     opacity: 1;
-    border-color: #58a6ff;
+    border-color: var(--accent-primary);
     background-color: rgba(88, 166, 255, 0.1);
 }
 
@@ -421,7 +513,7 @@ body {
 
 .day-row-collapsed .expand-icon {
     transition: transform 0.3s ease;
-    color: #58a6ff;
+    color: var(--accent-primary);
     font-size: 0.9rem;
 }
 
@@ -597,12 +689,12 @@ body {
     font-size: 0.9rem;
     color: #c9d1d9;
     background: rgba(88, 166, 255, 0.08);
-    border-left: 3px solid #58a6ff;
+    border-left: 3px solid var(--accent-primary);
     border-radius: 4px;
 }
 
 .day-feeling-text-mobile i {
-    color: #58a6ff;
+    color: var(--accent-primary);
     flex-shrink: 0;
     margin-top: 2px;
 }
@@ -713,7 +805,7 @@ body {
 }
 
 .day-card-link:hover {
-    color: #58a6ff;
+    color: var(--accent-primary);
 }
 
 /* Expand Toggle Button */
@@ -723,7 +815,7 @@ body {
     background-color: transparent;
     border: none;
     border-top: 1px solid #30363d;
-    color: #58a6ff;
+    color: var(--accent-primary);
     font-size: 0.85rem;
     cursor: pointer;
     display: flex;
@@ -759,7 +851,7 @@ body {
 }
 
 .activity-link-mobile:hover {
-    border-color: #58a6ff;
+    border-color: var(--accent-primary);
     color: inherit;
 }
 
@@ -852,7 +944,7 @@ body {
 }
 
 .pain-scale-option.selected {
-    border-color: #58a6ff;
+    border-color: var(--accent-primary);
     background-color: rgba(88, 166, 255, 0.1);
 }
 
@@ -986,7 +1078,7 @@ body {
     width: 50px;
     height: 50px;
     border: 4px solid #30363d;
-    border-top-color: #58a6ff;
+    border-top-color: var(--accent-primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -1005,7 +1097,7 @@ body {
 }
 
 .sync-submessage {
-    color: #58a6ff;
+    color: var(--accent-primary);
     font-size: 1rem;
     text-align: center;
     padding: 8px 16px;
