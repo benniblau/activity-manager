@@ -589,7 +589,7 @@ def user_logout():
     session.clear()
 
     flash('You have been logged out', 'info')
-    return redirect(url_for('web.index'))
+    return redirect(url_for('auth.user_login'))
 
 
 def get_strava_client():

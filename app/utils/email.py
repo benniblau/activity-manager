@@ -5,8 +5,14 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from flask import current_app
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
+# Also log to console
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.DEBUG)
+logger.addHandler(console_handler)
+logger.setLevel(logging.DEBUG)
 
 
 def send_email(to_email, subject, html_body, text_body=None):
@@ -22,15 +28,25 @@ def send_email(to_email, subject, html_body, text_body=None):
         True if email sent successfully, False otherwise
     """
     # Check if SMTP is configured
-    if not current_app.config.get('SMTP_SERVER'):
+    smtp_server = current_app.config.get('SMTP_SERVER')
+    logger.debug(f'SMTP_SERVER config: {smtp_server}')
+
+    if not smtp_server:
         logger.warning('SMTP not configured, skipping email send')
         return False
 
     try:
+        smtp_port = current_app.config['SMTP_PORT']
+        smtp_username = current_app.config['SMTP_USERNAME']
+        from_email = current_app.config['FROM_EMAIL']
+
+        logger.debug(f'Attempting to send email to {to_email}')
+        logger.debug(f'SMTP config: {smtp_server}:{smtp_port}, from={from_email}, user={smtp_username}')
+
         # Create message
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
-        msg['From'] = current_app.config['FROM_EMAIL']
+        msg['From'] = from_email
         msg['To'] = to_email
 
         # Attach plain text and HTML versions
@@ -39,16 +55,20 @@ def send_email(to_email, subject, html_body, text_body=None):
         msg.attach(MIMEText(html_body, 'html'))
 
         # Send email
-        with smtplib.SMTP(current_app.config['SMTP_SERVER'], current_app.config['SMTP_PORT']) as server:
+        logger.debug(f'Connecting to SMTP server...')
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            logger.debug(f'Starting TLS...')
             server.starttls()
-            server.login(current_app.config['SMTP_USERNAME'], current_app.config['SMTP_PASSWORD'])
+            logger.debug(f'Logging in...')
+            server.login(smtp_username, current_app.config['SMTP_PASSWORD'])
+            logger.debug(f'Sending message...')
             server.send_message(msg)
 
         logger.info(f'Email sent successfully to {to_email}')
         return True
 
     except Exception as e:
-        logger.error(f'Failed to send email to {to_email}: {str(e)}')
+        logger.error(f'Failed to send email to {to_email}: {str(e)}', exc_info=True)
         return False
 
 
