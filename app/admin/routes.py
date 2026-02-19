@@ -7,7 +7,7 @@ from app.auth.user_auth import update_user_profile, update_password
 from app.services.access_control_service import (
     invite_coach, get_pending_invitations, get_coach_athletes_list,
     accept_coach_invitation, reject_coach_invitation, remove_coach_access,
-    set_viewing_user_id
+    set_viewing_user_id, get_athlete_pending_coach_invitations
 )
 from app.auth.decorators import coach_required
 
@@ -135,8 +135,12 @@ def profile():
     is_strava_connected = strava_tokens is not None
     strava_athlete_name = strava_tokens.get('athlete_name') if strava_tokens else None
 
-    # Get coaches (for athletes)
-    coaches = current_user.get_coaches() if current_user.is_athlete() else []
+    # Get coaches and pending coach invitations (for athletes)
+    coaches = []
+    pending_coach_invitations = []
+    if current_user.is_athlete():
+        coaches = current_user.get_coaches()
+        pending_coach_invitations = get_athlete_pending_coach_invitations(current_user.id)
 
     # Get athletes and pending invitations (for coaches)
     athletes = []
@@ -152,7 +156,8 @@ def profile():
         strava_athlete_name=strava_athlete_name,
         coaches=coaches,
         athletes=athletes,
-        pending_invitations=pending_invitations
+        pending_invitations=pending_invitations,
+        pending_coach_invitations=pending_coach_invitations
     )
 
 

@@ -341,7 +341,7 @@ def remove_coach_access(athlete_id, coach_id):
 
 
 def get_pending_invitations(coach_id):
-    """Get list of pending coach invitations
+    """Get list of pending coach invitations (for coaches to accept)
 
     Args:
         coach_id: ID of coach
@@ -367,6 +367,53 @@ def get_pending_invitations(coach_id):
             'athlete_email': row[3],
             'invited_at': row[4]
         })
+
+    return invitations
+
+
+def get_athlete_pending_coach_invitations(athlete_id):
+    """Get list of pending coach invitations sent by athlete
+
+    Args:
+        athlete_id: ID of athlete
+
+    Returns:
+        List of dicts with invitation details including registration status
+    """
+    db = get_db()
+    cursor = db.execute('''
+        SELECT
+            r.id,
+            r.coach_id,
+            r.coach_email,
+            r.invited_at,
+            u.name as coach_name,
+            u.email as coach_user_email
+        FROM coach_athlete_relationships r
+        LEFT JOIN users u ON r.coach_id = u.id
+        WHERE r.athlete_id = ? AND r.status = 'pending'
+        ORDER BY r.invited_at DESC
+    ''', (athlete_id,))
+
+    invitations = []
+    for row in cursor.fetchall():
+        invitation = {
+            'id': row[0],
+            'invited_at': row[3]
+        }
+
+        if row[1]:  # coach_id is set - coach has registered
+            invitation['coach_email'] = row[5]  # coach_user_email
+            invitation['coach_name'] = row[4]
+            invitation['is_registered'] = True
+            invitation['status_text'] = 'Registered - waiting for acceptance'
+        else:  # coach_email is set - coach not registered yet
+            invitation['coach_email'] = row[2]  # coach_email from relationship
+            invitation['coach_name'] = row[2].split('@')[0]
+            invitation['is_registered'] = False
+            invitation['status_text'] = 'Invitation sent - not registered yet'
+
+        invitations.append(invitation)
 
     return invitations
 
