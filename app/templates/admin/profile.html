@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+
+<div class="row mb-3">
+    <div class="col-12">
+        <h2><i class="bi bi-person-circle"></i> User Profile</h2>
+    </div>
+</div>
+
+<!-- Viewing context indicator for coaches -->
+{% if is_viewing_other %}
+<div class="alert alert-info" role="alert">
+    <i class="bi bi-eye"></i> You are currently viewing data for <strong>{{ viewing_user.name }}</strong>.
+    <form method="POST" action="{{ url_for('admin.switch_view', user_id=user.id) }}" style="display: inline;">
+        <button type="submit" class="btn btn-sm btn-outline-primary">Switch back to your data</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="row">
+    <!-- User Information Card -->
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-person-badge"></i> User Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.update_profile') }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ user.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control" value="{{ user.role|capitalize }}" disabled>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Update Profile
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Card -->
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-key"></i> Change Password
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('admin.change_password') }}">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-shield-check"></i> Change Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Strava Connection Card -->
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-strava"></i> Strava Connection
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if is_strava_connected %}
+                    <div class="alert alert-success" role="alert">
+                        <i class="bi bi-check-circle"></i> Connected to Strava
+                        {% if strava_athlete_name %}
+                            <br><strong>Athlete:</strong> {{ strava_athlete_name }}
+                        {% endif %}
+                    </div>
+                    <a href="{{ url_for('auth.strava_disconnect') }}" class="btn btn-outline-danger">
+                        <i class="bi bi-box-arrow-right"></i> Disconnect Strava
+                    </a>
+                {% else %}
+                    <div class="alert alert-warning" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i> Not connected to Strava
+                    </div>
+                    <p class="text-muted">
+                        Connect your Strava account to sync activities automatically.
+                    </p>
+                    <a href="{{ url_for('auth.strava_connect') }}" class="btn btn-warning">
+                        <i class="bi bi-strava"></i> Connect to Strava
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Coach Management Card (Athletes only) -->
+    {% if user.is_athlete() %}
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-people"></i> Coach Management
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Current Coaches List -->
+                {% if coaches %}
+                    <h6 class="mb-2">Current Coaches</h6>
+                    <ul class="list-group mb-3">
+                        {% for coach in coaches %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ coach.name }}</strong>
+                                <br><small class="text-muted">{{ coach.email }}</small>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.remove_coach_route', coach_id=coach.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Are you sure you want to remove this coach?')">
+                                    <i class="bi bi-trash"></i> Remove
+                                </button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">You haven't added any coaches yet.</p>
+                {% endif %}
+
+                <!-- Invite New Coach Form -->
+                <h6 class="mb-2">Invite a Coach</h6>
+                <form method="POST" action="{{ url_for('admin.invite_coach_route') }}">
+                    <div class="input-group">
+                        <input type="email" class="form-control" name="coach_email"
+                               placeholder="coach@example.com" required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Invite
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Athlete Management Card (Coaches only) -->
+    {% if user.is_coach() %}
+    <div class="col-md-6 mb-3">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-people"></i> Athlete Management
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Pending Invitations -->
+                {% if pending_invitations %}
+                    <h6 class="mb-2">Pending Invitations</h6>
+                    <ul class="list-group mb-3">
+                        {% for athlete in pending_invitations %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <strong>{{ athlete.name }}</strong>
+                                    <br><small class="text-muted">{{ athlete.email }}</small>
+                                </div>
+                            </div>
+                            <div class="btn-group" role="group">
+                                <form method="POST" action="{{ url_for('admin.accept_invitation', athlete_id=athlete.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="bi bi-check-circle"></i> Accept
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin.reject_invitation', athlete_id=athlete.id) }}" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-x-circle"></i> Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
+                <!-- Active Athletes -->
+                <h6 class="mb-2">Active Athletes</h6>
+                {% if athletes %}
+                    <ul class="list-group">
+                        {% for athlete in athletes %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ athlete.name }}</strong>
+                                <br><small class="text-muted">{{ athlete.email }}</small>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.switch_view', user_id=athlete.id) }}" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i> View as
+                                </button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted">No active athletes yet. Athletes need to invite you first.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

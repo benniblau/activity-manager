@@ -10,16 +10,18 @@ from app.utils.database_helpers import dict_to_db_values
 class StravaService:
     """Service for Strava API operations and data synchronization"""
 
-    def __init__(self, strava_client, db=None):
+    def __init__(self, strava_client, db=None, user_id=None):
         """Initialize Strava service
 
         Args:
             strava_client: Initialized Strava API client (stravalib.Client)
             db: Optional database connection (for testing)
+            user_id: User ID for multi-user support (required)
         """
         self.client = strava_client
         self.activity_repo = ActivityRepository(db)
         self.type_repo = TypeRepository(db)
+        self.user_id = user_id
         self._validated_sport_types = set()  # Cache for validated sport types
 
     def sync_activities(self, limit=30, after=None, before=None, fetch_details=True):
@@ -414,6 +416,10 @@ class StravaService:
         """
         if 'id' not in activity_data:
             raise ValidationError("Activity data must include 'id'")
+
+        # Add user_id to activity data
+        if self.user_id:
+            activity_data['user_id'] = self.user_id
 
         # Use repository upsert method
         return self.activity_repo.upsert_from_strava(activity_data)

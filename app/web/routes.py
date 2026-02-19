@@ -1,4 +1,5 @@
 from flask import render_template, request, session, redirect, flash, Response, send_from_directory, current_app
+from flask_login import login_required, current_user
 import csv
 import io
 import os
@@ -17,11 +18,16 @@ from app.repositories import (
 )
 from app.utils.errors import ActivityNotFoundError, ValidationError, AppError
 from app.auth.routes import get_strava_client, is_authenticated as check_strava_auth
+from app.services.access_control_service import get_viewing_user_id
 
 
 @web_bp.route('/')
+@login_required
 def index():
     """Display activities grouped by day with pagination (including rest days)"""
+
+    # Get viewing user ID (supports coach viewing athlete data)
+    viewing_user_id = get_viewing_user_id()
 
     # Get pagination parameters
     page = request.args.get('page', 1, type=int)
@@ -30,14 +36,14 @@ def index():
 
     db = get_db()
 
-    # Build query for activities with extended types
+    # Build query for activities with extended types (filtered by user_id)
     query = '''
         SELECT a.*, ext.custom_name as extended_name, ext.color_class as extended_color
         FROM activities a
         LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
-        WHERE 1=1
+        WHERE a.user_id = ?
     '''
-    params = []
+    params = [viewing_user_id]
 
     if sport_type:
         query += ' AND a.sport_type = ?'
@@ -83,28 +89,24 @@ def index():
     # Get activities for paginated days (empty list for rest days)
     paginated_activities = {day: activities_by_day.get(day, []) for day in paginated_days}
 
-    # Get day feelings for paginated days
+    # Get day feelings for paginated days (filtered by user_id)
     day_repo = DayRepository()
-    day_feelings = day_repo.get_feelings_by_dates(paginated_days)
+    day_feelings = day_repo.get_feelings_by_dates(paginated_days, user_id=viewing_user_id)
 
-    # Get unique sport types for filter
-    cursor = db.execute('SELECT DISTINCT sport_type FROM activities ORDER BY sport_type')
+    # Get unique sport types for filter (filtered by user_id)
+    cursor = db.execute('SELECT DISTINCT sport_type FROM activities WHERE user_id = ? ORDER BY sport_type', (viewing_user_id,))
     sport_types = [row['sport_type'] for row in cursor.fetchall()]
 
-    # Get all extended types for dropdowns
-    extended_types = get_extended_types()
+    # Get all extended types for dropdowns (system + user-specific)
+    type_repo = TypeRepository()
+    extended_types = type_repo.get_extended_types(is_active=True, user_id=viewing_user_id)
 
     # Get standard types grouped by category
     standard_types_by_category = get_standard_types_by_category()
 
-    # Check authentication status (loads from DB if needed, refreshes if expired)
-    is_authenticated = check_strava_auth()
-    athlete_name = session.get('athlete_name', '')
-
-    # Get and clear flash messages from session
-    auth_success = session.pop('auth_success', None)
-    auth_error = session.pop('auth_error', None)
-    sync_message = session.pop('sync_message', None)
+    # Check Strava authentication status
+    is_strava_authenticated = check_strava_auth()
+    strava_athlete_name = session.get('strava_athlete_name', '')
 
     return render_template(
         'activities.html',
@@ -119,11 +121,9 @@ def index():
         extended_types=extended_types,
         standard_types_by_category=standard_types_by_category,
         current_sport_type=sport_type,
-        is_authenticated=is_authenticated,
-        athlete_name=athlete_name,
-        auth_success=auth_success,
-        auth_error=auth_error,
-        sync_message=sync_message
+        is_strava_authenticated=is_strava_authenticated,
+        strava_athlete_name=strava_athlete_name,
+        current_user=current_user
     )
 
 
@@ -192,6 +192,7 @@ def _clean_strava_value(value):
 
 
 @web_bp.route('/sync')
+@login_required
 def sync():
     """Sync activities from Strava (fallback for non-JS)"""
     # Redirect to home - actual sync is done via AJAX
@@ -199,9 +200,13 @@ def sync():
 
 
 @web_bp.route('/api/sync/activities', methods=['POST'])
+@login_required
 def api_sync_activities():
     """AJAX: Step 1 - Sync activity summary data"""
     from flask import jsonify
+
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
 
     try:
         client = get_strava_client()
@@ -212,16 +217,16 @@ def api_sync_activities():
         from app.services.strava_service import StravaService
 
         db = get_db()
-        strava_service = StravaService(client, db)
+        strava_service = StravaService(client, db, user_id=viewing_user_id)
 
         # Fast bulk sync with summary data only
         result = strava_service.sync_activities(limit=200, fetch_details=False)
 
-        # Get count of activities needing descriptions
+        # Get count of activities needing descriptions (filtered by user)
         cursor = db.execute('''
             SELECT COUNT(*) as count FROM activities
-            WHERE description IS NULL OR description = ''
-        ''')
+            WHERE user_id = ? AND (description IS NULL OR description = '')
+        ''', (viewing_user_id,))
         needs_descriptions = cursor.fetchone()['count']
 
         return jsonify({
@@ -236,9 +241,13 @@ def api_sync_activities():
 
 
 @web_bp.route('/api/sync/description/<int:activity_id>', methods=['POST'])
+@login_required
 def api_sync_description(activity_id):
     """AJAX: Step 2 - Fetch description for a single activity"""
     from flask import jsonify
+
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
 
     try:
         client = get_strava_client()
@@ -247,6 +256,13 @@ def api_sync_description(activity_id):
 
     try:
         db = get_db()
+
+        # Verify activity belongs to user
+        cursor = db.execute('SELECT user_id FROM activities WHERE id = ?', (activity_id,))
+        activity = cursor.fetchone()
+        if not activity or activity['user_id'] != viewing_user_id:
+            return jsonify({'error': 'Activity not found'}), 404
+
         detailed = client.get_activity(activity_id)
 
         description = None
@@ -268,8 +284,8 @@ def api_sync_description(activity_id):
 
         if description:
             db.execute(
-                'UPDATE activities SET description = ?, updated_at = ? WHERE id = ?',
-                (description, datetime.utcnow().isoformat(), activity_id)
+                'UPDATE activities SET description = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+                (description, datetime.utcnow().isoformat(), activity_id, viewing_user_id)
             )
             db.commit()
             return jsonify({'success': True, 'has_description': True})
@@ -281,45 +297,53 @@ def api_sync_description(activity_id):
 
 
 @web_bp.route('/api/sync/activities-needing-descriptions', methods=['GET'])
+@login_required
 def api_activities_needing_descriptions():
     """AJAX: Get list of activity IDs needing descriptions"""
     from flask import jsonify
 
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
+
     db = get_db()
     cursor = db.execute('''
         SELECT id FROM activities
-        WHERE description IS NULL OR description = ''
+        WHERE user_id = ? AND (description IS NULL OR description = '')
         ORDER BY start_date_local DESC
         LIMIT 5
-    ''')
+    ''', (viewing_user_id,))
     activities = [row['id'] for row in cursor.fetchall()]
 
     return jsonify({'activity_ids': activities})
 
 
 @web_bp.route('/activity/<int:activity_id>')
+@login_required
 def activity_detail(activity_id):
     """Display detailed view of a specific activity"""
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
+
     db = get_db()
 
-    # Fetch activity with extended type information
+    # Fetch activity with extended type information (filtered by user_id)
     cursor = db.execute('''
         SELECT a.*, ext.custom_name as extended_name, ext.color_class as extended_color
         FROM activities a
         LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
-        WHERE a.id = ?
-    ''', (activity_id,))
+        WHERE a.id = ? AND a.user_id = ?
+    ''', (activity_id, viewing_user_id))
     row = cursor.fetchone()
 
     if not row:
-        session['auth_error'] = 'Activity not found'
+        flash('Activity not found', 'danger')
         return redirect('/')
 
     activity = db_row_to_dict(row)
 
     # Get gear information if activity has gear_id
     if activity.get('gear_id'):
-        cursor = db.execute('SELECT * FROM gear WHERE id = ?', (activity['gear_id'],))
+        cursor = db.execute('SELECT * FROM gear WHERE id = ? AND user_id = ?', (activity['gear_id'], viewing_user_id))
         gear_row = cursor.fetchone()
         if gear_row:
             activity['gear_info'] = dict(gear_row)
@@ -334,8 +358,9 @@ def activity_detail(activity_id):
             activity['formatted_date'] = activity['start_date_local']
             activity['formatted_time'] = ''
 
-    # Get extended types for the activity's sport type
-    extended_types = get_extended_types(base_sport_type=activity.get('sport_type'))
+    # Get extended types for the activity's sport type (system + user-specific)
+    type_repo = TypeRepository()
+    extended_types = type_repo.get_extended_types_by_base(activity.get('sport_type'), is_active=True, user_id=viewing_user_id)
 
     # Get media for this activity
     media_cursor = db.execute(
@@ -344,21 +369,22 @@ def activity_detail(activity_id):
     )
     activity_media = [db_row_to_dict(row) for row in media_cursor.fetchall()]
 
-    # Get and clear flash messages from session
-    success_message = session.pop('sync_message', None)
-
-    return render_template('activity_detail.html', activity=activity, extended_types=extended_types, activity_media=activity_media, success_message=success_message)
+    return render_template('activity_detail.html', activity=activity, extended_types=extended_types, activity_media=activity_media)
 
 
 @web_bp.route('/activity/<int:activity_id>/annotations', methods=['POST'])
+@login_required
 def save_annotations(activity_id):
     """Save feeling annotations for an activity"""
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
+
     db = get_db()
 
-    # Check if activity exists
-    cursor = db.execute('SELECT id FROM activities WHERE id = ?', (activity_id,))
+    # Check if activity exists and belongs to user
+    cursor = db.execute('SELECT id FROM activities WHERE id = ? AND user_id = ?', (activity_id, viewing_user_id))
     if not cursor.fetchone():
-        session['auth_error'] = 'Activity not found'
+        flash('Activity not found', 'danger')
         return redirect('/')
 
     # Get form data
@@ -381,7 +407,7 @@ def save_annotations(activity_id):
             feeling_after_pain = ?,
             coach_comment = ?,
             updated_at = ?
-        WHERE id = ?
+        WHERE id = ? AND user_id = ?
     ''', (
         feeling_before_text,
         feeling_before_pain,
@@ -391,25 +417,30 @@ def save_annotations(activity_id):
         feeling_after_pain,
         coach_comment,
         datetime.utcnow().isoformat(),
-        activity_id
+        activity_id,
+        viewing_user_id
     ))
     db.commit()
 
-    session['sync_message'] = 'Annotations saved successfully'
+    flash('Annotations saved successfully', 'success')
     return redirect(f'/activity/{activity_id}')
 
 
 @web_bp.route('/activity/<int:activity_id>/extended-type', methods=['POST'])
+@login_required
 def assign_extended_type(activity_id):
     """Assign an extended activity type to an activity"""
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
+
     db = get_db()
 
-    # Check if activity exists
-    cursor = db.execute('SELECT id, sport_type FROM activities WHERE id = ?', (activity_id,))
+    # Check if activity exists and belongs to user
+    cursor = db.execute('SELECT id, sport_type FROM activities WHERE id = ? AND user_id = ?', (activity_id, viewing_user_id))
     activity_row = cursor.fetchone()
 
     if not activity_row:
-        session['auth_error'] = 'Activity not found'
+        flash('Activity not found', 'danger')
         return redirect('/')
 
     activity_sport_type = activity_row['sport_type']
@@ -418,42 +449,46 @@ def assign_extended_type(activity_id):
     extended_type_id = request.form.get('extended_type_id', '').strip()
 
     if extended_type_id:
-        # Validate that extended type exists and matches base sport type
+        # Validate that extended type exists, matches base sport type, and user has access
         cursor = db.execute(
-            'SELECT id, base_sport_type FROM extended_activity_types WHERE id = ? AND is_active = 1',
-            (extended_type_id,)
+            'SELECT id, base_sport_type FROM extended_activity_types WHERE id = ? AND is_active = 1 AND (user_id IS NULL OR user_id = ?)',
+            (extended_type_id, viewing_user_id)
         )
         extended_type = cursor.fetchone()
 
         if not extended_type:
-            session['auth_error'] = 'Extended type not found or inactive'
+            flash('Extended type not found or inactive', 'danger')
             return redirect(f'/activity/{activity_id}')
 
         if extended_type['base_sport_type'] != activity_sport_type:
-            session['auth_error'] = f"Extended type '{extended_type['base_sport_type']}' does not match activity type '{activity_sport_type}'"
+            flash(f"Extended type '{extended_type['base_sport_type']}' does not match activity type '{activity_sport_type}'", 'danger')
             return redirect(f'/activity/{activity_id}')
 
         # Assign extended type
         db.execute(
-            'UPDATE activities SET extended_type_id = ?, updated_at = ? WHERE id = ?',
-            (extended_type_id, datetime.utcnow().isoformat(), activity_id)
+            'UPDATE activities SET extended_type_id = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+            (extended_type_id, datetime.utcnow().isoformat(), activity_id, viewing_user_id)
         )
-        session['sync_message'] = 'Extended type assigned successfully'
+        flash('Extended type assigned successfully', 'success')
     else:
         # Clear extended type (revert to standard type)
         db.execute(
-            'UPDATE activities SET extended_type_id = NULL, updated_at = ? WHERE id = ?',
-            (datetime.utcnow().isoformat(), activity_id)
+            'UPDATE activities SET extended_type_id = NULL, updated_at = ? WHERE id = ? AND user_id = ?',
+            (datetime.utcnow().isoformat(), activity_id, viewing_user_id)
         )
-        session['sync_message'] = 'Reverted to standard activity type'
+        flash('Reverted to standard activity type', 'success')
 
     db.commit()
     return redirect(f'/activity/{activity_id}')
 
 
 @web_bp.route('/report')
+@login_required
 def report():
     """Display holistic report for a selected time frame"""
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
+
     db = get_db()
 
     # Get date range parameters (default to last 30 days)
@@ -470,12 +505,12 @@ def report():
         start_date_str = start_date.strftime('%Y-%m-%d')
         end_date_str = end_date.strftime('%Y-%m-%d')
 
-    # Query activities within date range
+    # Query activities within date range (filtered by user)
     cursor = db.execute('''
         SELECT * FROM activities
-        WHERE date(start_date_local) >= date(?) AND date(start_date_local) <= date(?)
+        WHERE user_id = ? AND date(start_date_local) >= date(?) AND date(start_date_local) <= date(?)
         ORDER BY start_date_local DESC
-    ''', (start_date_str, end_date_str))
+    ''', (viewing_user_id, start_date_str, end_date_str))
     rows = cursor.fetchall()
 
     # Group activities by day
@@ -499,9 +534,9 @@ def report():
     total_time = sum(a.get('moving_time', 0) or 0 for a in [db_row_to_dict(r) for r in rows])
     days_with_activities = len([d for d in all_days if d['activities']])
 
-    # Get day feelings for all days in range
+    # Get day feelings for all days in range (filtered by user)
     day_repo = DayRepository()
-    day_feelings = day_repo.get_feelings_by_dates([d['date'] for d in all_days])
+    day_feelings = day_repo.get_feelings_by_dates([d['date'] for d in all_days], user_id=viewing_user_id)
 
     return render_template(
         'report.html',
@@ -518,8 +553,12 @@ def report():
 
 
 @web_bp.route('/report/csv')
+@login_required
 def report_csv():
     """Export report data as CSV"""
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
+
     db = get_db()
 
     # Get date range parameters (same logic as report route)
@@ -536,12 +575,12 @@ def report_csv():
         start_date_str = start_date.strftime('%Y-%m-%d')
         end_date_str = end_date.strftime('%Y-%m-%d')
 
-    # Query activities within date range
+    # Query activities within date range (filtered by user)
     cursor = db.execute('''
         SELECT * FROM activities
-        WHERE date(start_date_local) >= date(?) AND date(start_date_local) <= date(?)
+        WHERE user_id = ? AND date(start_date_local) >= date(?) AND date(start_date_local) <= date(?)
         ORDER BY start_date_local DESC
-    ''', (start_date_str, end_date_str))
+    ''', (viewing_user_id, start_date_str, end_date_str))
     rows = cursor.fetchall()
 
     # Group activities by day
@@ -559,9 +598,9 @@ def report_csv():
         })
         current_date -= timedelta(days=1)
 
-    # Get day feelings
+    # Get day feelings (filtered by user)
     day_repo = DayRepository()
-    day_feelings = day_repo.get_feelings_by_dates([d['date'] for d in all_days])
+    day_feelings = day_repo.get_feelings_by_dates([d['date'] for d in all_days], user_id=viewing_user_id)
 
     # Create CSV in memory
     output = io.StringIO()
@@ -633,15 +672,17 @@ def report_csv():
 
 
 @web_bp.route('/day/<date>/annotations', methods=['POST'])
+@login_required
 def save_day_annotations(date):
     """Save feeling annotations for a specific day"""
-    db = get_db()
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
 
     # Validate date format
     try:
         datetime.strptime(date, '%Y-%m-%d')
     except ValueError:
-        session['auth_error'] = 'Invalid date format'
+        flash('Invalid date format', 'danger')
         return redirect('/')
 
     # Get form data
@@ -649,30 +690,16 @@ def save_day_annotations(date):
     feeling_pain = request.form.get('feeling_pain', type=int)
     coach_comment = request.form.get('coach_comment', '').strip() or None
 
-    # Check if day entry exists
-    cursor = db.execute('SELECT date FROM days WHERE date = ?', (date,))
-    exists = cursor.fetchone()
+    # Use repository to update/create day
+    day_repo = DayRepository()
+    day_data = {
+        'feeling_text': feeling_text,
+        'feeling_pain': feeling_pain,
+        'coach_comment': coach_comment
+    }
+    day_repo.update_day(date, viewing_user_id, day_data)
 
-    if exists:
-        # Update existing day
-        db.execute('''
-            UPDATE days SET
-                feeling_text = ?,
-                feeling_pain = ?,
-                coach_comment = ?,
-                updated_at = ?
-            WHERE date = ?
-        ''', (feeling_text, feeling_pain, coach_comment, datetime.utcnow().isoformat(), date))
-    else:
-        # Insert new day
-        db.execute('''
-            INSERT INTO days (date, feeling_text, feeling_pain, coach_comment, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (date, feeling_text, feeling_pain, coach_comment, datetime.utcnow().isoformat(), datetime.utcnow().isoformat()))
-
-    db.commit()
-
-    session['sync_message'] = 'Day feeling saved successfully'
+    flash('Day feeling saved successfully', 'success')
 
     # Redirect back to the referring page
     referer = request.form.get('referer', '/')
@@ -680,18 +707,22 @@ def save_day_annotations(date):
 
 
 @web_bp.route('/day/<date>')
+@login_required
 def day_detail(date):
     """Display detailed view of a specific day — shareable URL for coach"""
+    # Get viewing user ID
+    viewing_user_id = get_viewing_user_id()
+
     # Validate date format
     try:
         date_obj = datetime.strptime(date, '%Y-%m-%d')
     except ValueError:
-        session['auth_error'] = 'Invalid date format. Use YYYY-MM-DD.'
+        flash('Invalid date format. Use YYYY-MM-DD.', 'danger')
         return redirect('/')
 
-    # Fetch day data using repository
+    # Fetch day data using repository (filtered by user_id)
     day_repo = DayRepository()
-    day_data = day_repo.get_day_with_activities(date)
+    day_data = day_repo.get_day_with_activities(date, user_id=viewing_user_id)
     day_feeling = day_data['day'] or {}
     activities = day_data['activities']
 
@@ -751,14 +782,18 @@ def day_detail(date):
 
 
 @web_bp.route('/data/media/<path:filename>')
+@login_required
 def serve_media(filename):
     """Serve activity media files (photos)"""
+    # TODO: Add verification that the media belongs to the viewing user
     media_dir = os.path.join(current_app.root_path, '..', 'data', 'media')
     return send_from_directory(os.path.abspath(media_dir), filename)
 
 
 @web_bp.route('/data/fit/<path:filename>')
+@login_required
 def serve_fit(filename):
     """Serve FIT files for download"""
+    # TODO: Add verification that the FIT file belongs to the viewing user
     fit_dir = os.path.join(current_app.root_path, '..', 'data', 'fit_files')
     return send_from_directory(os.path.abspath(fit_dir), filename, as_attachment=True)

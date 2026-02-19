@@ -1,10 +1,19 @@
 from flask import render_template, request, jsonify, redirect, url_for, flash
+from flask_login import login_required, current_user
 from app.admin import admin_bp
 from app.repositories import TypeRepository
 from app.utils.errors import ValidationError, AppError
+from app.auth.user_auth import update_user_profile, update_password
+from app.services.access_control_service import (
+    invite_coach, get_pending_invitations, get_coach_athletes_list,
+    accept_coach_invitation, reject_coach_invitation, remove_coach_access,
+    set_viewing_user_id, clear_viewing_user_id, get_viewing_user_id
+)
+from app.auth.decorators import coach_required
 
 
 @admin_bp.route('/')
+@login_required
 def index():
     """Admin dashboard"""
     return render_template('admin/index.html')
@@ -112,3 +121,186 @@ def delete_extended_type(type_id):
         else:
             flash(e.message, 'error')
             return redirect(url_for('admin.manage_types'))
+
+
+# ========== User Profile Management ==========
+
+@admin_bp.route('/profile')
+@login_required
+def profile():
+    """User profile management page"""
+    # Get Strava connection status
+    from app.auth.routes import load_tokens_from_db
+    strava_tokens = load_tokens_from_db(current_user.id)
+    is_strava_connected = strava_tokens is not None
+    strava_athlete_name = strava_tokens.get('athlete_name') if strava_tokens else None
+
+    # Get coaches (for athletes)
+    coaches = current_user.get_coaches() if current_user.is_athlete() else []
+
+    # Get athletes and pending invitations (for coaches)
+    athletes = []
+    pending_invitations = []
+    if current_user.is_coach():
+        athletes = get_coach_athletes_list(current_user.id)
+        pending_invitations = get_pending_invitations(current_user.id)
+
+    # Check if viewing as someone else
+    viewing_user_id = get_viewing_user_id()
+    is_viewing_other = viewing_user_id != current_user.id
+    viewing_user = None
+    if is_viewing_other:
+        from app.models.user import User
+        viewing_user = User.get(viewing_user_id)
+
+    return render_template(
+        'admin/profile.html',
+        user=current_user,
+        is_strava_connected=is_strava_connected,
+        strava_athlete_name=strava_athlete_name,
+        coaches=coaches,
+        athletes=athletes,
+        pending_invitations=pending_invitations,
+        is_viewing_other=is_viewing_other,
+        viewing_user=viewing_user
+    )
+
+
+@admin_bp.route('/profile/update', methods=['POST'])
+@login_required
+def update_profile():
+    """Update user profile (name/email)"""
+    name = request.form.get('name', '').strip()
+    email = request.form.get('email', '').strip()
+
+    try:
+        update_user_profile(current_user.id, name=name if name else None, email=email if email else None)
+        flash('Profile updated successfully', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/profile/password', methods=['POST'])
+@login_required
+def change_password():
+    """Change user password"""
+    current_password = request.form.get('current_password', '')
+    new_password = request.form.get('new_password', '')
+    confirm_password = request.form.get('confirm_password', '')
+
+    # Validate
+    if not current_password:
+        flash('Current password is required', 'danger')
+        return redirect(url_for('admin.profile'))
+
+    if not new_password:
+        flash('New password is required', 'danger')
+        return redirect(url_for('admin.profile'))
+
+    if new_password != confirm_password:
+        flash('New passwords do not match', 'danger')
+        return redirect(url_for('admin.profile'))
+
+    try:
+        update_password(current_user.id, current_password, new_password)
+        flash('Password changed successfully', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('admin.profile'))
+
+
+# ========== Coach-Athlete Relationship Management ==========
+
+@admin_bp.route('/coaches/invite', methods=['POST'])
+@login_required
+def invite_coach_route():
+    """Invite a coach by email (athlete only)"""
+    if not current_user.is_athlete():
+        flash('Only athletes can invite coaches', 'danger')
+        return redirect(url_for('admin.profile'))
+
+    coach_email = request.form.get('coach_email', '').strip()
+
+    if not coach_email:
+        flash('Coach email is required', 'danger')
+        return redirect(url_for('admin.profile'))
+
+    try:
+        invite_coach(current_user.id, coach_email)
+        flash(f'Invitation sent to {coach_email}', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/coaches/<int:coach_id>/remove', methods=['POST'])
+@login_required
+def remove_coach_route(coach_id):
+    """Remove coach access (athlete only)"""
+    if not current_user.is_athlete():
+        flash('Only athletes can remove coaches', 'danger')
+        return redirect(url_for('admin.profile'))
+
+    try:
+        remove_coach_access(current_user.id, coach_id)
+        flash('Coach access removed', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/athletes/<int:athlete_id>/accept', methods=['POST'])
+@login_required
+@coach_required
+def accept_invitation(athlete_id):
+    """Accept athlete invitation (coach only)"""
+    try:
+        accept_coach_invitation(current_user.id, athlete_id)
+        flash('Invitation accepted', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/athletes/<int:athlete_id>/reject', methods=['POST'])
+@login_required
+@coach_required
+def reject_invitation(athlete_id):
+    """Reject athlete invitation (coach only)"""
+    try:
+        reject_coach_invitation(current_user.id, athlete_id)
+        flash('Invitation rejected', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/switch-view/<int:user_id>', methods=['POST'])
+@login_required
+@coach_required
+def switch_view(user_id):
+    """Switch viewing context to athlete data (coach only)"""
+    try:
+        if user_id == current_user.id:
+            # Switch back to own data
+            clear_viewing_user_id()
+            flash('Switched to viewing your own data', 'info')
+        else:
+            # Switch to athlete data
+            if set_viewing_user_id(user_id):
+                from app.models.user import User
+                viewing_user = User.get(user_id)
+                flash(f'Now viewing data for {viewing_user.name}', 'info')
+            else:
+                flash('Access denied', 'danger')
+    except Exception as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('web.index'))

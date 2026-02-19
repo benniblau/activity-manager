@@ -45,17 +45,17 @@
     </div>
 
     <div class="col-md-6 col-lg-4 mb-3">
-        <div class="card stats-card h-100 opacity-50">
+        <div class="card stats-card h-100">
             <div class="card-body">
                 <h5 class="card-title">
                     <i class="bi bi-person-gear"></i> User Settings
                 </h5>
-                <p class="card-text text-muted">
-                    Coming soon: Configure user preferences and application settings.
+                <p class="card-text">
+                    Manage your profile, password, Strava connection, and coach relationships.
                 </p>
-                <button class="btn btn-secondary" disabled>
-                    Coming Soon
-                </button>
+                <a href="{{ url_for('admin.profile') }}" class="btn btn-primary">
+                    Manage Profile
+                </a>
             </div>
         </div>
     </div>

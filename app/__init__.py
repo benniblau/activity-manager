@@ -1,5 +1,6 @@
 import os
 from flask import Flask
+from flask_login import LoginManager
 from config import config
 
 
@@ -20,6 +21,19 @@ def create_app(config_name=None):
 
     # Load configuration
     app.config.from_object(config.get(config_name, config['default']))
+
+    # Initialize Flask-Login
+    login_manager = LoginManager()
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.user_login'
+    login_manager.login_message = 'Please log in to access this page.'
+    login_manager.login_message_category = 'info'
+
+    @login_manager.user_loader
+    def load_user(user_id):
+        """Load user by ID for Flask-Login"""
+        from app.models.user import User
+        return User.get(int(user_id))
 
     # Initialize database
     from app.database import close_db, init_db

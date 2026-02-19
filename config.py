@@ -44,7 +44,14 @@ class Config:
     STRAVA_TOKEN_URL = 'https://www.strava.com/oauth/token'
     STRAVA_API_BASE_URL = 'https://www.strava.com/api/v3'
     # Redirect URI built from HOST, or can be overridden directly
-    STRAVA_REDIRECT_URI = os.environ.get('STRAVA_REDIRECT_URI') or f"{_normalize_host(os.environ.get('HOST'))}/auth/callback"
+    STRAVA_REDIRECT_URI = os.environ.get('STRAVA_REDIRECT_URI') or f"{_normalize_host(os.environ.get('HOST'))}/auth/strava/callback"
+
+    # Email Configuration
+    SMTP_SERVER = os.environ.get('SMTP_SERVER')
+    SMTP_PORT = int(os.environ.get('SMTP_PORT', 587))
+    SMTP_USERNAME = os.environ.get('SMTP_USERNAME')
+    SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
+    FROM_EMAIL = os.environ.get('FROM_EMAIL') or os.environ.get('SMTP_USERNAME')
 
 
 class DevelopmentConfig(Config):

@@ -34,11 +34,11 @@
             <div class="card-body py-2">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        {% if is_authenticated %}
+                        {% if is_strava_authenticated %}
                         <i class="bi bi-strava text-warning"></i>
                         <span class="text-success">Connected to Strava</span>
-                        {% if athlete_name %}
-                        <span class="text-muted">as {{ athlete_name }}</span>
+                        {% if strava_athlete_name %}
+                        <span class="text-muted">as {{ strava_athlete_name }}</span>
                         {% endif %}
                         {% else %}
                         <i class="bi bi-exclamation-circle text-warning"></i>
@@ -46,15 +46,15 @@
                         {% endif %}
                     </div>
                     <div class="d-flex gap-2">
-                        {% if is_authenticated %}
+                        {% if is_strava_authenticated %}
                         <a href="/sync" class="btn btn-sm btn-success" id="syncBtn">
                             <i class="bi bi-cloud-download"></i> Sync from Strava
                         </a>
-                        <a href="/auth/logout" class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-box-arrow-right"></i> Disconnect
+                        <a href="/auth/strava/disconnect" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-box-arrow-right"></i> Disconnect Strava
                         </a>
                         {% else %}
-                        <a href="/auth/login" class="btn btn-sm btn-warning">
+                        <a href="/auth/strava/connect" class="btn btn-sm btn-warning">
                             <i class="bi bi-strava"></i> Connect to Strava
                         </a>
                         {% endif %}

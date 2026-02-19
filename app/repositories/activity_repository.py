@@ -8,17 +8,18 @@ from app.utils.errors import ActivityNotFoundError, ValidationError, DatabaseErr
 class ActivityRepository(BaseRepository):
     """Repository for activity CRUD operations and queries"""
 
-    def get_activity(self, activity_id):
+    def get_activity(self, activity_id, user_id=None):
         """Get a single activity by ID with extended type information
 
         Args:
             activity_id: Activity ID
+            user_id: User ID (optional, for access control)
 
         Returns:
             Activity dictionary or None
 
         Raises:
-            ActivityNotFoundError: If activity doesn't exist
+            ActivityNotFoundError: If activity doesn't exist or access denied
         """
         query = '''
             SELECT
@@ -30,14 +31,20 @@ class ActivityRepository(BaseRepository):
             LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
             WHERE a.id = ?
         '''
-        activity = self.fetchone(query, (activity_id,))
+        params = [activity_id]
+
+        if user_id is not None:
+            query += ' AND a.user_id = ?'
+            params.append(user_id)
+
+        activity = self.fetchone(query, tuple(params))
 
         if not activity:
             raise ActivityNotFoundError(activity_id)
 
         return activity
 
-    def get_activities(self, filters=None, limit=None, offset=0):
+    def get_activities(self, filters=None, limit=None, offset=0, user_id=None):
         """Get activities with optional filtering
 
         Args:
@@ -50,6 +57,7 @@ class ActivityRepository(BaseRepository):
                 - extended_type_id: Activities with extended type
             limit: Maximum number of results
             offset: Number of results to skip
+            user_id: User ID to filter by (required for multi-user)
 
         Returns:
             List of activity dictionaries
@@ -69,6 +77,11 @@ class ActivityRepository(BaseRepository):
             WHERE 1=1
         '''
         params = []
+
+        # Filter by user_id (critical for multi-user support)
+        if user_id is not None:
+            query += ' AND a.user_id = ?'
+            params.append(user_id)
 
         # Apply filters
         if filters.get('sport_type'):
