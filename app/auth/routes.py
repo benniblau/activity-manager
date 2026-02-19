@@ -484,7 +484,12 @@ def strava_disconnect():
 def user_register():
     """User registration with email/password"""
     if request.method == 'GET':
-        return render_template('auth/register.html')
+        # Pre-fill email and role from URL parameters (for coach invitations)
+        prefill_email = request.args.get('email', '')
+        prefill_role = request.args.get('role', 'athlete')
+        return render_template('auth/register.html',
+                             prefill_email=prefill_email,
+                             prefill_role=prefill_role)
 
     # POST request - handle registration
     email = request.form.get('email', '').strip()
@@ -520,8 +525,7 @@ def user_register():
 
     # Try to register
     try:
-        user_id = register_user(email, password, name, role)
-        user = User.get(user_id)
+        user = register_user(email, password, name, role)
 
         # Log user in
         login_user(user)
@@ -579,32 +583,37 @@ def user_login():
 @flask_login_required
 def user_logout():
     """User logout (also clears Strava session)"""
+    from flask import make_response
+
     print(f"[LOGOUT] User {current_user.id} ({current_user.email}) logging out")
     print(f"[LOGOUT] Session before clear: {dict(session)}")
+    print(f"[LOGOUT] Current user authenticated: {current_user.is_authenticated}")
 
     user_id = current_user.id
 
     # Clear Strava tokens for this user
     delete_tokens_from_db(user_id)
 
-    # Logout user
-    logout_user()
-
-    # Clear all session data
-    for key in list(session.keys()):
-        session.pop(key)
-
-    print(f"[LOGOUT] Session after clear: {dict(session)}")
-    print(f"[LOGOUT] Is authenticated: {current_user.is_authenticated}")
-
-    # Flash message before creating response
+    # Flash message BEFORE logout
     flash('You have been logged out', 'info')
 
-    # Create response with redirect
-    response = redirect(url_for('auth.user_login'))
+    # Logout user (this should clear the session)
+    logout_user()
 
-    # Force clear session cookie
-    response.set_cookie('session', '', expires=0)
+    # Clear all session data explicitly
+    session.clear()
+
+    print(f"[LOGOUT] Session after clear: {dict(session)}")
+    print(f"[LOGOUT] Is authenticated after logout: {current_user.is_authenticated}")
+
+    # Create response with redirect
+    response = make_response(redirect(url_for('auth.user_login')))
+
+    # Force clear all authentication cookies
+    response.delete_cookie('session')
+    response.delete_cookie('remember_token')  # Flask-Login remember me cookie
+
+    print(f"[LOGOUT] Redirecting to login page")
 
     return response
 

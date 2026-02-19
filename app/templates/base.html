@@ -47,6 +47,41 @@
                         <a class="nav-link" href="/admin"><i class="bi bi-gear-fill"></i> Admin</a>
                     </li>
                     {% if current_user.is_authenticated %}
+                    <!-- Athlete selector for coaches -->
+                    {% if current_user.is_coach() and coach_athletes %}
+                        {% if coach_athletes|length > 1 %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-people-fill"></i>
+                                {% if viewing_athlete %}
+                                    {{ viewing_athlete.name }}
+                                {% else %}
+                                    Select Athlete
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                {% for athlete in coach_athletes %}
+                                <li>
+                                    <form method="POST" action="{{ url_for('admin.switch_view', user_id=athlete.id) }}" style="margin: 0;">
+                                        <button type="submit" class="dropdown-item {% if viewing_athlete and viewing_athlete.id == athlete.id %}active{% endif %}">
+                                            <i class="bi bi-person"></i> {{ athlete.name }}
+                                            <small class="text-muted">({{ athlete.activity_count }} activities)</small>
+                                        </button>
+                                    </form>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                        {% else %}
+                        <!-- Single athlete - just show name -->
+                        <li class="nav-item">
+                            <span class="nav-link">
+                                <i class="bi bi-people-fill"></i> {{ coach_athletes[0].name }}
+                            </span>
+                        </li>
+                        {% endif %}
+                    {% endif %}
+                    <!-- User menu -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle"></i> {{ current_user.name }}

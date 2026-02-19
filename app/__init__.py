@@ -55,6 +55,31 @@ def create_app(config_name=None):
         except (ValueError, TypeError):
             return ''
 
+    # Register context processor for athlete data (for coaches)
+    @app.context_processor
+    def inject_athlete_data():
+        """Inject athlete information for coaches into all templates"""
+        from flask_login import current_user
+        from app.services.access_control_service import get_viewing_user_id, get_coach_athletes_list
+        from app.models.user import User
+
+        if not current_user.is_authenticated or not current_user.is_coach():
+            return {}
+
+        # Get list of athletes for this coach
+        athletes = get_coach_athletes_list(current_user.id)
+
+        # Get currently viewing athlete
+        viewing_user_id = get_viewing_user_id()
+        viewing_athlete = None
+        if viewing_user_id and viewing_user_id != current_user.id:
+            viewing_athlete = User.get(viewing_user_id)
+
+        return {
+            'coach_athletes': athletes,
+            'viewing_athlete': viewing_athlete
+        }
+
     # Register blueprints
     from app.auth import auth_bp
     from app.activities import activities_bp

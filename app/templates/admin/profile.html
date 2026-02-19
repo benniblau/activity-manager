@@ -26,16 +26,6 @@
     {% endif %}
 {% endwith %}
 
-<!-- Viewing context indicator for coaches -->
-{% if is_viewing_other %}
-<div class="alert alert-info" role="alert">
-    <i class="bi bi-eye"></i> You are currently viewing data for <strong>{{ viewing_user.name }}</strong>.
-    <form method="POST" action="{{ url_for('admin.switch_view', user_id=user.id) }}" style="display: inline;">
-        <button type="submit" class="btn btn-sm btn-outline-primary">Switch back to your data</button>
-    </form>
-</div>
-{% endif %}
-
 <div class="row">
     <!-- User Information Card -->
     <div class="col-md-6 mb-3">
@@ -226,16 +216,10 @@
                 {% if athletes %}
                     <ul class="list-group">
                         {% for athlete in athletes %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong>{{ athlete.name }}</strong>
-                                <br><small class="text-muted">{{ athlete.email }}</small>
-                            </div>
-                            <form method="POST" action="{{ url_for('admin.switch_view', user_id=athlete.id) }}" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-eye"></i> View as
-                                </button>
-                            </form>
+                        <li class="list-group-item">
+                            <strong>{{ athlete.name }}</strong>
+                            <br><small class="text-muted">{{ athlete.email }}</small>
+                            <br><small class="text-muted">{{ athlete.activity_count }} activities</small>
                         </li>
                         {% endfor %}
                     </ul>

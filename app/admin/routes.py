@@ -7,7 +7,7 @@ from app.auth.user_auth import update_user_profile, update_password
 from app.services.access_control_service import (
     invite_coach, get_pending_invitations, get_coach_athletes_list,
     accept_coach_invitation, reject_coach_invitation, remove_coach_access,
-    set_viewing_user_id, clear_viewing_user_id, get_viewing_user_id
+    set_viewing_user_id
 )
 from app.auth.decorators import coach_required
 
@@ -145,14 +145,6 @@ def profile():
         athletes = get_coach_athletes_list(current_user.id)
         pending_invitations = get_pending_invitations(current_user.id)
 
-    # Check if viewing as someone else
-    viewing_user_id = get_viewing_user_id()
-    is_viewing_other = viewing_user_id != current_user.id
-    viewing_user = None
-    if is_viewing_other:
-        from app.models.user import User
-        viewing_user = User.get(viewing_user_id)
-
     return render_template(
         'admin/profile.html',
         user=current_user,
@@ -160,9 +152,7 @@ def profile():
         strava_athlete_name=strava_athlete_name,
         coaches=coaches,
         athletes=athletes,
-        pending_invitations=pending_invitations,
-        is_viewing_other=is_viewing_other,
-        viewing_user=viewing_user
+        pending_invitations=pending_invitations
     )
 
 
@@ -292,20 +282,15 @@ def reject_invitation(athlete_id):
 @login_required
 @coach_required
 def switch_view(user_id):
-    """Switch viewing context to athlete data (coach only)"""
+    """Switch viewing context to different athlete (coach only)"""
     try:
-        if user_id == current_user.id:
-            # Switch back to own data
-            clear_viewing_user_id()
-            flash('Switched to viewing your own data', 'info')
+        # Switch to selected athlete's data
+        if set_viewing_user_id(user_id):
+            from app.models.user import User
+            viewing_user = User.get(user_id)
+            flash(f'Now viewing {viewing_user.name}\'s data', 'success')
         else:
-            # Switch to athlete data
-            if set_viewing_user_id(user_id):
-                from app.models.user import User
-                viewing_user = User.get(user_id)
-                flash(f'Now viewing data for {viewing_user.name}', 'info')
-            else:
-                flash('Access denied', 'danger')
+            flash('Access denied - you cannot view this athlete\'s data', 'danger')
     except Exception as e:
         flash(str(e), 'danger')
 

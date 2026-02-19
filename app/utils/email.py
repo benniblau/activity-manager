@@ -96,7 +96,9 @@ def send_coach_invitation_email(coach_email, coach_name, athlete_name, app_url, 
         # Email for unregistered coaches
         action_text = "To get started, you'll need to create a coach account first:"
         button_text = "Create Coach Account"
-        button_url = f"{app_url}/auth/user/register"
+        # Include email and role in registration URL for pre-filling
+        from urllib.parse import quote
+        button_url = f"{app_url}/auth/user/register?email={quote(coach_email)}&role=coach"
 
     html_body = f"""
     <html>

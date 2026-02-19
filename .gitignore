@@ -59,5 +59,5 @@ CLAUDE.md
 # App
 archive/
 
-# Test scripts
-test_smtp.py
+# Backups
+backup/

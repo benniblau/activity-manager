@@ -29,7 +29,13 @@
 
                     <div class="mb-3">
                         <label for="email" class="form-label">Email address</label>
-                        <input type="email" class="form-control" id="email" name="email" required>
+                        <input type="email" class="form-control" id="email" name="email"
+                               value="{{ prefill_email }}"
+                               {% if prefill_email %}readonly{% endif %}
+                               required>
+                        {% if prefill_email %}
+                        <div class="form-text">This email was invited to be a coach</div>
+                        {% endif %}
                     </div>
 
                     <div class="mb-3">
@@ -45,10 +51,13 @@
 
                     <div class="mb-3">
                         <label for="role" class="form-label">I am a...</label>
-                        <select class="form-select" id="role" name="role" required>
-                            <option value="athlete" selected>Athlete</option>
-                            <option value="coach">Coach</option>
+                        <select class="form-select" id="role" name="role" required {% if prefill_role %}disabled{% endif %}>
+                            <option value="athlete" {% if prefill_role == 'athlete' or not prefill_role %}selected{% endif %}>Athlete</option>
+                            <option value="coach" {% if prefill_role == 'coach' %}selected{% endif %}>Coach</option>
                         </select>
+                        {% if prefill_role %}
+                        <input type="hidden" name="role" value="{{ prefill_role }}">
+                        {% endif %}
                         <div class="form-text">
                             Athletes can track their own activities. Coaches can view their athletes' data.
                         </div>

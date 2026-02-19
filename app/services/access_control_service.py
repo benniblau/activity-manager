@@ -70,31 +70,44 @@ def get_accessible_users(user_id):
 
 
 def get_viewing_user_id():
-    """Get the user_id currently being viewed (for coaches viewing athlete data)
+    """Get the user_id currently being viewed
 
-    Coaches can switch between viewing their own data and their athletes' data.
-    This function returns the ID of the user whose data is currently being viewed.
+    For athletes: Always returns their own ID
+    For coaches: Returns the athlete they're currently viewing, or the first athlete if not set
 
     Returns:
-        User ID being viewed (from session or current user)
+        User ID being viewed (from session, or default based on role)
     """
     from flask_login import current_user
 
     if not current_user.is_authenticated:
         return None
 
-    # Check if coach is viewing an athlete's data
-    viewing_user_id = session.get('viewing_user_id')
+    # Athletes always view their own data
+    if current_user.is_athlete():
+        return current_user.id
 
-    if viewing_user_id:
-        # Verify coach has access to this user
-        if can_view_user_data(current_user.id, viewing_user_id):
-            return viewing_user_id
-        else:
-            # Access denied, clear invalid session
-            session.pop('viewing_user_id', None)
+    # Coaches view their athletes' data
+    if current_user.is_coach():
+        # Check if a specific athlete is selected in session
+        viewing_user_id = session.get('viewing_user_id')
 
-    # Default to current user's own data
+        if viewing_user_id:
+            # Verify coach has access to this athlete
+            if can_view_user_data(current_user.id, viewing_user_id):
+                return viewing_user_id
+            else:
+                # Access denied, clear invalid session
+                session.pop('viewing_user_id', None)
+
+        # Default to first athlete's data
+        athletes = get_coach_athletes_list(current_user.id)
+        if athletes:
+            first_athlete_id = athletes[0]['id']
+            session['viewing_user_id'] = first_athlete_id
+            return first_athlete_id
+
+    # Fallback to current user (shouldn't reach here normally)
     return current_user.id
 
 
