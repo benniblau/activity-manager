@@ -52,7 +52,7 @@ def send_email(to_email, subject, html_body, text_body=None):
         return False
 
 
-def send_coach_invitation_email(coach_email, coach_name, athlete_name, app_url):
+def send_coach_invitation_email(coach_email, coach_name, athlete_name, app_url, is_registered=True):
     """Send invitation email to coach
 
     Args:
@@ -60,11 +60,23 @@ def send_coach_invitation_email(coach_email, coach_name, athlete_name, app_url):
         coach_name: Coach's name
         athlete_name: Athlete's name who sent the invitation
         app_url: Base URL of the application
+        is_registered: Whether the coach is already registered
 
     Returns:
         True if email sent successfully, False otherwise
     """
     subject = f'{athlete_name} has invited you to be their coach'
+
+    if is_registered:
+        # Email for registered coaches
+        action_text = "To accept or reject this invitation, please log in to your account:"
+        button_text = "View Invitation"
+        button_url = f"{app_url}/admin/profile"
+    else:
+        # Email for unregistered coaches
+        action_text = "To get started, you'll need to create a coach account first:"
+        button_text = "Create Coach Account"
+        button_url = f"{app_url}/auth/user/register"
 
     html_body = f"""
     <html>
@@ -81,19 +93,22 @@ def send_coach_invitation_email(coach_email, coach_name, athlete_name, app_url):
             <li>View {athlete_name}'s activities and training data</li>
             <li>Monitor their progress and performance metrics</li>
             <li>Access detailed reports and analytics</li>
+            <li>Add coach comments and feedback</li>
           </ul>
 
-          <p>To accept or reject this invitation, please log in to your account:</p>
+          <p>{action_text}</p>
 
           <div style="margin: 30px 0;">
-            <a href="{app_url}/admin/profile"
+            <a href="{button_url}"
                style="background-color: #fc4c02; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              View Invitation
+              {button_text}
             </a>
           </div>
 
+          {'<p style="color: #666; font-size: 14px;">After creating your account, go to your <strong>Profile</strong> to view and accept pending invitations.</p>' if not is_registered else ''}
+
           <p style="color: #666; font-size: 14px;">
-            If you did not expect this invitation, you can safely ignore this email or reject the invitation in your profile.
+            If you did not expect this invitation, you can safely ignore this email{' or reject the invitation in your profile' if is_registered else ''}.
           </p>
 
           <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
@@ -106,7 +121,8 @@ def send_coach_invitation_email(coach_email, coach_name, athlete_name, app_url):
     </html>
     """
 
-    text_body = f"""
+    if is_registered:
+        text_body = f"""
 New Coach Invitation
 
 Hi {coach_name},
@@ -117,6 +133,7 @@ As a coach, you will be able to:
 - View {athlete_name}'s activities and training data
 - Monitor their progress and performance metrics
 - Access detailed reports and analytics
+- Add coach comments and feedback
 
 To accept or reject this invitation, please log in to your account and visit:
 {app_url}/admin/profile
@@ -125,6 +142,30 @@ If you did not expect this invitation, you can safely ignore this email or rejec
 
 ---
 This is an automated message from Activity Manager. Please do not reply to this email.
-    """
+        """
+    else:
+        text_body = f"""
+New Coach Invitation
+
+Hi {coach_name},
+
+{athlete_name} has invited you to be their coach on the Activity Manager platform.
+
+As a coach, you will be able to:
+- View {athlete_name}'s activities and training data
+- Monitor their progress and performance metrics
+- Access detailed reports and analytics
+- Add coach comments and feedback
+
+To get started, you'll need to create a coach account first:
+{app_url}/auth/user/register
+
+After creating your account, go to your Profile to view and accept pending invitations.
+
+If you did not expect this invitation, you can safely ignore this email.
+
+---
+This is an automated message from Activity Manager. Please do not reply to this email.
+        """
 
     return send_email(coach_email, subject, html_body, text_body)

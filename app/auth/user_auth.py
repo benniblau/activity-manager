@@ -81,9 +81,17 @@ def register_user(email, password, name, role='athlete'):
             datetime.utcnow().isoformat(),
             datetime.utcnow().isoformat()
         ))
-        db.commit()
-
         user_id = cursor.lastrowid
+
+        # If registering as a coach, link any pending invitations by email
+        if role == 'coach':
+            db.execute('''
+                UPDATE coach_athlete_relationships
+                SET coach_id = ?, coach_email = NULL
+                WHERE coach_email = ? AND coach_id IS NULL
+            ''', (user_id, email.lower().strip()))
+
+        db.commit()
         return User.get(user_id)
 
     except Exception as e:

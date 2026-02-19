@@ -200,17 +200,17 @@
                         <li class="list-group-item">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <div>
-                                    <strong>{{ athlete.name }}</strong>
-                                    <br><small class="text-muted">{{ athlete.email }}</small>
+                                    <strong>{{ athlete.athlete_name }}</strong>
+                                    <br><small class="text-muted">{{ athlete.athlete_email }}</small>
                                 </div>
                             </div>
                             <div class="btn-group" role="group">
-                                <form method="POST" action="{{ url_for('admin.accept_invitation', athlete_id=athlete.id) }}" style="display: inline;">
+                                <form method="POST" action="{{ url_for('admin.accept_invitation', athlete_id=athlete.athlete_id) }}" style="display: inline;">
                                     <button type="submit" class="btn btn-sm btn-success">
                                         <i class="bi bi-check-circle"></i> Accept
                                     </button>
                                 </form>
-                                <form method="POST" action="{{ url_for('admin.reject_invitation', athlete_id=athlete.id) }}" style="display: inline;">
+                                <form method="POST" action="{{ url_for('admin.reject_invitation', athlete_id=athlete.athlete_id) }}" style="display: inline;">
                                     <button type="submit" class="btn btn-sm btn-danger">
                                         <i class="bi bi-x-circle"></i> Reject
                                     </button>
