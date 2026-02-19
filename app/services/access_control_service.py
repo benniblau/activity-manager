@@ -133,7 +133,7 @@ def invite_coach(athlete_id, coach_email):
         coach_email: Email address of coach to invite
 
     Returns:
-        Relationship ID if successful
+        Tuple of (relationship_id, email_sent_successfully)
 
     Raises:
         ValueError: If validation fails or invitation already exists
@@ -141,13 +141,13 @@ def invite_coach(athlete_id, coach_email):
     # Get coach by email
     coach = User.get_by_email(coach_email)
     if not coach:
-        raise ValueError('No user found with that email address')
+        raise ValueError('No user found with that email address. The coach must register first.')
 
     if not coach.is_coach():
-        raise ValueError('User is not registered as a coach')
+        raise ValueError(f'{coach_email} is registered as an athlete, not a coach. They need to register as a coach first.')
 
     if coach.id == athlete_id:
-        raise ValueError('Cannot invite yourself')
+        raise ValueError('You cannot invite yourself as a coach.')
 
     # Check if relationship already exists
     db = get_db()
@@ -159,30 +159,35 @@ def invite_coach(athlete_id, coach_email):
     existing = cursor.fetchone()
     if existing:
         if existing[1] == 'active':
-            raise ValueError('Coach already has access to your data')
+            raise ValueError(f'{coach.name} already has active access to your data.')
         elif existing[1] == 'pending':
-            raise ValueError('Invitation already sent to this coach')
-        else:
-            # Reactivate inactive relationship
-            db.execute('''
-                UPDATE coach_athlete_relationships
-                SET status = 'pending', invited_at = ?
-                WHERE id = ?
-            ''', (datetime.utcnow().isoformat(), existing[0]))
-            db.commit()
+            raise ValueError(f'An invitation has already been sent to {coach.name}. They need to accept it in their profile.')
 
-            # Send email notification to coach
-            athlete = User.get(athlete_id)
-            if athlete:
-                app_url = current_app.config.get('HOST', 'http://localhost:5000')
-                send_coach_invitation_email(
-                    coach_email=coach.email,
-                    coach_name=coach.name,
-                    athlete_name=athlete.name,
-                    app_url=app_url
-                )
+    # Get athlete info for email
+    athlete = User.get(athlete_id)
+    email_sent = False
 
-            return existing[0]
+    if existing and existing[1] == 'inactive':
+        # Reactivate inactive relationship
+        db.execute('''
+            UPDATE coach_athlete_relationships
+            SET status = 'pending', invited_at = ?
+            WHERE id = ?
+        ''', (datetime.utcnow().isoformat(), existing[0]))
+        db.commit()
+        relationship_id = existing[0]
+
+        # Send email notification to coach
+        if athlete:
+            app_url = current_app.config.get('HOST', 'http://localhost:5000')
+            email_sent = send_coach_invitation_email(
+                coach_email=coach.email,
+                coach_name=coach.name,
+                athlete_name=athlete.name,
+                app_url=app_url
+            )
+
+        return (relationship_id, email_sent)
 
     # Create new invitation
     cursor = db.execute('''
@@ -194,17 +199,16 @@ def invite_coach(athlete_id, coach_email):
     relationship_id = cursor.lastrowid
 
     # Send email notification to coach
-    athlete = User.get(athlete_id)
     if athlete:
         app_url = current_app.config.get('HOST', 'http://localhost:5000')
-        send_coach_invitation_email(
+        email_sent = send_coach_invitation_email(
             coach_email=coach.email,
             coach_name=coach.name,
             athlete_name=athlete.name,
             app_url=app_url
         )
 
-    return relationship_id
+    return (relationship_id, email_sent)
 
 
 def accept_coach_invitation(coach_id, athlete_id):

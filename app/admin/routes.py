@@ -229,8 +229,14 @@ def invite_coach_route():
         return redirect(url_for('admin.profile'))
 
     try:
-        invite_coach(current_user.id, coach_email)
-        flash(f'Invitation sent to {coach_email}', 'success')
+        relationship_id, email_sent = invite_coach(current_user.id, coach_email)
+
+        # Provide detailed feedback about invitation status
+        if email_sent:
+            flash(f'Invitation sent to {coach_email}. An email notification has been sent.', 'success')
+        else:
+            flash(f'Invitation created for {coach_email}, but email notification could not be sent. '
+                  f'Please notify the coach directly to check their profile for the pending invitation.', 'warning')
     except ValueError as e:
         flash(str(e), 'danger')
 
