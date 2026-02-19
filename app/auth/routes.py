@@ -579,6 +579,9 @@ def user_login():
 @flask_login_required
 def user_logout():
     """User logout (also clears Strava session)"""
+    print(f"[LOGOUT] User {current_user.id} ({current_user.email}) logging out")
+    print(f"[LOGOUT] Session before clear: {dict(session)}")
+
     user_id = current_user.id
 
     # Clear Strava tokens for this user
@@ -586,10 +589,24 @@ def user_logout():
 
     # Logout user
     logout_user()
-    session.clear()
 
+    # Clear all session data
+    for key in list(session.keys()):
+        session.pop(key)
+
+    print(f"[LOGOUT] Session after clear: {dict(session)}")
+    print(f"[LOGOUT] Is authenticated: {current_user.is_authenticated}")
+
+    # Flash message before creating response
     flash('You have been logged out', 'info')
-    return redirect(url_for('auth.user_login'))
+
+    # Create response with redirect
+    response = redirect(url_for('auth.user_login'))
+
+    # Force clear session cookie
+    response.set_cookie('session', '', expires=0)
+
+    return response
 
 
 def get_strava_client():

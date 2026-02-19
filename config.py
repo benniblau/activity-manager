@@ -26,6 +26,12 @@ class Config:
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
 
+    # Session Configuration
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    PERMANENT_SESSION_LIFETIME = int(os.environ.get('SESSION_LIFETIME', 86400))  # 24 hours default
+    REMEMBER_COOKIE_DURATION = int(os.environ.get('REMEMBER_ME_DURATION', 2592000))  # 30 days default
+
     # Host configuration (used for OAuth callbacks)
     # In production, set HOST to your full URL (e.g., https://activity.example.com)
     HOST = _normalize_host(os.environ.get('HOST'))
@@ -64,6 +70,9 @@ class ProductionConfig(Config):
     """Production configuration"""
     DEBUG = False
     FLASK_ENV = 'production'
+
+    # Session security for HTTPS
+    SESSION_COOKIE_SECURE = True
 
     # In production, all sensitive values should come from environment variables
     # Remove the fallback defaults for security
