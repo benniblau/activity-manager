@@ -1,66 +1,53 @@
 # Activity Manager
 
-A comprehensive **sports training and recovery journal** application for athletes working with coaches or recovering from injuries. Automatically sync activities from Strava, plan your training schedule, and track how your body responds to workouts with detailed annotations.
-
-## Why This App?
-
-When training for performance or recovering from injury (like Achilles tendinitis, runner's knee, or other overuse injuries), tracking both your planned training and actual performance alongside how your body responds is crucial. This app helps you:
-
-- **Plan your training** - Create weekly training schedules with specific workouts
-- **Match plan to reality** - Link planned activities to actual workouts
-- **Document your feelings** - Record pain/discomfort levels and notes for each activity
-- **Track daily condition** - Log how you feel each day, even on rest days
-- **Classify workouts** - Use extended activity types (Easy Run, Tempo, Intervals, etc.)
-- **Identify patterns** - See how different activities affect your recovery
-- **Communicate with coaches** - Provide trainers with detailed reports to adjust your plan
-- **Monitor progress** - Track your journey over time with comprehensive reports
+A comprehensive **multi-user sports training and recovery journal** application for athletes working with coaches or recovering from injuries. Automatically sync activities from Strava, plan your training schedule, and track how your body responds to workouts with detailed annotations.
 
 ## Features
 
+### Multi-User & Coach-Athlete Relationships
+- **User Authentication** - Secure login with bcrypt password hashing
+- **Role-Based Access** - Separate athlete and coach accounts
+- **Coach Invitations** - Athletes can invite coaches via email
+- **Data Sharing** - Coaches can view their athletes' activities and reports
+- **View Switching** - Coaches can switch between viewing their own data and athlete data
+- **Email Notifications** - Automatic invitation emails via SMTP
+
 ### Planning & Training
-- **Training Calendar** - Weekly planning view showing planned vs. actual activities
-- **Standard Activity Types** - 50+ official Strava sport types organized into 7 categories (Foot, Cycle, Water, Winter, Fitness, Racket, Other)
-- **Extended Activity Types** - 55+ custom classifications including HIIT variations (Tabata, EMOM, AMRAP), Crossfit (WOD, MetCon), Yoga styles (Vinyasa, Hatha, Power), Swimming types (Pool, Open Water), and more
-- **Planned Activities** - Create workouts with target distance, duration, intensity, and coaching notes
-- **Activity Matching** - Link planned workouts to actual Strava activities with validation
-- **Multi-day Planning** - Copy planned activities to multiple dates at once
-- **Type Grouping** - Extended types organized by base sport for easy selection
+- **Weekly Training Calendar** - Plan workouts with target metrics
+- **Standard Activity Types** - 50+ official Strava sport types organized into 7 categories
+- **Extended Activity Types** - 70+ custom classifications including:
+  - **HIIT**: Tabata, EMOM, AMRAP, Circuit Training
+  - **CrossFit**: WOD, MetCon, Olympic Lifting, Hero WODs
+  - **Yoga**: Vinyasa, Hatha, Power, Restorative, Yin, Hot Yoga
+  - **Swimming**: Pool, Open Water, Technique, Intervals
+  - **Running**: Easy, Tempo, Interval, Long Run, Recovery
+  - **Cycling**: Zone 2, Threshold, Recovery
+  - **Climbing**: Bouldering, Sport, Top Rope, Trad
+  - **And many more...**
 
 ### Activity Tracking
-- **Strava Integration** - One-click OAuth sync to automatically import all your activities
-- **Auto-Type Creation** - Unknown sport types from Strava are automatically added to maintain compatibility
+- **Strava Integration** - OAuth sync to import all your activities
+- **Per-User Strava Connections** - Each user maintains their own Strava connection
 - **Activity Overview** - Activities grouped by day with collapsible rest days
 - **Detailed Activity View** - Full stats, maps, and performance metrics
 - **Sport Type Badges** - Color-coded badges for different activity types
-- **Type Validation** - Foreign key constraints ensure data integrity
 
 ### Feeling & Recovery Annotations
 - **Pain Scale Tracking** - Rate pain/discomfort (0-10 scale) before, during, and after each workout
 - **Visual Pain Icons** - Font Awesome face icons with color gradient (green to red)
-- **Daily Journal** - Record your overall daily condition and coach comments
+- **Daily Journal** - Record your overall daily condition
+- **Coach Comments** - Track trainer feedback alongside your training log
 - **Activity Notes** - Detailed notes for each workout session
 
 ### Reporting & Analysis
 - **Date Range Reports** - Tabular view showing activities, feelings, and patterns
-- **Coach Comments** - Track trainer feedback alongside your training log
+- **Coach Dashboard** - View all athlete activities and progress
 - **Rest Day Tracking** - Monitor rest days with daily feelings and pain levels
 
 ### User Interface
 - **Dark Theme** - Clean, responsive Bootstrap 5 interface optimized for readability
-- **Collapsible Days** - Compact view with expandable activity details
 - **Mobile-First Design** - Card-based layouts on mobile showing priority information at a glance
-- **Progressive Disclosure** - Tap to expand details on mobile, keeping initial views clean
-- **Responsive Design** - Separate optimized layouts for desktop tables and mobile cards
-- **Font Awesome Icons** - Modern icon set for activities and pain scale
-
-## Screenshots
-
-The app provides four main views:
-
-1. **Activities Overview** - Daily view with activity cards, day feelings, and collapsible rest days
-2. **Activity Detail** - Full activity stats with feeling annotation form and type classification
-3. **Planning Calendar** - Weekly training plan with planned vs. actual activities and matching
-4. **Report** - Comprehensive tabular view of activities and feelings over any date range
+- **Responsive Design** - Separate optimized layouts for desktop and mobile
 
 ## Quick Start
 
@@ -68,11 +55,13 @@ The app provides four main views:
 
 - Python 3.8+
 - Strava API credentials ([create an app here](https://www.strava.com/settings/api))
+- SMTP server for email notifications (optional, e.g., Gmail, ProtonMail)
 
 ### Installation
 
 ```bash
-# Clone and enter directory
+# Clone the repository
+git clone <your-repo-url>
 cd activity-manager
 
 # Create virtual environment
@@ -84,7 +73,13 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your Strava credentials
+# Edit .env with your configuration (see Configuration section below)
+
+# Initialize database
+python -c "from app import create_app; app = create_app(); app.app_context().push(); from app.database import init_db; init_db()"
+
+# Run migration to multi-user (for new installations, creates admin user)
+python scripts/migrate_to_multiuser.py
 
 # Run the app
 python run.py
@@ -92,18 +87,223 @@ python run.py
 
 The app will be available at `http://localhost:5000`
 
+### Configuration
+
+Edit `.env` with your settings:
+
+```env
+# Main Configuration
+HOST=http://localhost:5000  # Full URL for OAuth callbacks
+
+# Flask Configuration
+FLASK_APP=run.py
+FLASK_ENV=development  # or 'production'
+SECRET_KEY=your-random-secret-key-here  # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+
+# Database (optional, defaults to activities.db in project root)
+# DATABASE_PATH=activities.db
+
+# Strava API Credentials (get from https://www.strava.com/settings/api)
+STRAVA_CLIENT_ID=your-client-id
+STRAVA_CLIENT_SECRET=your-client-secret
+
+# Email Configuration (optional, for coach invitation notifications)
+# NOTE: Many SMTP providers require FROM_EMAIL to match SMTP_USERNAME
+SMTP_SERVER=smtp.gmail.com  # or smtp.protonmail.ch, etc.
+SMTP_PORT=587
+SMTP_USERNAME=your-email@example.com
+SMTP_PASSWORD=your-smtp-password
+FROM_EMAIL=your-email@example.com
+```
+
+#### Strava OAuth Setup
+
+1. Go to [https://www.strava.com/settings/api](https://www.strava.com/settings/api)
+2. Create an application
+3. Set **Authorization Callback Domain** to match your `HOST`:
+   - Development: `localhost` or `127.0.0.1`
+   - Production: `your-domain.com`
+4. Copy the Client ID and Client Secret to your `.env`
+
+#### Email Setup (Optional)
+
+For coach invitation emails, configure SMTP settings. Popular options:
+
+**Gmail:**
+- Server: `smtp.gmail.com`
+- Port: `587`
+- Username: Your Gmail address
+- Password: [App-specific password](https://support.google.com/accounts/answer/185833)
+
+**ProtonMail:**
+- Server: `smtp.protonmail.ch`
+- Port: `587`
+- Username: Your ProtonMail address
+- Password: ProtonMail Bridge password
+
+If SMTP is not configured, the app will still work but invitation emails won't be sent (athletes will need to notify coaches manually).
+
 ### First Use
 
-1. Click "Connect with Strava" to authenticate
-2. Click "Sync" to import your activities
-3. Go to "Planning" to create your training schedule
-4. Use "Manage Types" to create custom activity classifications
-5. Click on any activity to add your feeling annotations
-6. Use the "Report" page to review your progress over time
+1. **Register an account** - Navigate to `/auth/user/register`
+2. **Choose your role** - Select 'athlete' or 'coach'
+3. **Connect to Strava** - Click "Connect with Strava" to authenticate
+4. **Sync activities** - Click "Sync" to import your activities
+5. **Invite coaches** (athletes) - Go to Profile → Coach Management → Invite by email
+6. **Accept invitations** (coaches) - Go to Profile → Pending Invitations → Accept
+7. **Add feeling annotations** - Click on any activity to add pain levels and notes
+8. **Create extended types** - Go to Admin → Extended Activity Types to create custom classifications
+9. **View reports** - Use the "Report" page to review progress over time
+
+## Deployment
+
+### Development
+
+```bash
+python run.py
+```
+
+Runs on `http://localhost:5000` with debug mode enabled.
+
+### Production (Linux/Ubuntu)
+
+#### 1. Install Dependencies
+
+```bash
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install Python and required packages
+sudo apt install python3 python3-pip python3-venv nginx -y
+
+# Clone repository
+cd /var/www
+sudo git clone <your-repo-url> activity-manager
+cd activity-manager
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+#### 2. Configure Environment
+
+```bash
+# Create .env file
+sudo nano .env
+
+# Add production settings:
+# HOST=https://activity.yourdomain.com
+# FLASK_ENV=production
+# SECRET_KEY=<generate-strong-key>
+# STRAVA_CLIENT_ID=<your-id>
+# STRAVA_CLIENT_SECRET=<your-secret>
+# (and other settings)
+```
+
+#### 3. Initialize Database
+
+```bash
+python -c "from app import create_app; app = create_app(); app.app_context().push(); from app.database import init_db; init_db()"
+python scripts/migrate_to_multiuser.py
+```
+
+#### 4. Set Up Gunicorn
+
+Create systemd service file:
+
+```bash
+sudo nano /etc/systemd/system/activity-manager.service
+```
+
+Add:
+
+```ini
+[Unit]
+Description=Activity Manager Gunicorn Service
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/activity-manager
+Environment="PATH=/var/www/activity-manager/venv/bin"
+ExecStart=/var/www/activity-manager/venv/bin/gunicorn -w 4 -b 127.0.0.1:8000 wsgi:app
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start activity-manager
+sudo systemctl enable activity-manager
+sudo systemctl status activity-manager
+```
+
+#### 5. Configure Nginx
+
+```bash
+sudo nano /etc/nginx/sites-available/activity-manager
+```
+
+Add:
+
+```nginx
+server {
+    listen 80;
+    server_name activity.yourdomain.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /static {
+        alias /var/www/activity-manager/app/static;
+    }
+}
+```
+
+Enable site:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/activity-manager /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+#### 6. SSL with Let's Encrypt (Recommended)
+
+```bash
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d activity.yourdomain.com
+```
 
 ## Database Utilities
 
-The app includes utility scripts for database maintenance:
+### Multi-User Migration
+
+For existing single-user databases, migrate to multi-user:
+
+```bash
+python scripts/migrate_to_multiuser.py activities.db
+```
+
+This will:
+1. Create a backup of your database
+2. Create users and coach-athlete relationship tables
+3. Prompt you to create an admin user
+4. Assign all existing activities to the admin user
+5. Migrate Strava tokens to per-user storage
 
 ### Schema Migrations
 
@@ -113,71 +313,111 @@ For general database schema updates:
 python migrate_db.py activities.db
 ```
 
-### Fixing Sport Types
+## User Roles
 
-If sport types from Strava sync incorrectly, clean them up:
+### Athlete
+- Register and manage their own account
+- Connect to their own Strava account
+- Sync their activities
+- Add feeling annotations and notes
+- Invite coaches by email
+- Remove coach access
 
-```bash
-python fix_sport_types.py activities.db
-```
-
-This script normalizes sport type values and removes any formatting artifacts.
-
-## Configuration
-
-Edit `.env` with your Strava API credentials:
-
-```env
-FLASK_ENV=development
-SECRET_KEY=your-secret-key-here
-
-STRAVA_CLIENT_ID=your-client-id
-STRAVA_CLIENT_SECRET=your-client-secret
-```
+### Coach
+- Register as a coach
+- Accept/reject athlete invitations
+- View all activities for their athletes
+- Add coach comments to activities
+- Switch between viewing own data and athlete data
+- Cannot directly invite athletes (athletes must invite them)
 
 ## Data Model
 
+### Core Tables
+
+- **users** - User accounts with authentication
+- **coach_athlete_relationships** - Coach-athlete access control
+- **activities** - Strava activities with feeling annotations (per user)
+- **days** - Daily overall feelings and coach comments (per user)
+- **strava_tokens** - OAuth tokens (per user)
+- **extended_activity_types** - Custom activity classifications
+- **standard_activity_types** - Official Strava sport types
+- **gear** - Equipment tracking (bikes, shoes, etc.)
+- **activity_media** - Photos linked to activities
+
+### Key Features
+
+- **Foreign Key Constraints** - Maintain data integrity
+- **Per-User Data** - All activities and tokens scoped to individual users
+- **Role-Based Access** - Coach access controlled through relationships table
+- **Session-Based View Switching** - Coaches can view athlete data without changing accounts
+
+## API Endpoints
+
+### Authentication
+- `GET /auth/user/login` - User login page
+- `POST /auth/user/login` - Process login
+- `GET /auth/user/register` - Registration page
+- `POST /auth/user/register` - Create account
+- `GET /auth/user/logout` - Logout
+
+### Strava OAuth
+- `GET /auth/strava/connect` - Initiate Strava OAuth
+- `GET /auth/strava/callback` - OAuth callback
+- `GET /auth/strava/disconnect` - Disconnect Strava
+
 ### Activities
+- `GET /api/activities/` - List activities (filtered by current user/viewing context)
+- `GET /api/activities/<id>` - Get single activity
+- `POST /api/activities/sync` - Sync from Strava
+- `GET /api/activities/stats` - Aggregate statistics
 
-Each synced activity includes:
-- All Strava metrics (distance, time, heart rate, elevation, pace, etc.)
-- **Extended type classification** (optional custom categorization)
-- **Feeling annotations** (added by you):
-  - Before exercise: pain level (0-10) + notes
-  - During exercise: pain level (0-10) + notes
-  - After exercise: pain level (0-10) + notes
-- **Matching** to planned activities
+### Admin
+- `GET /admin/profile` - User profile management
+- `POST /admin/profile/update` - Update profile
+- `POST /admin/profile/password` - Change password
+- `POST /admin/coaches/invite` - Invite coach (athletes)
+- `POST /admin/coaches/<id>/remove` - Remove coach (athletes)
+- `POST /admin/athletes/<id>/accept` - Accept invitation (coaches)
+- `POST /admin/athletes/<id>/reject` - Reject invitation (coaches)
+- `POST /admin/switch-view/<id>` - Switch viewing context (coaches)
 
-### Planned Activities
+## Security Notes
 
-Each planned workout includes:
-- Date, name, and description
-- Activity type (standard or extended)
-- Target metrics (distance, duration, elevation)
-- Intensity level
-- Coaching notes
-- Match status (linked to actual activity or unmatched)
+- Passwords are hashed with bcrypt
+- Session-based authentication via Flask-Login
+- CSRF protection on all forms
+- OAuth tokens stored per-user in database
+- Role-based access control for coach-athlete data
+- `.env` file excluded from version control (.gitignore)
+- Database files excluded from version control
 
-### Extended Activity Types
+## Troubleshooting
 
-Custom activity classifications with:
-- Base sport type (Run, Ride, WeightTraining, etc.)
-- Custom name (Easy Run, Tempo, HYROX, LAG, etc.)
-- Description
-- Color badge for visual distinction
+### SMTP Email Errors
 
-Available extended types:
-- **Running**: Easy Run, Tempo Run, Interval Run, Long Run, Recovery Run
-- **Cycling**: Zone 2 Ride, Threshold Ride, Recovery Ride
-- **Gym**: HYROX, Weight Training, LAG (Laufausgleichgymnastik), Stretching
+If coach invitations don't send emails:
 
-### Days
+1. Check SMTP credentials in `.env`
+2. For Gmail: Use app-specific password, not regular password
+3. For ProtonMail: Ensure FROM_EMAIL matches SMTP_USERNAME
+4. Test SMTP: `python test_smtp.py your-email@example.com`
 
-Each day can have:
-- Overall pain/discomfort level (0-10)
-- Notes about how you're feeling
-- Coach comments
-- Tracked even on rest days
+### Strava OAuth Errors
+
+If Strava connection fails:
+
+1. Verify `HOST` in `.env` matches your actual URL
+2. Check Strava app's Authorization Callback Domain matches `HOST` domain
+3. Ensure `STRAVA_CLIENT_ID` and `STRAVA_CLIENT_SECRET` are correct
+
+### Database Errors
+
+If activities don't sync:
+
+1. Check database permissions
+2. Run migrations: `python scripts/migrate_to_multiuser.py`
+3. Initialize schema: `python -c "from app import create_app; app = create_app(); app.app_context().push(); from app.database import init_db; init_db()"`
 
 ## Pain Scale
 
@@ -192,100 +432,38 @@ The 0-10 pain scale uses Font Awesome face icons with visual indicators:
 ## Use Cases
 
 ### Training Plan Management
-Create and track your weekly training schedule. Plan recovery runs, tempo workouts, and long runs with specific targets. Match each planned workout to your actual Strava activities.
+Create and track your weekly training schedule. Plan recovery runs, tempo workouts, and long runs with specific targets.
 
 ### Injury Recovery
-Document your return from injury by tracking how each activity affects you. Use extended types to classify workouts by intensity (Easy, Recovery, etc.). Share reports with your physiotherapist to adjust rehabilitation protocols.
+Document your return from injury by tracking how each activity affects you. Use extended types to classify workouts by intensity. Share reports with your physiotherapist.
 
-### Training Load Management
-Help your coach understand how you're responding to training. Track pain levels and fatigue. Identify when to push harder or when to back off based on feeling annotations.
+### Coaching
+Coaches can monitor multiple athletes, view their training data, add feedback, and track progress over time.
 
 ### Pattern Recognition
-Over time, identify which activities, intensities, or combinations lead to increased discomfort. Use extended types to see patterns (e.g., "Tempo runs cause more knee pain than Easy runs").
+Identify which activities, intensities, or combinations lead to increased discomfort using the comprehensive reporting features.
 
-### Coach Communication
-Provide detailed reports showing planned vs. actual training, along with how you felt during each workout. Share coach comments and feedback directly in the app.
+## Tech Stack
 
-## Project Structure
-
-```
-activity-manager/
-├── app/
-│   ├── __init__.py              # Flask app factory
-│   ├── database.py              # SQLite database layer
-│   ├── repositories/            # Data access layer
-│   │   ├── activity_repository.py
-│   │   ├── day_repository.py
-│   │   ├── planned_activity_repository.py
-│   │   └── extended_type_repository.py
-│   ├── services/                # Business logic layer
-│   │   ├── strava_service.py
-│   │   └── sync_service.py
-│   ├── utils/                   # Shared utilities
-│   │   └── formatters.py
-│   ├── auth/                    # Strava OAuth
-│   ├── activities/              # REST API endpoints
-│   ├── planning/                # Planning and extended types
-│   ├── web/                     # Web UI routes
-│   ├── static/
-│   │   ├── css/
-│   │   │   ├── style.css       # Main dark theme styles
-│   │   │   └── planning.css    # Planning-specific styles
-│   │   ├── js/
-│   │   │   ├── activities.js   # Activities view interactions
-│   │   │   └── planning.js     # Planning view interactions
-│   │   └── fontawesome/        # Font Awesome icon library
-│   └── templates/              # Jinja2 templates
-│       ├── activities.html     # Main activities overview
-│       ├── activity_detail.html # Individual activity view
-│       ├── planning.html       # Training calendar
-│       ├── planning_modals.html # Planning UI modals
-│       ├── planning_types.html # Extended types management
-│       ├── report.html         # Comprehensive report view
-│       ├── macros.html         # Reusable template macros
-│       └── base.html           # Base template with navigation
-├── activities.db               # SQLite database
-├── requirements.txt            # Dependencies
-├── config.py                   # Configuration settings
-├── run.py                      # Development entry point
-└── wsgi.py                     # Production entry point
-```
-
-## Technical Notes
-
-- **Lightweight Database**: Uses Python's built-in `sqlite3` (no ORM overhead)
-- **Minimal Dependencies**: Flask, stravalib, python-dotenv, Font Awesome
-- **Preserves Annotations**: Strava sync updates activity data without overwriting:
-  - Your feeling notes and pain scale ratings
-  - Extended activity type classifications
-  - Custom annotations and coach comments
-- **Dark Theme**: GitHub-inspired dark mode optimized for low-light use
-- **Collapsible UI**: Efficient display of many days with rest day tracking
-- **Smart Matching**: Validation prevents duplicate matches and cross-date matching
-
-## API Endpoints
-
-The app includes a REST API for programmatic access:
-
-- `GET /api/activities/` - List activities with filtering (by date, sport type, day_date)
-- `GET /api/activities/<id>` - Get single activity details
-- `POST /api/activities/sync` - Sync from Strava
-- `GET /api/activities/stats` - Get aggregate statistics
-
-Planning API:
-- `GET /planning` - View training calendar
-- `POST /planning/activity` - Create planned activity
-- `PUT /planning/activity/<id>` - Update planned activity
-- `DELETE /planning/activity/<id>` - Delete planned activity
-- `POST /planning/activity/<id>/match/<activity_id>` - Match planned to actual
-- `DELETE /planning/activity/<id>/match` - Unmatch activities
+- **Backend**: Flask, Python 3.8+
+- **Database**: SQLite (lightweight, no setup required)
+- **Authentication**: Flask-Login, bcrypt
+- **API Integration**: stravalib (Strava API)
+- **Frontend**: Bootstrap 5, Font Awesome
+- **Email**: SMTP (configurable)
+- **Production Server**: Gunicorn
 
 ## License
 
 This project is for personal use.
+
+## Contributing
+
+This is a personal project, but suggestions and bug reports are welcome via issues.
 
 ## Resources
 
 - [Strava API Documentation](https://developers.strava.com/docs/reference/)
 - [Bootstrap 5 Documentation](https://getbootstrap.com/docs/5.3/)
 - [Font Awesome Icons](https://fontawesome.com/)
+- [Flask Documentation](https://flask.palletsprojects.com/)
