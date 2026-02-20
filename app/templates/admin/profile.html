@@ -89,7 +89,8 @@
 </div>
 
 <div class="row">
-    <!-- Strava Connection Card -->
+    <!-- Strava Connection Card (athletes only) -->
+    {% if user.is_athlete() %}
     <div class="col-md-6 mb-3">
         <div class="card h-100">
             <div class="card-header">
@@ -122,6 +123,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Coach Management Card (Athletes only) -->
     {% if user.is_athlete() %}
@@ -187,18 +189,6 @@
                         {% endfor %}
                     </ul>
                 {% endif %}
-
-                <!-- Invite New Coach Form -->
-                <h6 class="mb-2">Invite a Coach</h6>
-                <form method="POST" action="{{ url_for('admin.invite_coach_route') }}">
-                    <div class="input-group">
-                        <input type="email" class="form-control" name="coach_email"
-                               placeholder="coach@example.com" required>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-send"></i> Invite
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
@@ -262,6 +252,98 @@
         </div>
     </div>
     {% endif %}
+</div>
+
+<!-- Invitations Sent Card (all users) -->
+<div class="row">
+    <div class="col-12 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-envelope-plus"></i> Invitations
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Send New Invitation Form -->
+                <h6 class="mb-2">Send Invitation</h6>
+                <form method="POST" action="{{ url_for('admin.send_invitation_route') }}" class="mb-4">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-5">
+                            <label for="invited_email" class="form-label small text-muted">Email address</label>
+                            <input type="email" class="form-control" id="invited_email" name="invited_email"
+                                   placeholder="user@example.com" required>
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="invited_role" class="form-label small text-muted">Role</label>
+                            <select class="form-select" id="invited_role" name="invited_role">
+                                <option value="athlete">Athlete</option>
+                                <option value="coach">Coach</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-auto">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Send Invitation
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Invitations Sent Table -->
+                {% if invitations_sent %}
+                <h6 class="mb-2">Sent Invitations</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Sent</th>
+                                <th>Expires</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inv in invitations_sent %}
+                            <tr>
+                                <td>{{ inv.invited_email }}</td>
+                                <td>{{ inv.invited_role|capitalize }}</td>
+                                <td>
+                                    {% if inv.status == 'used' %}
+                                        <span class="badge bg-success">Used</span>
+                                    {% elif inv.status == 'cancelled' %}
+                                        <span class="badge bg-secondary">Cancelled</span>
+                                    {% elif inv.is_expired %}
+                                        <span class="badge bg-warning text-dark">Expired</span>
+                                    {% else %}
+                                        <span class="badge bg-info">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td><small>{{ inv.created_at[:10] }}</small></td>
+                                <td><small>{{ inv.expires_at[:10] }}</small></td>
+                                <td>
+                                    {% if inv.status == 'pending' and not inv.is_expired %}
+                                    <form method="POST"
+                                          action="{{ url_for('admin.cancel_invitation_route', invitation_id=inv.id) }}"
+                                          style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Cancel this invitation?')">
+                                            <i class="bi bi-x-circle"></i> Cancel
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No invitations sent yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}

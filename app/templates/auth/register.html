@@ -21,59 +21,98 @@
                     {% endif %}
                 {% endwith %}
 
-                <form method="POST" action="{{ url_for('auth.user_register') }}">
-                    <div class="mb-3">
-                        <label for="name" class="form-label">Full Name</label>
-                        <input type="text" class="form-control" id="name" name="name" required autofocus>
+                {% if token_error %}
+                    <!-- Invalid / missing / expired token — no registration form -->
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ token_error }}
+                    </div>
+                    <p class="text-center text-muted mt-3">
+                        Contact the administrator to receive an invitation.
+                    </p>
+                    <div class="text-center">
+                        <a href="{{ url_for('auth.user_login') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Login
+                        </a>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email address</label>
-                        <input type="email" class="form-control" id="email" name="email"
-                               value="{{ prefill_email }}"
-                               {% if prefill_email %}readonly{% endif %}
-                               required>
-                        {% if prefill_email %}
-                        <div class="form-text">This email was invited to be a coach</div>
+                {% else %}
+                    <!-- Registration form — bootstrap mode (open) or valid invitation -->
+                    {% if bootstrap_mode %}
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>First-time setup:</strong> Create the initial administrator account.
+                        After this, registration will be invitation-only.
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ url_for('auth.user_register') }}{% if token %}?token={{ token }}{% endif %}">
+                        {% if token %}
+                        <input type="hidden" name="token" value="{{ token }}">
                         {% endif %}
-                    </div>
 
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required minlength="8">
-                        <div class="form-text">Must be at least 8 characters</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="password_confirm" class="form-label">Confirm Password</label>
-                        <input type="password" class="form-control" id="password_confirm" name="password_confirm" required minlength="8">
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="role" class="form-label">I am a...</label>
-                        <select class="form-select" id="role" name="role" required {% if prefill_role %}disabled{% endif %}>
-                            <option value="athlete" {% if prefill_role == 'athlete' or not prefill_role %}selected{% endif %}>Athlete</option>
-                            <option value="coach" {% if prefill_role == 'coach' %}selected{% endif %}>Coach</option>
-                        </select>
-                        {% if prefill_role %}
-                        <input type="hidden" name="role" value="{{ prefill_role }}">
-                        {% endif %}
-                        <div class="form-text">
-                            Athletes can track their own activities. Coaches can view their athletes' data.
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required autofocus>
                         </div>
-                    </div>
 
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-primary btn-lg">Create Account</button>
-                    </div>
-                </form>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email address</label>
+                            {% if invitation %}
+                            <input type="email" class="form-control" id="email" name="email"
+                                   value="{{ invitation.invited_email }}" readonly>
+                            <div class="form-text">
+                                <i class="bi bi-lock-fill me-1"></i>
+                                This address was specified in your invitation.
+                            </div>
+                            {% else %}
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            {% endif %}
+                        </div>
 
-                <hr class="my-4">
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password" name="password" required minlength="8">
+                            <div class="form-text">Must be at least 8 characters</div>
+                        </div>
 
-                <p class="text-center mb-0">
-                    Already have an account?
-                    <a href="{{ url_for('auth.user_login') }}">Login here</a>
-                </p>
+                        <div class="mb-3">
+                            <label for="password_confirm" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="password_confirm" name="password_confirm" required minlength="8">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="role" class="form-label">I am a...</label>
+                            {% if invitation %}
+                            <input type="text" class="form-control" id="role_display"
+                                   value="{{ invitation.invited_role|capitalize }}" readonly>
+                            <input type="hidden" name="role" value="{{ invitation.invited_role }}">
+                            <div class="form-text">
+                                <i class="bi bi-lock-fill me-1"></i>
+                                Role was set by the person who invited you.
+                            </div>
+                            {% else %}
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="athlete" selected>Athlete</option>
+                                <option value="coach">Coach</option>
+                            </select>
+                            <div class="form-text">
+                                Athletes can track their own activities. Coaches can view their athletes' data.
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">Create Account</button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <p class="text-center mb-0">
+                        Already have an account?
+                        <a href="{{ url_for('auth.user_login') }}">Login here</a>
+                    </p>
+                {% endif %}
             </div>
         </div>
     </div>

@@ -18,7 +18,8 @@ from app.repositories import (
 )
 from app.utils.errors import ActivityNotFoundError, ValidationError, AppError
 from app.auth.routes import get_strava_client, is_authenticated as check_strava_auth
-from app.services.access_control_service import get_viewing_user_id
+from app.services.access_control_service import get_viewing_user_id, can_view_user_data
+from app.auth.decorators import athlete_required
 
 
 @web_bp.route('/')
@@ -201,6 +202,7 @@ def sync():
 
 @web_bp.route('/api/sync/activities', methods=['POST'])
 @login_required
+@athlete_required
 def api_sync_activities():
     """AJAX: Step 1 - Sync activity summary data"""
     from flask import jsonify
@@ -242,6 +244,7 @@ def api_sync_activities():
 
 @web_bp.route('/api/sync/description/<int:activity_id>', methods=['POST'])
 @login_required
+@athlete_required
 def api_sync_description(activity_id):
     """AJAX: Step 2 - Fetch description for a single activity"""
     from flask import jsonify
@@ -374,29 +377,26 @@ def activity_detail(activity_id):
 
 @web_bp.route('/activity/<int:activity_id>/annotations', methods=['POST'])
 @login_required
+@athlete_required
 def save_annotations(activity_id):
-    """Save feeling annotations for an activity"""
-    # Get viewing user ID
-    viewing_user_id = get_viewing_user_id()
-
+    """Save feeling annotations for an activity (athlete only)"""
     db = get_db()
 
-    # Check if activity exists and belongs to user
-    cursor = db.execute('SELECT id FROM activities WHERE id = ? AND user_id = ?', (activity_id, viewing_user_id))
+    # Check if activity belongs to the logged-in athlete
+    cursor = db.execute('SELECT id FROM activities WHERE id = ? AND user_id = ?',
+                        (activity_id, current_user.id))
     if not cursor.fetchone():
         flash('Activity not found', 'danger')
         return redirect('/')
 
-    # Get form data
+    # Get feeling form data only (no coach_comment)
     feeling_before_text = request.form.get('feeling_before_text', '').strip() or None
     feeling_before_pain = request.form.get('feeling_before_pain', type=int)
     feeling_during_text = request.form.get('feeling_during_text', '').strip() or None
     feeling_during_pain = request.form.get('feeling_during_pain', type=int)
     feeling_after_text = request.form.get('feeling_after_text', '').strip() or None
     feeling_after_pain = request.form.get('feeling_after_pain', type=int)
-    coach_comment = request.form.get('coach_comment', '').strip() or None
 
-    # Update the activity
     db.execute('''
         UPDATE activities SET
             feeling_before_text = ?,
@@ -405,7 +405,6 @@ def save_annotations(activity_id):
             feeling_during_pain = ?,
             feeling_after_text = ?,
             feeling_after_pain = ?,
-            coach_comment = ?,
             updated_at = ?
         WHERE id = ? AND user_id = ?
     ''', (
@@ -415,10 +414,9 @@ def save_annotations(activity_id):
         feeling_during_pain,
         feeling_after_text,
         feeling_after_pain,
-        coach_comment,
         datetime.utcnow().isoformat(),
         activity_id,
-        viewing_user_id
+        current_user.id
     ))
     db.commit()
 
@@ -426,8 +424,40 @@ def save_annotations(activity_id):
     return redirect(f'/activity/{activity_id}')
 
 
+@web_bp.route('/activity/<int:activity_id>/coach-comment', methods=['POST'])
+@login_required
+def save_activity_coach_comment(activity_id):
+    """Save coach comment for an activity (coach with access only)"""
+    db = get_db()
+
+    # Look up the activity owner
+    cursor = db.execute('SELECT id, user_id FROM activities WHERE id = ?', (activity_id,))
+    row = cursor.fetchone()
+    if not row:
+        flash('Activity not found', 'danger')
+        return redirect('/')
+
+    owner_id = row['user_id']
+
+    if not can_view_user_data(current_user.id, owner_id):
+        flash('You do not have permission to comment on this activity.', 'danger')
+        return redirect(f'/activity/{activity_id}')
+
+    coach_comment = request.form.get('coach_comment', '').strip() or None
+
+    db.execute(
+        'UPDATE activities SET coach_comment = ?, updated_at = ? WHERE id = ?',
+        (coach_comment, datetime.utcnow().isoformat(), activity_id)
+    )
+    db.commit()
+
+    flash('Coach comment saved successfully', 'success')
+    return redirect(f'/activity/{activity_id}')
+
+
 @web_bp.route('/activity/<int:activity_id>/extended-type', methods=['POST'])
 @login_required
+@athlete_required
 def assign_extended_type(activity_id):
     """Assign an extended activity type to an activity"""
     # Get viewing user ID
@@ -673,11 +703,9 @@ def report_csv():
 
 @web_bp.route('/day/<date>/annotations', methods=['POST'])
 @login_required
+@athlete_required
 def save_day_annotations(date):
-    """Save feeling annotations for a specific day"""
-    # Get viewing user ID
-    viewing_user_id = get_viewing_user_id()
-
+    """Save feeling annotations for a specific day (athlete only)"""
     # Validate date format
     try:
         datetime.strptime(date, '%Y-%m-%d')
@@ -685,25 +713,47 @@ def save_day_annotations(date):
         flash('Invalid date format', 'danger')
         return redirect('/')
 
-    # Get form data
+    # Get feeling form data only (no coach_comment)
     feeling_text = request.form.get('feeling_text', '').strip() or None
     feeling_pain = request.form.get('feeling_pain', type=int)
-    coach_comment = request.form.get('coach_comment', '').strip() or None
 
-    # Use repository to update/create day
     day_repo = DayRepository()
-    day_data = {
+    day_repo.update_day(date, current_user.id, {
         'feeling_text': feeling_text,
         'feeling_pain': feeling_pain,
-        'coach_comment': coach_comment
-    }
-    day_repo.update_day(date, viewing_user_id, day_data)
+    })
 
     flash('Day feeling saved successfully', 'success')
 
-    # Redirect back to the referring page
     referer = request.form.get('referer', '/')
     return redirect(referer)
+
+
+@web_bp.route('/day/<date>/coach-comment', methods=['POST'])
+@login_required
+def save_day_coach_comment(date):
+    """Save coach comment for a day (coach with access only)"""
+    # Validate date format
+    try:
+        datetime.strptime(date, '%Y-%m-%d')
+    except ValueError:
+        flash('Invalid date format', 'danger')
+        return redirect('/')
+
+    # The day belongs to whoever the coach is currently viewing
+    viewing_user_id = get_viewing_user_id()
+
+    if not can_view_user_data(current_user.id, viewing_user_id):
+        flash('You do not have permission to comment on this day.', 'danger')
+        return redirect(f'/day/{date}')
+
+    coach_comment = request.form.get('coach_comment', '').strip() or None
+
+    day_repo = DayRepository()
+    day_repo.update_day(date, viewing_user_id, {'coach_comment': coach_comment})
+
+    flash('Coach comment saved successfully', 'success')
+    return redirect(f'/day/{date}')
 
 
 @web_bp.route('/day/<date>')

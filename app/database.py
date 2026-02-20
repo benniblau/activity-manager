@@ -185,6 +185,9 @@ def init_db():
     # Run migration to add archive-specific columns
     _migrate_add_archive_columns(db)
 
+    # Run migration to add invitations table
+    _migrate_add_invitations_table(db)
+
     # Create activity_media table for photos linked to activities
     db.execute('''
         CREATE TABLE IF NOT EXISTS activity_media (
@@ -749,6 +752,33 @@ def _migrate_add_archive_columns(db):
         if column_name not in existing_columns:
             db.execute(f'ALTER TABLE activities ADD COLUMN {column_name} {column_type}')
 
+    db.commit()
+
+
+def _migrate_add_invitations_table(db):
+    """Add invitations table for token-based invitation-only registration"""
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS invitations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            token TEXT NOT NULL UNIQUE,
+            inviter_id INTEGER NOT NULL,
+            invited_email TEXT NOT NULL,
+            invited_role TEXT NOT NULL DEFAULT 'athlete'
+                CHECK (invited_role IN ('athlete', 'coach')),
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending', 'used', 'cancelled')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            expires_at TEXT NOT NULL,
+            used_at TEXT,
+            used_by_user_id INTEGER,
+            FOREIGN KEY (inviter_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (used_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_invitations_token ON invitations(token)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_invitations_inviter ON invitations(inviter_id)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(invited_email)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_invitations_status ON invitations(status)')
     db.commit()
 
 

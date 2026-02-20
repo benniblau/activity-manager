@@ -59,6 +59,9 @@ class Config:
     SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD')
     FROM_EMAIL = os.environ.get('FROM_EMAIL') or os.environ.get('SMTP_USERNAME')
 
+    # Invitation Configuration
+    INVITATION_EXPIRY_DAYS = int(os.environ.get('INVITATION_EXPIRY_DAYS', 30))
+
 
 class DevelopmentConfig(Config):
     """Development configuration"""

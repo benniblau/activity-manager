@@ -27,7 +27,8 @@
 </div>
 {% endif %}
 
-<!-- Strava Connection Status -->
+<!-- Strava Connection Status (athletes only) -->
+{% if current_user.is_athlete() %}
 <div class="row mb-3">
     <div class="col-12">
         <div class="card stats-card">
@@ -64,6 +65,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <div class="row mb-4">
     <div class="col-12">

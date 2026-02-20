@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify, redirect, url_for, flash
+from flask import render_template, request, jsonify, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from app.admin import admin_bp
 from app.repositories import TypeRepository
@@ -9,6 +9,10 @@ from app.services.access_control_service import (
     accept_coach_invitation, reject_coach_invitation, remove_coach_access,
     set_viewing_user_id, get_athlete_pending_coach_invitations
 )
+from app.services.invitation_service import (
+    create_invitation, cancel_invitation, get_invitations_sent_by
+)
+from app.utils.email import send_invitation_email
 from app.auth.decorators import coach_required
 
 
@@ -149,6 +153,8 @@ def profile():
         athletes = get_coach_athletes_list(current_user.id)
         pending_invitations = get_pending_invitations(current_user.id)
 
+    invitations_sent = get_invitations_sent_by(current_user.id)
+
     return render_template(
         'admin/profile.html',
         user=current_user,
@@ -157,7 +163,8 @@ def profile():
         coaches=coaches,
         athletes=athletes,
         pending_invitations=pending_invitations,
-        pending_coach_invitations=pending_coach_invitations
+        pending_coach_invitations=pending_coach_invitations,
+        invitations_sent=invitations_sent
     )
 
 
@@ -277,6 +284,62 @@ def reject_invitation(athlete_id):
     try:
         reject_coach_invitation(current_user.id, athlete_id)
         flash('Invitation rejected', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/invitations/send', methods=['POST'])
+@login_required
+def send_invitation_route():
+    """Send a registration invitation by email"""
+    invited_email = request.form.get('invited_email', '').strip()
+    invited_role = request.form.get('invited_role', 'athlete')
+
+    if not invited_email:
+        flash('Email address is required.', 'danger')
+        return redirect(url_for('admin.profile'))
+
+    try:
+        invitation = create_invitation(current_user.id, invited_email, invited_role)
+    except ValueError as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('admin.profile'))
+
+    # Build registration URL with token
+    host = current_app.config.get('HOST', 'http://localhost:5001')
+    registration_url = f"{host}{url_for('auth.user_register')}?token={invitation['token']}"
+
+    # Attempt to send email
+    expiry_days = current_app.config.get('INVITATION_EXPIRY_DAYS', 30)
+    email_sent = send_invitation_email(
+        invited_email=invited_email,
+        invited_role=invited_role,
+        inviter_name=current_user.name,
+        registration_url=registration_url,
+        expiry_days=expiry_days
+    )
+
+    if email_sent:
+        flash(f'Invitation sent to {invited_email}.', 'success')
+    else:
+        flash(
+            f'Invitation created for {invited_email}, but the email could not be sent. '
+            f'Share this registration link directly: {registration_url}',
+            'warning'
+        )
+
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/invitations/<int:invitation_id>/cancel', methods=['POST'])
+@login_required
+def cancel_invitation_route(invitation_id):
+    """Cancel a pending invitation"""
+    try:
+        cancel_invitation(invitation_id, current_user.id)
+        flash('Invitation cancelled.', 'success')
     except ValueError as e:
         flash(str(e), 'danger')
 

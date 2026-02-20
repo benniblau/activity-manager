@@ -6,9 +6,12 @@ from flask_login import login_user, logout_user, login_required as flask_login_r
 from stravalib.client import Client
 from app.auth import auth_bp
 from app.auth.user_auth import register_user, authenticate_user
-from app.auth.decorators import anonymous_required
+from app.auth.decorators import anonymous_required, athlete_required
 from app.database import get_db
 from app.models.user import User
+from app.services.invitation_service import (
+    is_users_table_empty, validate_invitation_token, consume_invitation
+)
 
 
 def save_tokens_to_db(access_token, refresh_token, expires_at, user_id, athlete_id=None, athlete_name=None):
@@ -215,6 +218,7 @@ def ensure_valid_token():
 
 @auth_bp.route('/strava/connect')
 @flask_login_required
+@athlete_required
 def strava_connect():
     """
     Initiate Strava OAuth flow.
@@ -461,6 +465,7 @@ def strava_force_refresh():
 
 @auth_bp.route('/strava/disconnect')
 @flask_login_required
+@athlete_required
 def strava_disconnect():
     """Disconnect Strava for current user (clear tokens)"""
     user_id = current_user.id
@@ -482,65 +487,151 @@ def strava_disconnect():
 @auth_bp.route('/user/register', methods=['GET', 'POST'])
 @anonymous_required
 def user_register():
-    """User registration with email/password"""
-    if request.method == 'GET':
-        # Pre-fill email and role from URL parameters (for coach invitations)
-        prefill_email = request.args.get('email', '')
-        prefill_role = request.args.get('role', 'athlete')
-        return render_template('auth/register.html',
-                             prefill_email=prefill_email,
-                             prefill_role=prefill_role)
+    """User registration — invitation-only (or open when no users exist yet)"""
+    bootstrap_mode = is_users_table_empty()
 
-    # POST request - handle registration
+    if request.method == 'GET':
+        if bootstrap_mode:
+            # First user: open registration, no token needed
+            return render_template('auth/register.html', bootstrap_mode=True)
+
+        # Invitation-only mode
+        token = request.args.get('token', '').strip()
+        if not token:
+            return render_template(
+                'auth/register.html',
+                token_error='An invitation is required to register. Contact the administrator.'
+            )
+
+        try:
+            invitation = validate_invitation_token(token)
+        except ValueError as e:
+            return render_template('auth/register.html', token_error=str(e))
+
+        return render_template(
+            'auth/register.html',
+            invitation=invitation,
+            token=token
+        )
+
+    # POST — handle registration
+    bootstrap_mode = is_users_table_empty()
+    token = request.form.get('token', '').strip()
+
+    # In non-bootstrap mode, re-validate the token
+    invitation = None
+    if not bootstrap_mode:
+        if not token:
+            return render_template(
+                'auth/register.html',
+                token_error='An invitation is required to register. Contact the administrator.'
+            )
+        try:
+            invitation = validate_invitation_token(token)
+        except ValueError as e:
+            return render_template('auth/register.html', token_error=str(e))
+
     email = request.form.get('email', '').strip()
     password = request.form.get('password', '')
     password_confirm = request.form.get('password_confirm', '')
     name = request.form.get('name', '').strip()
-    role = request.form.get('role', 'athlete')
+
+    # In invitation mode, lock email and role to the invitation values
+    if invitation:
+        email = invitation['invited_email']
+        role = invitation['invited_role']
+    else:
+        role = request.form.get('role', 'athlete')
 
     # Validate inputs
     if not email:
         flash('Email is required', 'danger')
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', bootstrap_mode=bootstrap_mode,
+                               invitation=invitation, token=token)
 
     if not password:
         flash('Password is required', 'danger')
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', bootstrap_mode=bootstrap_mode,
+                               invitation=invitation, token=token)
 
     if len(password) < 8:
         flash('Password must be at least 8 characters', 'danger')
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', bootstrap_mode=bootstrap_mode,
+                               invitation=invitation, token=token)
 
     if password != password_confirm:
         flash('Passwords do not match', 'danger')
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', bootstrap_mode=bootstrap_mode,
+                               invitation=invitation, token=token)
 
     if not name:
         flash('Name is required', 'danger')
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', bootstrap_mode=bootstrap_mode,
+                               invitation=invitation, token=token)
 
     if role not in ['athlete', 'coach']:
         flash('Invalid role selected', 'danger')
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', bootstrap_mode=bootstrap_mode,
+                               invitation=invitation, token=token)
 
     # Try to register
     try:
         user = register_user(email, password, name, role)
 
-        # Log user in
+        # Mark the invitation as used
+        if invitation:
+            consume_invitation(token, user.id)
+            # Auto-link coach-athlete relationship if inviter is an athlete
+            if role == 'coach':
+                _auto_link_coach_after_registration(invitation['inviter_id'], user.id)
+
         login_user(user)
         flash(f'Registration successful! Welcome, {name}', 'success')
 
-        # Redirect to next page or home
         next_page = session.pop('next', None)
         return redirect(next_page or url_for('web.index'))
 
     except ValueError as e:
         flash(str(e), 'danger')
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', bootstrap_mode=bootstrap_mode,
+                               invitation=invitation, token=token)
     except Exception as e:
         flash(f'Registration failed: {str(e)}', 'danger')
-        return render_template('auth/register.html')
+        return render_template('auth/register.html', bootstrap_mode=bootstrap_mode,
+                               invitation=invitation, token=token)
+
+
+def _auto_link_coach_after_registration(inviter_id, new_coach_id):
+    """Create a pending coach-athlete relationship when a coach registers via an athlete's invitation
+
+    Args:
+        inviter_id: ID of the user who sent the invitation (may be an athlete)
+        new_coach_id: ID of the newly registered coach
+    """
+    try:
+        inviter = User.get(inviter_id)
+        if not inviter or not inviter.is_athlete():
+            return
+
+        db = get_db()
+        # Avoid duplicates
+        cursor = db.execute(
+            '''SELECT id FROM coach_athlete_relationships
+               WHERE coach_id = ? AND athlete_id = ? AND status != 'inactive' ''',
+            (new_coach_id, inviter_id)
+        )
+        if cursor.fetchone():
+            return
+
+        db.execute(
+            '''INSERT INTO coach_athlete_relationships
+               (coach_id, athlete_id, status, invited_at, accepted_at)
+               VALUES (?, ?, 'active', ?, ?)''',
+            (new_coach_id, inviter_id, datetime.utcnow().isoformat(), datetime.utcnow().isoformat())
+        )
+        db.commit()
+    except Exception as e:
+        print(f"[Auth] Failed to auto-link coach-athlete relationship: {e}")
 
 
 @auth_bp.route('/user/login', methods=['GET', 'POST'])

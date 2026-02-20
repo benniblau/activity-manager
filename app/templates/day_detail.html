@@ -191,7 +191,8 @@
 </div>
 {% endif %}
 
-<!-- Day Feeling Form -->
+<!-- Day Feeling Form (athlete/owner only) -->
+{% if current_user.is_athlete() %}
 <div class="card stats-card mb-4">
     <div class="card-header">
         <i class="bi bi-emoji-smile"></i> How Did You Feel Today?
@@ -225,18 +226,41 @@
                           placeholder="How did you feel today?">{{ day_feeling.feeling_text if day_feeling and day_feeling.feeling_text else '' }}</textarea>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label small text-muted">Coach Comment</label>
-                <textarea class="form-control" name="coach_comment" rows="3"
-                          placeholder="Coach notes and recommendations...">{{ day_feeling.coach_comment if day_feeling and day_feeling.coach_comment else '' }}</textarea>
-            </div>
-
             <div class="text-end">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-save"></i> Save Day Feeling
                 </button>
             </div>
         </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Coach Comment (read-only for athletes; editable for coaches) -->
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-chat-left-text"></i> Coach Comment
+    </div>
+    <div class="card-body">
+        {% if current_user.is_coach() %}
+        <form method="POST" action="/day/{{ date }}/coach-comment">
+            <div class="mb-3">
+                <textarea class="form-control" name="coach_comment" rows="3"
+                          placeholder="Coach notes and recommendations...">{{ day_feeling.coach_comment if day_feeling and day_feeling.coach_comment else '' }}</textarea>
+            </div>
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Coach Comment
+                </button>
+            </div>
+        </form>
+        {% else %}
+            {% if day_feeling and day_feeling.coach_comment %}
+            <p class="mb-0" style="white-space: pre-wrap;">{{ day_feeling.coach_comment }}</p>
+            {% else %}
+            <p class="text-muted mb-0">No coach comment yet.</p>
+            {% endif %}
+        {% endif %}
     </div>
 </div>
 

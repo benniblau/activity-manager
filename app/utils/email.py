@@ -191,3 +191,78 @@ This is an automated message from Activity Manager. Please do not reply to this 
         """
 
     return send_email(coach_email, subject, html_body, text_body)
+
+
+def send_invitation_email(invited_email, invited_role, inviter_name, registration_url, expiry_days):
+    """Send account invitation email with token-based registration link
+
+    Args:
+        invited_email: Recipient email address
+        invited_role: Role the invited user will have ('athlete' or 'coach')
+        inviter_name: Name of the person sending the invitation
+        registration_url: Full URL including token to register
+        expiry_days: Number of days until the invitation expires
+
+    Returns:
+        True if email sent successfully, False otherwise
+    """
+    role_display = invited_role.capitalize()
+    subject = f'You have been invited to join Activity Manager as a {role_display}'
+
+    html_body = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #fc4c02;">You're Invited!</h2>
+
+          <p>Hi,</p>
+
+          <p><strong>{inviter_name}</strong> has invited you to create an account on
+          Activity Manager as a <strong>{role_display}</strong>.</p>
+
+          <p>Click the button below to create your account. This invitation link will
+          expire in <strong>{expiry_days} days</strong>.</p>
+
+          <div style="margin: 30px 0;">
+            <a href="{registration_url}"
+               style="background-color: #fc4c02; color: white; padding: 12px 30px;
+                      text-decoration: none; border-radius: 5px; display: inline-block;">
+              Create Your Account
+            </a>
+          </div>
+
+          <p style="color: #666; font-size: 14px;">
+            Or copy this link into your browser:<br>
+            <span style="word-break: break-all;">{registration_url}</span>
+          </p>
+
+          <p style="color: #666; font-size: 14px;">
+            If you did not expect this invitation, you can safely ignore this email.
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+          <p style="color: #999; font-size: 12px;">
+            This is an automated message from Activity Manager. Please do not reply to this email.
+          </p>
+        </div>
+      </body>
+    </html>
+    """
+
+    text_body = f"""You're Invited!
+
+Hi,
+
+{inviter_name} has invited you to create an account on Activity Manager as a {role_display}.
+
+Click the link below to create your account (expires in {expiry_days} days):
+{registration_url}
+
+If you did not expect this invitation, you can safely ignore this email.
+
+---
+This is an automated message from Activity Manager. Please do not reply to this email.
+    """
+
+    return send_email(invited_email, subject, html_body, text_body)

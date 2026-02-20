@@ -426,7 +426,8 @@
 </div>
 {% endif %}
 
-<!-- Feeling Annotations -->
+<!-- Athlete Feeling Annotations (athlete/owner only) -->
+{% if current_user.is_athlete() %}
 <div class="card stats-card mb-4">
     <div class="card-header">
         <i class="bi bi-emoji-smile"></i> How Did You Feel?
@@ -525,23 +526,41 @@
                 </div>
             </div>
 
-            <!-- Coach Comment -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="feeling-section">
-                        <h5 class="mb-3"><i class="bi bi-chat-left-text"></i> Coach Comment</h5>
-                        <textarea class="form-control" name="coach_comment" rows="4"
-                                  placeholder="Coach notes and recommendations for this activity...">{{ activity.coach_comment or '' }}</textarea>
-                    </div>
-                </div>
-            </div>
-
             <div class="text-end mt-4">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-save"></i> Save Annotations
                 </button>
             </div>
         </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Coach Comment (read-only for athletes; editable for coaches with access) -->
+<div class="card stats-card mb-4">
+    <div class="card-header">
+        <i class="bi bi-chat-left-text"></i> Coach Comment
+    </div>
+    <div class="card-body">
+        {% if current_user.is_coach() %}
+        <form method="POST" action="/activity/{{ activity.id }}/coach-comment">
+            <div class="mb-3">
+                <textarea class="form-control" name="coach_comment" rows="4"
+                          placeholder="Coach notes and recommendations for this activity...">{{ activity.coach_comment or '' }}</textarea>
+            </div>
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Coach Comment
+                </button>
+            </div>
+        </form>
+        {% else %}
+            {% if activity.coach_comment %}
+            <p class="mb-0" style="white-space: pre-wrap;">{{ activity.coach_comment }}</p>
+            {% else %}
+            <p class="text-muted mb-0">No coach comment yet.</p>
+            {% endif %}
+        {% endif %}
     </div>
 </div>
 
