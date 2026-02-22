@@ -185,6 +185,9 @@ def init_db():
     # Run migration to add planning feature
     _migrate_add_planning_feature(db)
 
+    # Run migration to clean up root='...' sport type entries
+    _migrate_cleanup_root_sport_types(db)
+
     # Run migration to add archive-specific columns
     _migrate_add_archive_columns(db)
 
@@ -735,6 +738,64 @@ def _migrate_add_planning_feature(db):
     ''')
     db.execute('CREATE INDEX IF NOT EXISTS idx_planned_user_date ON planned_activities(user_id, day_date)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_planned_sort ON planned_activities(day_date, sort_order)')
+    db.commit()
+
+
+def _migrate_cleanup_root_sport_types(db):
+    """Remove root='XYZ' entries from standard_activity_types.
+
+    When the Strava API returns raw enum strings like root='Run', the standard
+    types migration stored them verbatim as orphaned entries with is_official=0.
+    This migration remaps affected activities to the clean name and deletes the
+    bad rows. Safe to run repeatedly (idempotent).
+    """
+    import re
+
+    cursor = db.execute(
+        "SELECT name FROM standard_activity_types WHERE name LIKE \"root='%'\""
+    )
+    bad_rows = [row[0] for row in cursor.fetchall()]
+
+    if not bad_rows:
+        return
+
+    for raw_name in bad_rows:
+        m = re.match(r"^root='(.+)'$", raw_name)
+        if not m:
+            continue
+        clean_name = m.group(1)
+
+        cursor = db.execute(
+            'SELECT name FROM standard_activity_types WHERE name = ?', (clean_name,)
+        )
+        if cursor.fetchone():
+            # Clean entry exists — remap activities and drop the bad row
+            db.execute(
+                'UPDATE activities SET sport_type = ? WHERE sport_type = ?',
+                (clean_name, raw_name)
+            )
+            db.execute(
+                'UPDATE planned_activities SET sport_type = ? WHERE sport_type = ?',
+                (clean_name, raw_name)
+            )
+            db.execute(
+                'DELETE FROM standard_activity_types WHERE name = ?', (raw_name,)
+            )
+        else:
+            # No clean entry — rename the row in place
+            db.execute(
+                'UPDATE standard_activity_types SET name = ?, display_name = ? WHERE name = ?',
+                (clean_name, clean_name, raw_name)
+            )
+            db.execute(
+                'UPDATE activities SET sport_type = ? WHERE sport_type = ?',
+                (clean_name, raw_name)
+            )
+            db.execute(
+                'UPDATE planned_activities SET sport_type = ? WHERE sport_type = ?',
+                (clean_name, raw_name)
+            )
+
     db.commit()
 
 
