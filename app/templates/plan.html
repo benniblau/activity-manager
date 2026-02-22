@@ -288,6 +288,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+const EXTENDED_TYPES_BY_SPORT = {{ extended_types_by_sport | tojson }};
+</script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="{{ url_for('static', filename='js/plan.js') }}"></script>
 {% endblock %}

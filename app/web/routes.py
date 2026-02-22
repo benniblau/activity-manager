@@ -908,9 +908,14 @@ def plan():
     prev_week = (week_start - timedelta(days=7)).strftime('%Y-%m-%d')
     next_week = (week_start + timedelta(days=7)).strftime('%Y-%m-%d')
 
-    # Standard types for "Add activity" form
+    # Standard types and extended types for the Add/Edit forms
     from app.database import get_standard_types_by_category
     standard_types_by_category = get_standard_types_by_category()
+
+    type_repo = TypeRepository()
+    extended_types_by_sport = type_repo.get_extended_types_grouped_by_base(
+        is_active=True, user_id=viewing_user_id
+    )
 
     return render_template(
         'plan.html',
@@ -922,4 +927,5 @@ def plan():
         prev_week=prev_week,
         next_week=next_week,
         standard_types_by_category=standard_types_by_category,
+        extended_types_by_sport=extended_types_by_sport,
     )

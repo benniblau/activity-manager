@@ -38,30 +38,25 @@ const planUI = (() => {
     }
 
     // ── Load extended types into a select (for Add form) ─────────────────────
+    function _populateExtSelect(select, container, sportType, selectedId) {
+        const types = (EXTENDED_TYPES_BY_SPORT[sportType] || []);
+        select.innerHTML = '<option value="">— Any —</option>';
+        types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.custom_name;
+            if (selectedId && String(t.id) === String(selectedId)) opt.selected = true;
+            select.appendChild(opt);
+        });
+        container.style.display = types.length > 0 ? 'block' : 'none';
+    }
+
     function loadExtendedTypes(sportType, dayDate) {
         const container = document.getElementById(`ext-type-container-${dayDate}`);
         const select = document.getElementById(`ext-type-${dayDate}`);
         if (!container || !select) return;
-
-        if (!sportType) {
-            container.style.display = 'none';
-            return;
-        }
-
-        fetch(`/api/extended-types?grouped=false&is_active=true`)
-            .then(r => r.json())
-            .then(types => {
-                const filtered = types.filter(t => t.base_sport_type === sportType);
-                select.innerHTML = '<option value="">— Any —</option>';
-                filtered.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.textContent = t.custom_name;
-                    select.appendChild(opt);
-                });
-                container.style.display = filtered.length > 0 ? 'block' : 'none';
-            })
-            .catch(err => console.error('Failed to load extended types', err));
+        if (!sportType) { container.style.display = 'none'; return; }
+        _populateExtSelect(select, container, sportType, null);
     }
 
     // ── Submit Add form ───────────────────────────────────────────────────────
@@ -226,27 +221,8 @@ const planUI = (() => {
     function loadEditExtendedTypes(sportType, currentExtId) {
         const container = document.getElementById('edit-ext-container');
         const select = document.getElementById('edit-extended-type');
-
-        if (!sportType) {
-            container.style.display = 'none';
-            return;
-        }
-
-        fetch(`/api/extended-types?grouped=false&is_active=true`)
-            .then(r => r.json())
-            .then(types => {
-                const filtered = types.filter(t => t.base_sport_type === sportType);
-                select.innerHTML = '<option value="">— Any —</option>';
-                filtered.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.textContent = t.custom_name;
-                    if (currentExtId && String(t.id) === String(currentExtId)) opt.selected = true;
-                    select.appendChild(opt);
-                });
-                container.style.display = filtered.length > 0 ? 'block' : 'none';
-            })
-            .catch(err => console.error('Failed to load extended types', err));
+        if (!sportType) { container.style.display = 'none'; return; }
+        _populateExtSelect(select, container, sportType, currentExtId);
     }
 
     function submitEdit(event) {
