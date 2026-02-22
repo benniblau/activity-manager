@@ -888,7 +888,7 @@ def get_standard_types_by_category():
     from collections import defaultdict
 
     types_by_category = defaultdict(list)
-    all_types = get_standard_activity_types(official_only=False)
+    all_types = get_standard_activity_types(official_only=True)
 
     for sport_type in all_types:
         types_by_category[sport_type['category']].append(sport_type)
