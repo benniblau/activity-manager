@@ -14,7 +14,8 @@ from app.repositories import (
     ActivityRepository,
     TypeRepository,
     DayRepository,
-    GearRepository
+    GearRepository,
+    PlannedActivityRepository,
 )
 from app.utils.errors import ActivityNotFoundError, ValidationError, AppError
 from app.auth.routes import get_strava_client, is_authenticated as check_strava_auth
@@ -847,3 +848,78 @@ def serve_fit(filename):
     # TODO: Add verification that the FIT file belongs to the viewing user
     fit_dir = os.path.join(current_app.root_path, '..', 'data', 'fit_files')
     return send_from_directory(os.path.abspath(fit_dir), filename, as_attachment=True)
+
+
+@web_bp.route('/plan')
+@login_required
+def plan():
+    """Weekly training plan view"""
+    viewing_user_id = get_viewing_user_id()
+
+    # Parse ?week=YYYY-MM-DD (default: current Monday)
+    week_param = request.args.get('week', '')
+    try:
+        week_start = datetime.strptime(week_param, '%Y-%m-%d')
+        # Normalize to Monday
+        week_start -= timedelta(days=week_start.weekday())
+    except ValueError:
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        week_start = today - timedelta(days=today.weekday())
+
+    week_end = week_start + timedelta(days=6)
+
+    week_start_str = week_start.strftime('%Y-%m-%d')
+    week_end_str = week_end.strftime('%Y-%m-%d')
+
+    # Build list of 7 day strings (Mon–Sun)
+    week_days = [(week_start + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+
+    # Fetch planned activities for the week
+    plan_repo = PlannedActivityRepository()
+    planned_list = plan_repo.get_by_week(week_start_str, week_end_str, viewing_user_id)
+
+    # Group planned activities by date
+    planned_by_day = {d: [] for d in week_days}
+    for item in planned_list:
+        d = item['day_date']
+        if d in planned_by_day:
+            planned_by_day[d].append(item)
+
+    # Fetch actual activities for the week (for matching dropdowns)
+    db = get_db()
+    cursor = db.execute('''
+        SELECT a.id, a.name, a.sport_type, a.distance, a.moving_time, a.day_date,
+               ext.custom_name as extended_name
+        FROM activities a
+        LEFT JOIN extended_activity_types ext ON a.extended_type_id = ext.id
+        WHERE a.user_id = ? AND a.day_date >= ? AND a.day_date <= ?
+        ORDER BY a.day_date ASC, a.start_date_local ASC
+    ''', (viewing_user_id, week_start_str, week_end_str))
+    actual_list = [db_row_to_dict(row) for row in cursor.fetchall()]
+
+    # Group actual activities by date
+    actual_by_day = {d: [] for d in week_days}
+    for act in actual_list:
+        d = act.get('day_date', '')
+        if d in actual_by_day:
+            actual_by_day[d].append(act)
+
+    # Prev/next week navigation
+    prev_week = (week_start - timedelta(days=7)).strftime('%Y-%m-%d')
+    next_week = (week_start + timedelta(days=7)).strftime('%Y-%m-%d')
+
+    # Standard types for "Add activity" form
+    from app.database import get_standard_types_by_category
+    standard_types_by_category = get_standard_types_by_category()
+
+    return render_template(
+        'plan.html',
+        week_start=week_start_str,
+        week_end=week_end_str,
+        week_days=week_days,
+        planned_by_day=planned_by_day,
+        actual_by_day=actual_by_day,
+        prev_week=prev_week,
+        next_week=next_week,
+        standard_types_by_category=standard_types_by_category,
+    )

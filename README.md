@@ -24,7 +24,12 @@ A **multi-user sports training and recovery journal** for athletes working with 
 - Senders can cancel pending invitations; status badges show Pending / Used / Expired / Cancelled
 
 ### Planning & Training
-- **Weekly Training Calendar** — Plan workouts with target metrics
+- **Weekly Training Calendar** — Plan workouts day-by-day in a `/plan` week view; navigate with Prev/Next week
+- **Planned Activity Fields** — Sport type, optional sub-type, target distance (km), target duration (h:mm), free-text notes
+- **Drag-to-Reorder** — Reorder planned activities within a day; order is persisted automatically
+- **Duplicate & Delete** — Copy an existing planned item or remove it with a single click
+- **Match to Actual** — Link each planned activity to a recorded Strava activity on the same day; matched items show a green badge
+- **Coach Planning** — Coaches can create and edit plans on behalf of their athletes
 - **Standard Activity Types** — 50+ official Strava sport types in 7 categories
 - **Extended Activity Types** — 70+ custom classifications:
   - **HIIT**: Tabata, EMOM, AMRAP, Circuit Training
@@ -173,6 +178,7 @@ If SMTP is not configured, invitation emails won't be sent — but the registrat
 ### Coach
 - View all activities, daily journals, and reports for their athletes
 - Add coach comments to activities and daily entries (athletes see these read-only)
+- Create and edit planned activities on behalf of athletes via the Plan view
 - Switch between viewing their own data and each athlete's data
 - Send invitations to bring in other users
 - **Cannot** connect to Strava (Strava sync is exclusive to athletes)
@@ -279,13 +285,14 @@ sudo certbot --nginx -d activity.yourdomain.com
 
 ## Database Utilities
 
-### Add Invitations Table (existing databases)
+### Schema Migrations
 
-If you're upgrading an existing database to add the invitations system:
+**No manual migration steps are required.** The app uses an incremental migration system built into `app/database.py`. Every time the app starts, `init_db()` runs all migrations in order using `CREATE TABLE IF NOT EXISTS` and `ALTER TABLE … ADD COLUMN` guards — so they are safe to run repeatedly and will only apply changes that are missing from the current database.
 
-```bash
-python scripts/migrate_add_invitations.py activities.db
-```
+This means:
+- **Fresh install** — the full schema is created on first startup
+- **Code update / deployment** — restart the app; new migrations run automatically
+- **Production** — just `sudo systemctl restart activity-manager` after deploying; no separate migration script needed
 
 ### Multi-User Migration (legacy single-user databases)
 
@@ -318,6 +325,7 @@ Always creates a timestamped backup before making any changes.
 | `invitations` | Token-based registration invitations with expiry |
 | `activities` | Strava activities with feeling annotations (per user) |
 | `days` | Daily overall feelings and coach comments (per user) |
+| `planned_activities` | Training plan entries with target distance/duration and match to actual activity |
 | `strava_tokens` | OAuth tokens (per user, athletes only) |
 | `extended_activity_types` | Custom activity classifications |
 | `standard_activity_types` | Official Strava sport types |
@@ -354,6 +362,14 @@ Always creates a timestamped backup before making any changes.
 - `POST /admin/invitations/<id>/cancel` — Cancel a pending invitation
 - `POST /admin/coaches/<id>/remove` — Remove coach access (athletes)
 - `POST /admin/switch-view/<id>` — Switch viewing context (coaches)
+
+### Training Plan
+- `GET /plan` — Weekly planning view (`?week=YYYY-MM-DD` selects the week; defaults to current Mon–Sun)
+- `POST /api/plan/` — Create a planned activity
+- `PUT /api/plan/<id>` — Update a planned activity (fields or matched actual)
+- `DELETE /api/plan/<id>` — Delete a planned activity
+- `POST /api/plan/<id>/duplicate` — Duplicate a planned activity to the end of the same day
+- `POST /api/plan/reorder` — Batch-update sort order within a day (`{day_date, ordered_ids:[…]}`)
 
 ### Annotations (athletes only)
 - `POST /activity/<id>/annotations` — Save feeling annotations
@@ -398,7 +414,7 @@ The 0–10 pain scale uses face icons with a colour gradient:
 - **Database**: SQLite (raw `sqlite3`, no ORM)
 - **Authentication**: Flask-Login, bcrypt
 - **API Integration**: stravalib (Strava API)
-- **Frontend**: Bootstrap 5, Bootstrap Icons
+- **Frontend**: Bootstrap 5, Bootstrap Icons, SortableJS (drag-to-reorder)
 - **Email**: SMTP (configurable)
 - **Production Server**: Gunicorn
 

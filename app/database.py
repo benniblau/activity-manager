@@ -182,6 +182,9 @@ def init_db():
     # Run migration to remove planned_activities table
     _migrate_remove_planned_activities(db)
 
+    # Run migration to add planning feature
+    _migrate_add_planning_feature(db)
+
     # Run migration to add archive-specific columns
     _migrate_add_archive_columns(db)
 
@@ -691,8 +694,47 @@ def _migrate_add_standard_activity_types(db):
 
 
 def _migrate_remove_planned_activities(db):
-    """Remove planned_activities table (planning feature removed)"""
-    db.execute('DROP TABLE IF EXISTS planned_activities')
+    """Remove old planned_activities table if it has the legacy schema (no user_id column).
+
+    The original table lacked user_id and other columns needed by the current planning
+    feature. If the new schema is already in place, this migration is a no-op so that
+    existing data is preserved across app restarts and deployments.
+    """
+    cursor = db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='planned_activities'"
+    )
+    if not cursor.fetchone():
+        return  # table doesn't exist yet — nothing to do
+
+    cursor = db.execute("PRAGMA table_info(planned_activities)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    if 'user_id' not in columns:
+        # Old schema without user_id — drop so _migrate_add_planning_feature can recreate
+        db.execute('DROP TABLE planned_activities')
+        db.commit()
+
+
+def _migrate_add_planning_feature(db):
+    """Add planned_activities table for training plan feature"""
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS planned_activities (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            day_date    TEXT NOT NULL,
+            sort_order  INTEGER NOT NULL DEFAULT 0,
+            sport_type  TEXT REFERENCES standard_activity_types(name) ON DELETE SET NULL,
+            extended_type_id INTEGER REFERENCES extended_activity_types(id) ON DELETE SET NULL,
+            planned_distance REAL,
+            planned_duration INTEGER,
+            notes       TEXT,
+            matched_activity_id INTEGER REFERENCES activities(id) ON DELETE SET NULL,
+            created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at  TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_planned_user_date ON planned_activities(user_id, day_date)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_planned_sort ON planned_activities(day_date, sort_order)')
     db.commit()
 
 

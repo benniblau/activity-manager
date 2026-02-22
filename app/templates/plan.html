@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% from "macros.html" import sport_icon, sport_badge %}
+
+{% block title %}Training Plan – Activity Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+.plan-table { border-collapse: collapse; }
+.plan-table thead th {
+    font-size: 0.8rem; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--bs-secondary);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+/* Day header row */
+.plan-day-header td {
+    padding: 10px 8px 4px;
+    border-top: 2px solid rgba(255,255,255,0.12);
+    background: transparent;
+}
+.plan-day-header:first-child td { border-top: none; }
+
+/* Item rows */
+.plan-item-row td { padding: 3px 6px; vertical-align: middle; }
+.plan-item-row.sortable-ghost { opacity: 0.35; background: rgba(255,255,255,0.04); }
+.plan-drag-cell { width: 20px; color: var(--bs-secondary); cursor: grab; text-align: center; }
+.plan-drag-cell:active { cursor: grabbing; }
+.plan-planned-cell { min-width: 260px; }
+.plan-actual-cell { min-width: 240px; }
+
+/* Planned item chip */
+.plan-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 8px; border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+}
+.plan-chip-badge { flex: 1; min-width: 0; }
+.plan-item-meta { font-size: 0.78rem; color: var(--bs-secondary); margin-top: 2px; }
+.plan-item-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.plan-item-actions .btn { padding: 1px 5px; font-size: 0.75rem; }
+
+/* Add row */
+.plan-add-row td { padding: 3px 6px 8px; }
+.plan-add-form {
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+    padding: 12px; background: rgba(255,255,255,0.03);
+    margin-top: 4px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Training Plan</h4>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('web.plan', week=prev_week) }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-chevron-left"></i> Prev
+        </a>
+        <span class="fw-semibold">
+            {{ week_start|replace('-', '/') }} – {{ week_end|replace('-', '/') }}
+        </span>
+        <a href="{{ url_for('web.plan', week=next_week) }}" class="btn btn-outline-secondary btn-sm">
+            Next <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+</div>
+
+<div class="table-responsive">
+<table class="table plan-table w-100 mb-0">
+    <thead>
+        <tr>
+            <th style="width:20px"></th>
+            <th style="width:120px" class="ps-1">Day</th>
+            <th>Planned</th>
+            <th>Matched Actual</th>
+        </tr>
+    </thead>
+
+    {% for day_date in week_days %}
+    {% set items = planned_by_day[day_date] %}
+    {% set actuals = actual_by_day[day_date] %}
+
+    {# One <tbody> per day — SortableJS targets these #}
+    <tbody class="plan-day-body" data-day="{{ day_date }}">
+
+        {# Day header row — not draggable #}
+        <tr class="plan-day-header">
+            <td colspan="4">
+                <span class="fw-semibold me-1" style="font-size:0.9rem;">{{ day_date | weekday }}</span>
+                <span class="text-secondary" style="font-size:0.82rem;">{{ day_date[5:] }}</span>
+                <button class="btn btn-link btn-sm p-0 ms-2 text-decoration-none"
+                        style="font-size:0.8rem;"
+                        onclick="planUI.toggleAddForm('{{ day_date }}')">
+                    <i class="bi bi-plus-circle"></i> Add
+                </button>
+            </td>
+        </tr>
+
+        {# One row per planned item — drag entire row #}
+        {% for item in items %}
+        <tr class="plan-item-row" data-id="{{ item.id }}" data-day="{{ day_date }}">
+            <td class="plan-drag-cell">
+                <i class="bi bi-grip-vertical"></i>
+            </td>
+            <td></td>
+
+            {# Planned activity chip #}
+            <td class="plan-planned-cell">
+                <div class="plan-chip">
+                    <div class="plan-chip-badge">
+                        {% if item.sport_type %}
+                            {{ sport_badge(item.sport_type, item.extended_name, item.extended_color) }}
+                        {% else %}
+                            <span class="badge bg-secondary">Unspecified</span>
+                        {% endif %}
+                        <div class="plan-item-meta">
+                            {% if item.planned_distance %}
+                                <span class="me-2"><i class="bi bi-signpost-split"></i> {{ "%.1f"|format(item.planned_distance / 1000) }} km</span>
+                            {% endif %}
+                            {% if item.planned_duration %}
+                                {% set h = (item.planned_duration // 3600) %}
+                                {% set m = ((item.planned_duration % 3600) // 60) %}
+                                <span class="me-2"><i class="bi bi-clock"></i> {{ h }}:{{ "%02d"|format(m) }}</span>
+                            {% endif %}
+                            {% if item.notes %}
+                                <span class="text-truncate d-inline-block" style="max-width:180px;" title="{{ item.notes }}">
+                                    {{ item.notes }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="plan-item-actions">
+                        <button class="btn btn-sm btn-outline-secondary" title="Edit"
+                                onclick='planUI.openEditModal({{ item|tojson }})'>
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" title="Duplicate"
+                                onclick="planUI.duplicate({{ item.id }}, '{{ day_date }}')">
+                            <i class="bi bi-copy"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" title="Delete"
+                                onclick="planUI.deletePlan({{ item.id }}, '{{ day_date }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </td>
+
+            {# Match dropdown — same row, always aligned #}
+            <td class="plan-actual-cell">
+                <div class="d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm"
+                            style="max-width:260px;"
+                            data-plan-id="{{ item.id }}"
+                            data-day="{{ day_date }}"
+                            onchange="planUI.updateMatch({{ item.id }}, this.value)"
+                            onfocus="planUI.ensureActualsLoaded(this, '{{ day_date }}')">
+                        <option value="">— Unmatched —</option>
+                        {% for act in actuals %}
+                        <option value="{{ act.id }}"
+                            {% if item.matched_activity_id == act.id %}selected{% endif %}>
+                            {{ act.name }}{% if act.distance %} ({{ "%.1f"|format(act.distance/1000) }}km){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if item.matched_activity_id %}
+                    <span class="badge bg-success" style="font-size:0.75rem;"><i class="bi bi-check-circle"></i></span>
+                    {% endif %}
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+
+        {# Add form row — not draggable #}
+        <tr class="plan-add-row">
+            <td colspan="2"></td>
+            <td colspan="2">
+                <div id="add-form-{{ day_date }}" class="plan-add-form" style="display:none;">
+                    <form onsubmit="planUI.submitAdd(event, '{{ day_date }}')">
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <label class="form-label small mb-1">Sport Type</label>
+                                <select class="form-select form-select-sm" name="sport_type"
+                                        onchange="planUI.loadExtendedTypes(this.value, '{{ day_date }}')">
+                                    <option value="">— Select sport —</option>
+                                    {% for category, types in standard_types_by_category.items() %}
+                                    <optgroup label="{{ category }}">
+                                        {% for t in types %}
+                                        <option value="{{ t.name }}">{{ t.display_name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-12" id="ext-type-container-{{ day_date }}" style="display:none;">
+                                <label class="form-label small mb-1">Sub-type</label>
+                                <select class="form-select form-select-sm" name="extended_type_id" id="ext-type-{{ day_date }}">
+                                    <option value="">— Any —</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-1">Distance (km)</label>
+                                <input type="number" class="form-control form-control-sm" name="planned_distance_km"
+                                       step="0.1" min="0" placeholder="e.g. 10">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small mb-1">Duration (h:mm)</label>
+                                <input type="text" class="form-control form-control-sm" name="planned_duration_hhmm"
+                                       pattern="[0-9]+:[0-5][0-9]" placeholder="e.g. 1:30">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small mb-1">Notes</label>
+                                <input type="text" class="form-control form-control-sm" name="notes" placeholder="Optional notes">
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                            <button type="button" class="btn btn-secondary btn-sm"
+                                    onclick="planUI.toggleAddForm('{{ day_date }}')">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </td>
+        </tr>
+
+    </tbody>
+    {% endfor %}
+
+</table>
+</div>
+
+{# Edit Modal #}
+<div class="modal fade" id="editPlanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Planned Activity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editPlanForm" onsubmit="planUI.submitEdit(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="edit-plan-id">
+                    <input type="hidden" id="edit-plan-day">
+                    <div class="mb-3">
+                        <label class="form-label">Sport Type</label>
+                        <select class="form-select" id="edit-sport-type"
+                                onchange="planUI.loadEditExtendedTypes(this.value)">
+                            <option value="">— Select sport —</option>
+                            {% for category, types in standard_types_by_category.items() %}
+                            <optgroup label="{{ category }}">
+                                {% for t in types %}
+                                <option value="{{ t.name }}">{{ t.display_name }}</option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3" id="edit-ext-container" style="display:none;">
+                        <label class="form-label">Sub-type</label>
+                        <select class="form-select" id="edit-extended-type">
+                            <option value="">— Any —</option>
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Distance (km)</label>
+                            <input type="number" class="form-control" id="edit-distance" step="0.1" min="0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Duration (h:mm)</label>
+                            <input type="text" class="form-control" id="edit-duration"
+                                   pattern="[0-9]+:[0-5][0-9]" placeholder="1:30">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <input type="text" class="form-control" id="edit-notes">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="{{ url_for('static', filename='js/plan.js') }}"></script>
+{% endblock %}
