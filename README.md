@@ -2,6 +2,8 @@
 
 A **multi-user sports training and recovery journal** for athletes working with coaches or recovering from injuries. Automatically sync activities from Strava, plan your training schedule, and track how your body responds to workouts with detailed annotations.
 
+<img width="1194" height="1086" alt="FLOG_activities" src="https://github.com/user-attachments/assets/3da0137f-dda6-4632-a881-91211029462b" />
+
 **Tech Stack**: Python 3.8+, Flask 3.0, SQLite (raw `sqlite3`, no ORM), Bootstrap 5, Bootstrap Icons
 
 ---
