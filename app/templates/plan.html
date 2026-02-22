@@ -180,8 +180,7 @@
                         <div class="row g-2">
                             <div class="col-12">
                                 <label class="form-label small mb-1">Sport Type</label>
-                                <select class="form-select form-select-sm" name="sport_type"
-                                        onchange="planUI.loadExtendedTypes(this.value, '{{ day_date }}')">
+                                <select class="form-select form-select-sm" name="sport_type">
                                     <option value="">— Select sport —</option>
                                     {% for category, types in standard_types_by_category.items() %}
                                     <optgroup label="{{ category }}">

@@ -59,6 +59,17 @@ const planUI = (() => {
         _populateExtSelect(select, container, sportType, null);
     }
 
+    function _initAddFormSportSelects() {
+        // Wire up all sport-type selects inside add forms via JS (not onchange attribute)
+        document.querySelectorAll('.plan-add-form select[name="sport_type"]').forEach(sel => {
+            const dayDate = sel.closest('[id^="add-form-"]')?.id?.replace('add-form-', '');
+            if (!dayDate) return;
+            sel.addEventListener('change', function () {
+                loadExtendedTypes(this.value, dayDate);
+            });
+        });
+    }
+
     // ── Submit Add form ───────────────────────────────────────────────────────
     function submitAdd(event, dayDate) {
         event.preventDefault();
@@ -264,6 +275,7 @@ const planUI = (() => {
     // ── Init ──────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         initSortables();
+        _initAddFormSportSelects();
     });
 
     return {
