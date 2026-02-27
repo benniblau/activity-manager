@@ -59,8 +59,6 @@ def main() -> None:
     register_all_tools(mcp, conn)
 
     if transport in ("streamable-http", "sse"):
-        from starlette.applications import Starlette
-        from starlette.routing import Mount
         import uvicorn
 
         from mcp_server.discovery import make_discovery_routes
@@ -75,15 +73,14 @@ def main() -> None:
             mcp_app = mcp.sse_app()
             endpoint = f"{base_url}/sse"
 
-        # Combine RFC 9728/8414 discovery routes with the FastMCP app.
-        # Discovery routes are public; the middleware skips auth for them.
-        combined_app = Starlette(
-            routes=[
-                *make_discovery_routes(base_url),
-                Mount("/", app=mcp_app),
-            ]
-        )
-        app_with_auth = ApiKeyMiddleware(combined_app, conn, base_url=base_url)
+        # Inject RFC 9728/8414 discovery routes directly into the FastMCP app's
+        # router so the inner app's ASGI lifespan (needed by
+        # StreamableHTTPSessionManager) is preserved.  Wrapping in a new
+        # Starlette() would prevent the task-group from initialising.
+        for route in reversed(make_discovery_routes(base_url)):
+            mcp_app.router.routes.insert(0, route)
+
+        app_with_auth = ApiKeyMiddleware(mcp_app, conn, base_url=base_url)
 
         print(
             f"[mcp_server] Starting {transport} server — endpoint: {endpoint}\n"
