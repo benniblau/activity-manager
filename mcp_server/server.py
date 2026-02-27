@@ -47,7 +47,7 @@ def main() -> None:
         print(f"[mcp_server] Authentication failed: {exc}", file=sys.stderr)
         sys.exit(1)
 
-    mcp = FastMCP(name="activity-manager")
+    mcp = FastMCP(name="activity-manager", host=host, port=port)
     register_all_tools(mcp, conn, auth)
 
     if transport == "sse":
@@ -56,7 +56,7 @@ def main() -> None:
             f"(user_id={auth.user_id}, scope={auth.scope})",
             file=sys.stderr,
         )
-        mcp.run(transport="sse", host=host, port=port)
+        mcp.run(transport="sse")
     else:
         mcp.run(transport="stdio")
 
