@@ -34,14 +34,20 @@ def make_discovery_routes(base_url: str) -> list:
     """
 
     async def protected_resource_metadata(request: Request) -> Response:
-        """RFC 9728 — declares this resource requires Bearer auth."""
+        """RFC 9728 — declares this resource requires Bearer auth.
+
+        We intentionally omit 'authorization_servers' because this server
+        uses API keys rather than OAuth tokens.  Advertising a fake OAuth
+        server causes clients like mcporter to attempt an OAuth flow that
+        dead-ends with an error instead of simply sending the pre-shared key.
+        """
         return _json(
             {
                 "resource": base_url,
                 "resource_name": "Activity Manager MCP",
-                "authorization_servers": [base_url],
                 "scopes_supported": ["read", "readwrite"],
                 "bearer_methods_supported": ["header"],
+                "service_documentation": f"{base_url}/oauth/authorize",
             }
         )
 

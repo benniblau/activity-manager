@@ -277,6 +277,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
     }
 
     # MCP endpoint — disable buffering for streaming responses
@@ -286,8 +287,12 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Explicitly forward the Authorization header — nginx may strip it otherwise.
+        proxy_set_header Authorization $http_authorization;
         proxy_buffering off;
         proxy_cache off;
+        # Required for SSE / Streamable HTTP keep-alive streams.
+        proxy_read_timeout 3600s;
     }
 
     location /static {
