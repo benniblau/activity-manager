@@ -1,29 +1,32 @@
 """Entry point for the Activity Manager MCP server.
 
-Supports two transport modes selected via MCP_TRANSPORT env var:
+Supports three transport modes selected via MCP_TRANSPORT env var:
 
   stdio (default) — launched as a subprocess by Claude Desktop / Claude Code.
       AM_API_KEY=am_<key> python -m mcp_server.server
 
-  sse — HTTP Server-Sent Events with per-request API key authentication.
+  streamable-http — MCP spec 2025-03-26 standard; single POST/GET endpoint at /mcp.
+      Recommended for all HTTP deployments and modern clients (mcporter, etc.).
+      MCP_TRANSPORT=streamable-http MCP_HOST=127.0.0.1 MCP_PORT=8001 python -m mcp_server.server
+
+  sse — Legacy HTTP transport (deprecated in MCP spec 2025-03-26); two endpoints:
+      GET /sse  and  POST /messages/
       MCP_TRANSPORT=sse MCP_HOST=127.0.0.1 MCP_PORT=8001 python -m mcp_server.server
 
-      Clients must send the API key on every request via one of:
-        Authorization: Bearer am_<key>
-        X-API-Key: am_<key>
+  Both HTTP modes require an API key on every request via one of:
+    Authorization: Bearer am_<key>
+    X-API-Key: am_<key>
 
-      AM_API_KEY is NOT used in SSE mode; authentication is per-request.
-
-      Clients can discover auth requirements machine-readably via:
-        GET /.well-known/oauth-protected-resource   (RFC 9728)
-        GET /.well-known/oauth-authorization-server (RFC 8414)
+  Auth requirements are discoverable machine-readably via:
+    GET /.well-known/oauth-protected-resource   (RFC 9728)
+    GET /.well-known/oauth-authorization-server (RFC 8414)
 
 Environment variables:
     AM_API_KEY       - Required for stdio mode. API key created via /admin/profile.
     DATABASE_PATH    - Optional. Path to activities.db (default: ./activities.db).
-    MCP_TRANSPORT    - Optional. 'stdio' (default) or 'sse'.
-    MCP_HOST         - Optional. Bind host for SSE mode (default: 127.0.0.1).
-    MCP_PORT         - Optional. Bind port for SSE mode (default: 8001).
+    MCP_TRANSPORT    - Optional. 'stdio' (default), 'streamable-http', or 'sse'.
+    MCP_HOST         - Optional. Bind host for HTTP modes (default: 127.0.0.1).
+    MCP_PORT         - Optional. Bind port for HTTP modes (default: 8001).
     MCP_BASE_URL     - Optional. Override the externally-accessible base URL used in
                        discovery metadata and WWW-Authenticate headers.
                        Defaults to http://{MCP_HOST}:{MCP_PORT}.
@@ -55,7 +58,7 @@ def main() -> None:
     mcp = FastMCP(name="activity-manager", host=host, port=port)
     register_all_tools(mcp, conn)
 
-    if transport == "sse":
+    if transport in ("streamable-http", "sse"):
         from starlette.applications import Starlette
         from starlette.routing import Mount
         import uvicorn
@@ -65,19 +68,25 @@ def main() -> None:
 
         base_url = os.environ.get("MCP_BASE_URL", f"http://{host}:{port}")
 
-        # Combine RFC 9728/8414 discovery routes with the FastMCP SSE app.
+        if transport == "streamable-http":
+            mcp_app = mcp.streamable_http_app()
+            endpoint = f"{base_url}/mcp"
+        else:
+            mcp_app = mcp.sse_app()
+            endpoint = f"{base_url}/sse"
+
+        # Combine RFC 9728/8414 discovery routes with the FastMCP app.
         # Discovery routes are public; the middleware skips auth for them.
-        sse_starlette = mcp.sse_app()
         combined_app = Starlette(
             routes=[
                 *make_discovery_routes(base_url),
-                Mount("/", app=sse_starlette),
+                Mount("/", app=mcp_app),
             ]
         )
         app_with_auth = ApiKeyMiddleware(combined_app, conn, base_url=base_url)
 
         print(
-            f"[mcp_server] Starting SSE server on {base_url}\n"
+            f"[mcp_server] Starting {transport} server — endpoint: {endpoint}\n"
             f"  Auth discovery: {base_url}/.well-known/oauth-protected-resource\n"
             f"  Send key as:    Authorization: Bearer am_<key>",
             file=sys.stderr,

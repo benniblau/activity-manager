@@ -10,7 +10,7 @@ Group=www-data
 WorkingDirectory=/opt/activity-manager
 Environment="PATH=/opt/activity-manager/venv/bin"
 EnvironmentFile=/opt/activity-manager/.env
-Environment="MCP_TRANSPORT=sse"
+Environment="MCP_TRANSPORT=streamable-http"
 Environment="MCP_HOST=127.0.0.1"
 Environment="MCP_PORT=8001"
 # MCP_BASE_URL must match the externally-accessible URL (used in WWW-Authenticate
