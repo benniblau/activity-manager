@@ -4,11 +4,11 @@ import sqlite3
 from typing import Optional
 
 from app.repositories.day_repository import DayRepository
-from mcp_server.auth import AuthContext
+from mcp_server.auth import get_current_auth
 
 
-def register_day_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) -> None:
-    """Register day journal read (and optionally write) tools."""
+def register_day_tools(mcp, conn: sqlite3.Connection) -> None:
+    """Register day journal read and write tools."""
 
     repo = DayRepository(db=conn)
 
@@ -22,6 +22,7 @@ def register_day_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) -> None
         Returns:
             Day dictionary, or {} if no entry exists for that date.
         """
+        auth = get_current_auth()
         result = repo.get_day(date, user_id=auth.user_id)
         return dict(result) if result else {}
 
@@ -36,6 +37,7 @@ def register_day_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) -> None
         Returns:
             List of day dictionaries ordered by date.
         """
+        auth = get_current_auth()
         rows = repo.get_days_in_range(start_date, end_date, user_id=auth.user_id)
         return [dict(r) for r in rows]
 
@@ -49,6 +51,7 @@ def register_day_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) -> None
         Returns:
             Dict with 'day' (dict or None) and 'activities' (list).
         """
+        auth = get_current_auth()
         result = repo.get_day_with_activities(date, user_id=auth.user_id)
         return {
             "day": dict(result["day"]) if result["day"] else None,
@@ -57,36 +60,38 @@ def register_day_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) -> None
 
     # ---- Write tools (readwrite scope only) ----
 
-    if auth.can_write():
+    @mcp.tool()
+    def update_day(
+        date: str,
+        feeling_text: Optional[str] = None,
+        feeling_pain: Optional[int] = None,
+        coach_comment: Optional[str] = None,
+    ) -> dict:
+        """Create or update a daily journal entry.
 
-        @mcp.tool()
-        def update_day(
-            date: str,
-            feeling_text: Optional[str] = None,
-            feeling_pain: Optional[int] = None,
-            coach_comment: Optional[str] = None,
-        ) -> dict:
-            """Create or update a daily journal entry.
+        Args:
+            date: Date in YYYY-MM-DD format.
+            feeling_text: Overall feeling description for the day.
+            feeling_pain: Overall pain/condition rating (0–10).
+            coach_comment: Coach note for the day.
 
-            Args:
-                date: Date in YYYY-MM-DD format.
-                feeling_text: Overall feeling description for the day.
-                feeling_pain: Overall pain/condition rating (0–10).
-                coach_comment: Coach note for the day.
+        Returns:
+            Updated day dictionary.
+        """
+        auth = get_current_auth()
+        if not auth.can_write():
+            raise PermissionError("readwrite scope required")
 
-            Returns:
-                Updated day dictionary.
-            """
-            if feeling_pain is not None and not (0 <= feeling_pain <= 10):
-                raise ValueError(f"feeling_pain must be between 0 and 10, got {feeling_pain}")
+        if feeling_pain is not None and not (0 <= feeling_pain <= 10):
+            raise ValueError(f"feeling_pain must be between 0 and 10, got {feeling_pain}")
 
-            data = {}
-            if feeling_text is not None:
-                data["feeling_text"] = feeling_text
-            if feeling_pain is not None:
-                data["feeling_pain"] = feeling_pain
-            if coach_comment is not None:
-                data["coach_comment"] = coach_comment
+        data = {}
+        if feeling_text is not None:
+            data["feeling_text"] = feeling_text
+        if feeling_pain is not None:
+            data["feeling_pain"] = feeling_pain
+        if coach_comment is not None:
+            data["coach_comment"] = coach_comment
 
-            updated = repo.update_day(date, auth.user_id, data)
-            return dict(updated) if updated else {}
+        updated = repo.update_day(date, auth.user_id, data)
+        return dict(updated) if updated else {}

@@ -4,11 +4,11 @@ import sqlite3
 from typing import Optional
 
 from app.repositories.activity_repository import ActivityRepository
-from mcp_server.auth import AuthContext
+from mcp_server.auth import get_current_auth
 
 
-def register_activity_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) -> None:
-    """Register activity read (and optionally write) tools."""
+def register_activity_tools(mcp, conn: sqlite3.Connection) -> None:
+    """Register activity read and write tools."""
 
     repo = ActivityRepository(db=conn)
 
@@ -22,6 +22,7 @@ def register_activity_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) ->
         Returns:
             Activity dictionary with all fields.
         """
+        auth = get_current_auth()
         try:
             return dict(repo.get_activity(activity_id, user_id=auth.user_id))
         except Exception as exc:
@@ -49,6 +50,7 @@ def register_activity_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) ->
         Returns:
             List of activity dictionaries.
         """
+        auth = get_current_auth()
         filters = {}
         if sport_type:
             filters["sport_type"] = sport_type
@@ -78,6 +80,7 @@ def register_activity_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) ->
         Returns:
             List of matching activity dictionaries.
         """
+        auth = get_current_auth()
         q = query.lower()
         all_activities = repo.get_activities(user_id=auth.user_id, limit=1000)
         matches = [
@@ -104,6 +107,7 @@ def register_activity_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) ->
             Dict with total_count, total_distance_km, total_elevation_m,
             total_time_hours, avg_distance_km.
         """
+        auth = get_current_auth()
         filters = {}
         if sport_type:
             filters["sport_type"] = sport_type
@@ -131,68 +135,70 @@ def register_activity_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) ->
 
     # ---- Write tools (readwrite scope only) ----
 
-    if auth.can_write():
+    @mcp.tool()
+    def update_activity_annotation(
+        activity_id: int,
+        feeling_before_text: Optional[str] = None,
+        feeling_before_pain: Optional[int] = None,
+        feeling_during_text: Optional[str] = None,
+        feeling_during_pain: Optional[int] = None,
+        feeling_after_text: Optional[str] = None,
+        feeling_after_pain: Optional[int] = None,
+        coach_comment: Optional[str] = None,
+        extended_type_id: Optional[int] = None,
+    ) -> dict:
+        """Update feeling annotations and optional extended type for an activity.
 
-        @mcp.tool()
-        def update_activity_annotation(
-            activity_id: int,
-            feeling_before_text: Optional[str] = None,
-            feeling_before_pain: Optional[int] = None,
-            feeling_during_text: Optional[str] = None,
-            feeling_during_pain: Optional[int] = None,
-            feeling_after_text: Optional[str] = None,
-            feeling_after_pain: Optional[int] = None,
-            coach_comment: Optional[str] = None,
-            extended_type_id: Optional[int] = None,
-        ) -> dict:
-            """Update feeling annotations and optional extended type for an activity.
+        Args:
+            activity_id: Activity ID to update.
+            feeling_before_text: How you felt before the activity.
+            feeling_before_pain: Pain level before (0–10).
+            feeling_during_text: How you felt during the activity.
+            feeling_during_pain: Pain level during (0–10).
+            feeling_after_text: How you felt after the activity.
+            feeling_after_pain: Pain level after (0–10).
+            coach_comment: Coach comment to attach.
+            extended_type_id: Extended activity type ID.
 
-            Args:
-                activity_id: Activity ID to update.
-                feeling_before_text: How you felt before the activity.
-                feeling_before_pain: Pain level before (0–10).
-                feeling_during_text: How you felt during the activity.
-                feeling_during_pain: Pain level during (0–10).
-                feeling_after_text: How you felt after the activity.
-                feeling_after_pain: Pain level after (0–10).
-                coach_comment: Coach comment to attach.
-                extended_type_id: Extended activity type ID.
+        Returns:
+            Updated activity dictionary.
+        """
+        auth = get_current_auth()
+        if not auth.can_write():
+            raise PermissionError("readwrite scope required")
 
-            Returns:
-                Updated activity dictionary.
-            """
-            # Validate ownership
-            try:
-                repo.get_activity(activity_id, user_id=auth.user_id)
-            except Exception:
-                raise ValueError(f"Activity {activity_id} not found or access denied")
+        # Validate ownership
+        try:
+            repo.get_activity(activity_id, user_id=auth.user_id)
+        except Exception:
+            raise ValueError(f"Activity {activity_id} not found or access denied")
 
-            # Validate pain values
-            for field, val in [
-                ("feeling_before_pain", feeling_before_pain),
-                ("feeling_during_pain", feeling_during_pain),
-                ("feeling_after_pain", feeling_after_pain),
-            ]:
-                if val is not None and not (0 <= val <= 10):
-                    raise ValueError(f"{field} must be between 0 and 10, got {val}")
+        # Validate pain values
+        for field, val in [
+            ("feeling_before_pain", feeling_before_pain),
+            ("feeling_during_pain", feeling_during_pain),
+            ("feeling_after_pain", feeling_after_pain),
+        ]:
+            if val is not None and not (0 <= val <= 10):
+                raise ValueError(f"{field} must be between 0 and 10, got {val}")
 
-            data = {}
-            if feeling_before_text is not None:
-                data["feeling_before_text"] = feeling_before_text
-            if feeling_before_pain is not None:
-                data["feeling_before_pain"] = feeling_before_pain
-            if feeling_during_text is not None:
-                data["feeling_during_text"] = feeling_during_text
-            if feeling_during_pain is not None:
-                data["feeling_during_pain"] = feeling_during_pain
-            if feeling_after_text is not None:
-                data["feeling_after_text"] = feeling_after_text
-            if feeling_after_pain is not None:
-                data["feeling_after_pain"] = feeling_after_pain
-            if coach_comment is not None:
-                data["coach_comment"] = coach_comment
-            if extended_type_id is not None:
-                data["extended_type_id"] = extended_type_id
+        data = {}
+        if feeling_before_text is not None:
+            data["feeling_before_text"] = feeling_before_text
+        if feeling_before_pain is not None:
+            data["feeling_before_pain"] = feeling_before_pain
+        if feeling_during_text is not None:
+            data["feeling_during_text"] = feeling_during_text
+        if feeling_during_pain is not None:
+            data["feeling_during_pain"] = feeling_during_pain
+        if feeling_after_text is not None:
+            data["feeling_after_text"] = feeling_after_text
+        if feeling_after_pain is not None:
+            data["feeling_after_pain"] = feeling_after_pain
+        if coach_comment is not None:
+            data["coach_comment"] = coach_comment
+        if extended_type_id is not None:
+            data["extended_type_id"] = extended_type_id
 
-            updated = repo.update_activity(activity_id, data)
-            return dict(updated)
+        updated = repo.update_activity(activity_id, data)
+        return dict(updated)

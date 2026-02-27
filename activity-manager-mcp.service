@@ -13,7 +13,10 @@ EnvironmentFile=/opt/activity-manager/.env
 Environment="MCP_TRANSPORT=sse"
 Environment="MCP_HOST=127.0.0.1"
 Environment="MCP_PORT=8001"
-# AM_API_KEY must be set in /opt/activity-manager/.env
+# MCP_BASE_URL must match the externally-accessible URL (used in WWW-Authenticate
+# and RFC 9728/8414 discovery metadata). Set in /opt/activity-manager/.env or here.
+# Example: Environment="MCP_BASE_URL=https://activity.example.com/mcp"
+# AM_API_KEY is NOT required in SSE mode — clients authenticate per-request.
 ExecStart=/opt/activity-manager/venv/bin/python -m mcp_server.server
 Restart=on-failure
 RestartSec=5
@@ -23,7 +26,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/activity-manager/activities.db
+ReadWritePaths=/opt/activity-manager/activities.db /opt/activity-manager/activities.db-shm /opt/activity-manager/activities.db-wal
 
 [Install]
 WantedBy=multi-user.target

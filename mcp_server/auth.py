@@ -1,8 +1,9 @@
-"""Resolve AM_API_KEY environment variable → AuthContext."""
+"""API key authentication and per-request auth context."""
 
 import sqlite3
-import sys
+from contextvars import ContextVar
 from dataclasses import dataclass
+from typing import Optional
 
 from app.repositories.api_key_repository import ApiKeyRepository
 
@@ -14,6 +15,27 @@ class AuthContext:
 
     def can_write(self) -> bool:
         return self.scope == "readwrite"
+
+
+# Per-async-task (per-request) auth context — set by middleware or server startup.
+_current_auth: ContextVar[Optional[AuthContext]] = ContextVar("current_auth", default=None)
+
+
+def get_current_auth() -> AuthContext:
+    """Return the AuthContext for the current request/task.
+
+    Raises:
+        PermissionError: If no auth context has been set (unauthenticated request).
+    """
+    auth = _current_auth.get()
+    if auth is None:
+        raise PermissionError("Unauthenticated — missing or invalid API key")
+    return auth
+
+
+def set_current_auth(auth: AuthContext) -> None:
+    """Set the AuthContext for the current async task."""
+    _current_auth.set(auth)
 
 
 def resolve_auth(conn: sqlite3.Connection, raw_key: str) -> AuthContext:

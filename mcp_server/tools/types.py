@@ -5,10 +5,9 @@ from typing import Optional
 
 from app.repositories.type_repository import TypeRepository
 from app.repositories.gear_repository import GearRepository
-from mcp_server.auth import AuthContext
 
 
-def register_type_tools(mcp, conn: sqlite3.Connection, auth: AuthContext) -> None:
+def register_type_tools(mcp, conn: sqlite3.Connection) -> None:
     """Register type and gear read-only tools."""
 
     type_repo = TypeRepository(db=conn)
