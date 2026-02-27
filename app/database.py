@@ -194,6 +194,9 @@ def init_db():
     # Run migration to add invitations table
     _migrate_add_invitations_table(db)
 
+    # Run migration to add API keys table
+    _migrate_add_api_keys_table(db)
+
     # Create activity_media table for photos linked to activities
     db.execute('''
         CREATE TABLE IF NOT EXISTS activity_media (
@@ -882,6 +885,25 @@ def _migrate_add_invitations_table(db):
     db.execute('CREATE INDEX IF NOT EXISTS idx_invitations_inviter ON invitations(inviter_id)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_invitations_email ON invitations(invited_email)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_invitations_status ON invitations(status)')
+    db.commit()
+
+
+def _migrate_add_api_keys_table(db):
+    """Add api_keys table for MCP server authentication"""
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            key_hash TEXT NOT NULL UNIQUE,
+            key_prefix TEXT NOT NULL,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            scope TEXT NOT NULL DEFAULT 'read' CHECK(scope IN ('read', 'readwrite')),
+            label TEXT,
+            last_used_at TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id)')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)')
     db.commit()
 
 

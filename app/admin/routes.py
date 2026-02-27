@@ -1,7 +1,8 @@
-from flask import render_template, request, jsonify, redirect, url_for, flash, current_app
+from flask import render_template, request, jsonify, redirect, url_for, flash, current_app, session
 from flask_login import login_required, current_user
 from app.admin import admin_bp
 from app.repositories import TypeRepository
+from app.repositories.api_key_repository import ApiKeyRepository
 from app.utils.errors import ValidationError, AppError
 from app.auth.user_auth import update_user_profile, update_password
 from app.services.access_control_service import (
@@ -155,6 +156,9 @@ def profile():
 
     invitations_sent = get_invitations_sent_by(current_user.id)
 
+    api_keys = ApiKeyRepository().get_keys_for_user(current_user.id)
+    new_api_key = session.pop('new_api_key', None)
+
     return render_template(
         'admin/profile.html',
         user=current_user,
@@ -164,7 +168,9 @@ def profile():
         athletes=athletes,
         pending_invitations=pending_invitations,
         pending_coach_invitations=pending_coach_invitations,
-        invitations_sent=invitations_sent
+        invitations_sent=invitations_sent,
+        api_keys=api_keys,
+        new_api_key=new_api_key
     )
 
 
@@ -343,6 +349,34 @@ def cancel_invitation_route(invitation_id):
     except ValueError as e:
         flash(str(e), 'danger')
 
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/api-keys', methods=['POST'])
+@login_required
+def create_api_key():
+    """Create a new MCP API key"""
+    scope = request.form.get('scope', 'read')
+    if scope not in ('read', 'readwrite'):
+        flash('Invalid scope.', 'danger')
+        return redirect(url_for('admin.profile'))
+
+    label = request.form.get('label', '').strip() or None
+    result = ApiKeyRepository().create_key(current_user.id, scope, label)
+    session['new_api_key'] = result['raw_key']
+    flash('API key created successfully.', 'success')
+    return redirect(url_for('admin.profile'))
+
+
+@admin_bp.route('/api-keys/<int:key_id>/delete', methods=['POST'])
+@login_required
+def delete_api_key(key_id):
+    """Revoke an API key"""
+    deleted = ApiKeyRepository().delete_key(key_id, current_user.id)
+    if deleted:
+        flash('API key revoked.', 'success')
+    else:
+        flash('Key not found.', 'danger')
     return redirect(url_for('admin.profile'))
 
 

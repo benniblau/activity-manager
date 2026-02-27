@@ -346,4 +346,99 @@
     </div>
 </div>
 
+<!-- API Keys Card -->
+<div class="row">
+    <div class="col-12 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-key-fill"></i> API Keys (MCP Server)
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if new_api_key %}
+                <div class="alert alert-warning" role="alert">
+                    <strong><i class="bi bi-exclamation-triangle"></i> Copy now — this key will not be shown again.</strong>
+                    <div class="mt-2">
+                        <code class="user-select-all fs-6">{{ new_api_key }}</code>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Create New Key Form -->
+                <h6 class="mb-2">Create New Key</h6>
+                <form method="POST" action="{{ url_for('admin.create_api_key') }}" class="mb-4">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-sm-5">
+                            <label for="api_key_label" class="form-label small text-muted">Label (optional)</label>
+                            <input type="text" class="form-control" id="api_key_label" name="label"
+                                   placeholder="e.g. Claude Desktop">
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="api_key_scope" class="form-label small text-muted">Scope</label>
+                            <select class="form-select" id="api_key_scope" name="scope">
+                                <option value="read">Read only</option>
+                                <option value="readwrite">Read + Write</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-auto">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Create Key
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Keys Table -->
+                {% if api_keys %}
+                <h6 class="mb-2">Existing Keys</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Prefix</th>
+                                <th>Label</th>
+                                <th>Scope</th>
+                                <th>Last Used</th>
+                                <th>Created</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for key in api_keys %}
+                            <tr>
+                                <td><code>{{ key.key_prefix }}...</code></td>
+                                <td>{{ key.label or '—' }}</td>
+                                <td>
+                                    {% if key.scope == 'readwrite' %}
+                                        <span class="badge bg-warning text-dark">Read + Write</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Read only</span>
+                                    {% endif %}
+                                </td>
+                                <td><small>{{ key.last_used_at[:10] if key.last_used_at else 'Never' }}</small></td>
+                                <td><small>{{ key.created_at[:10] }}</small></td>
+                                <td>
+                                    <form method="POST"
+                                          action="{{ url_for('admin.delete_api_key', key_id=key.id) }}"
+                                          style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('Revoke this API key?')">
+                                            <i class="bi bi-trash"></i> Revoke
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">No API keys yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
