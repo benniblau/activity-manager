@@ -86,11 +86,13 @@ def create_app(config_name=None):
     from app.api import api_bp
     from app.web import web_bp
     from app.admin import admin_bp
+    from app.mcp_proxy import mcp_proxy_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(activities_bp, url_prefix='/api/activities')
     app.register_blueprint(api_bp)  # API endpoints at /api
     app.register_blueprint(web_bp)  # Web UI at root
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(mcp_proxy_bp)  # MCP proxy at /mcp
 
     return app

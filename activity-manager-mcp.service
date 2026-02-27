@@ -1,8 +1,7 @@
 [Unit]
-Description=Activity Manager MCP Server (SSE transport)
+Description=Activity Manager MCP Server (Streamable HTTP transport)
 After=network.target activity-manager.service
-# Optional: only start after the main Flask app is up
-# Wants=activity-manager.service
+Wants=activity-manager.service
 
 [Service]
 User=www-data
@@ -13,15 +12,11 @@ EnvironmentFile=/opt/activity-manager/.env
 Environment="MCP_TRANSPORT=streamable-http"
 Environment="MCP_HOST=127.0.0.1"
 Environment="MCP_PORT=8001"
-# MCP_BASE_URL must match the externally-accessible URL (used in WWW-Authenticate
-# and RFC 9728/8414 discovery metadata). Set in /opt/activity-manager/.env or here.
-# Example: Environment="MCP_BASE_URL=https://activity.example.com/mcp"
-# AM_API_KEY is NOT required in SSE mode — clients authenticate per-request.
 ExecStart=/opt/activity-manager/venv/bin/python -m mcp_server.server
 Restart=on-failure
 RestartSec=5
 
-# Security hardening (mirrors main service)
+# Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
