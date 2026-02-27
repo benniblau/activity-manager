@@ -60,6 +60,13 @@ A **multi-user sports training and recovery journal** for athletes working with 
 - **Coach Dashboard** — View all athlete activities and progress
 - **Rest Day Tracking** — Monitor rest days with daily feelings and pain levels
 
+### MCP Server (AI Agent Integration)
+- **Model Context Protocol** — Exposes activity data to AI agents (Claude Desktop, Claude Code, etc.) via the MCP standard
+- **API Key Authentication** — Keys created per-user from Profile → API Keys; sha256-hashed, never stored in plaintext
+- **Two Permission Scopes** — `read` (list/get tools only) or `readwrite` (+ annotation and planning mutations)
+- **stdio & SSE transports** — stdio for local clients (Claude Desktop); SSE HTTP mode for persistent server deployments
+- **17 tools** — activities (list, get, search, stats, annotate), days (get, range, with-activities, update), planning (get day/week, create/update/delete), types, gear
+
 ### User Interface
 - **Dark Theme** — Clean, responsive Bootstrap 5 interface
 - **Mobile-First Design** — Card-based layouts prioritising key information
@@ -285,6 +292,91 @@ sudo certbot --nginx -d activity.yourdomain.com
 
 ---
 
+## MCP Server
+
+Activity Manager includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that lets AI agents (Claude Desktop, Claude Code, etc.) read and write your training data directly.
+
+### Setup
+
+1. **Create an API key** — Go to Profile → API Keys, pick a scope, click *Create Key*. Copy the key immediately; it is shown only once.
+
+2. **Choose a transport mode:**
+
+#### stdio — for Claude Desktop / Claude Code (recommended for local use)
+
+The client launches the server automatically as a subprocess. Add this to your Claude config (e.g. `~/.claude/claude_desktop_config.json` or `~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "activity-manager": {
+      "command": "/opt/activity-manager/venv/bin/python",
+      "args": ["-m", "mcp_server.server"],
+      "cwd": "/opt/activity-manager",
+      "env": {
+        "AM_API_KEY": "am_your_key_here"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop — no separate process to start.
+
+#### SSE — persistent HTTP daemon (for servers / remote access)
+
+```bash
+MCP_TRANSPORT=sse AM_API_KEY=am_your_key python -m mcp_server.server
+# Listens on http://127.0.0.1:8001 by default
+```
+
+Override host/port with `MCP_HOST` and `MCP_PORT` env vars.
+
+#### SSE as a systemd service
+
+Add `AM_API_KEY=am_your_key` to `/opt/activity-manager/.env`, then:
+
+```bash
+sudo cp activity-manager-mcp.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now activity-manager-mcp
+journalctl -u activity-manager-mcp -f
+```
+
+### Available Tools
+
+| Scope | Tool | Description |
+|---|---|---|
+| read | `list_activities` | List activities with optional filters |
+| read | `get_activity` | Get a single activity by ID |
+| read | `search_activities` | Search activities by name/description |
+| read | `get_activity_stats` | Aggregate distance/elevation/time stats |
+| read | `get_day` | Get a daily journal entry |
+| read | `get_days_in_range` | Get journal entries for a date range |
+| read | `get_day_with_activities` | Day entry + its activities |
+| read | `get_planned_day` | Planned activities for a day |
+| read | `get_planned_week` | Planned activities for a date range |
+| read | `list_standard_types` | All Strava sport types |
+| read | `list_extended_types` | Custom extended type classifications |
+| read | `list_gear` | Gear with usage statistics |
+| readwrite | `update_activity_annotation` | Set feeling notes, pain scores, coach comment |
+| readwrite | `update_day` | Create/update a daily journal entry |
+| readwrite | `create_planned_activity` | Add a planned workout to the calendar |
+| readwrite | `update_planned_activity` | Edit a planned workout |
+| readwrite | `delete_planned_activity` | Remove a planned workout |
+
+### Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `AM_API_KEY` | *(required)* | API key from Profile → API Keys |
+| `DATABASE_PATH` | `./activities.db` | Path to the SQLite database |
+| `MCP_TRANSPORT` | `stdio` | `stdio` or `sse` |
+| `MCP_HOST` | `127.0.0.1` | Bind host (SSE mode only) |
+| `MCP_PORT` | `8001` | Bind port (SSE mode only) |
+
+---
+
 ## Database Utilities
 
 ### Schema Migrations
@@ -333,6 +425,7 @@ Always creates a timestamped backup before making any changes.
 | `standard_activity_types` | Official Strava sport types |
 | `gear` | Equipment tracking (bikes, shoes, etc.) |
 | `activity_media` | Photos linked to activities |
+| `api_keys` | MCP server API keys (sha256-hashed, per-user, scoped) |
 
 ---
 
@@ -364,6 +457,8 @@ Always creates a timestamped backup before making any changes.
 - `POST /admin/invitations/<id>/cancel` — Cancel a pending invitation
 - `POST /admin/coaches/<id>/remove` — Remove coach access (athletes)
 - `POST /admin/switch-view/<id>` — Switch viewing context (coaches)
+- `POST /admin/api-keys` — Create an MCP API key (scope + optional label)
+- `POST /admin/api-keys/<id>/delete` — Revoke an MCP API key
 
 ### Training Plan
 - `GET /plan` — Weekly planning view (`?week=YYYY-MM-DD` selects the week; defaults to current Mon–Sun)
@@ -416,6 +511,7 @@ The 0–10 pain scale uses face icons with a colour gradient:
 - **Database**: SQLite (raw `sqlite3`, no ORM)
 - **Authentication**: Flask-Login, bcrypt
 - **API Integration**: stravalib (Strava API)
+- **AI Integration**: MCP (Model Context Protocol) via `mcp` SDK
 - **Frontend**: Bootstrap 5, Bootstrap Icons, SortableJS (drag-to-reorder)
 - **Email**: SMTP (configurable)
 - **Production Server**: Gunicorn
