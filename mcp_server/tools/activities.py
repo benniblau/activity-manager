@@ -1,5 +1,6 @@
 """Activity tools for the MCP server."""
 
+import json
 import sqlite3
 from typing import Optional
 
@@ -36,7 +37,7 @@ def register_activity_tools(mcp, conn: sqlite3.Connection) -> None:
         extended_type_id: Optional[int] = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> list:
+    ) -> str:
         """List activities with optional filters.
 
         Args:
@@ -48,7 +49,7 @@ def register_activity_tools(mcp, conn: sqlite3.Connection) -> None:
             offset: Number of results to skip for pagination.
 
         Returns:
-            List of activity dictionaries.
+            JSON array of activity dictionaries.
         """
         auth = get_current_auth()
         filters = {}
@@ -67,10 +68,10 @@ def register_activity_tools(mcp, conn: sqlite3.Connection) -> None:
             offset=offset,
             user_id=auth.user_id,
         )
-        return [dict(r) for r in rows]
+        return json.dumps([dict(r) for r in rows])
 
     @mcp.tool()
-    def search_activities(query: str, limit: int = 20) -> list:
+    def search_activities(query: str, limit: int = 20) -> str:
         """Full-text search activities by name or description.
 
         Args:
@@ -78,7 +79,7 @@ def register_activity_tools(mcp, conn: sqlite3.Connection) -> None:
             limit: Max results to return.
 
         Returns:
-            List of matching activity dictionaries.
+            JSON array of matching activity dictionaries.
         """
         auth = get_current_auth()
         q = query.lower()
@@ -88,7 +89,7 @@ def register_activity_tools(mcp, conn: sqlite3.Connection) -> None:
             if q in (a.get("name") or "").lower()
             or q in (a.get("description") or "").lower()
         ]
-        return matches[:limit]
+        return json.dumps(matches[:limit])
 
     @mcp.tool()
     def get_activity_stats(

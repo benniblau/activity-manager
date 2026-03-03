@@ -1,5 +1,6 @@
 """Planned activity tools for the MCP server."""
 
+import json
 import sqlite3
 from typing import Optional
 
@@ -13,21 +14,21 @@ def register_planning_tools(mcp, conn: sqlite3.Connection) -> None:
     repo = PlannedActivityRepository(db=conn)
 
     @mcp.tool()
-    def get_planned_day(date: str) -> list:
+    def get_planned_day(date: str) -> str:
         """Get planned activities for a specific day.
 
         Args:
             date: Date in YYYY-MM-DD format.
 
         Returns:
-            List of planned activity dictionaries ordered by sort_order.
+            JSON array of planned activity dictionaries ordered by sort_order.
         """
         auth = get_current_auth()
         rows = repo.get_by_day(date, auth.user_id)
-        return [dict(r) for r in rows]
+        return json.dumps([dict(r) for r in rows])
 
     @mcp.tool()
-    def get_planned_week(start_date: str, end_date: str) -> list:
+    def get_planned_week(start_date: str, end_date: str) -> str:
         """Get planned activities for a date range.
 
         Args:
@@ -35,11 +36,11 @@ def register_planning_tools(mcp, conn: sqlite3.Connection) -> None:
             end_date: End date (YYYY-MM-DD), inclusive.
 
         Returns:
-            List of planned activity dictionaries ordered by date then sort_order.
+            JSON array of planned activity dictionaries ordered by date then sort_order.
         """
         auth = get_current_auth()
         rows = repo.get_by_week(start_date, end_date, auth.user_id)
-        return [dict(r) for r in rows]
+        return json.dumps([dict(r) for r in rows])
 
     # ---- Write tools (readwrite scope only) ----
 

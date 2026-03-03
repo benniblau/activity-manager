@@ -1,5 +1,6 @@
 """Activity type and gear tools for the MCP server (always read-only)."""
 
+import json
 import sqlite3
 from typing import Optional
 
@@ -14,36 +15,36 @@ def register_type_tools(mcp, conn: sqlite3.Connection) -> None:
     gear_repo = GearRepository(db=conn)
 
     @mcp.tool()
-    def list_standard_types() -> list:
+    def list_standard_types() -> str:
         """List all standard Strava activity types.
 
         Returns:
-            List of standard type dicts with name, category, display_name, icon, color.
+            JSON array of standard type dicts with name, category, display_name, icon, color.
         """
         rows = type_repo.get_standard_types()
-        return [dict(r) for r in rows]
+        return json.dumps([dict(r) for r in rows])
 
     @mcp.tool()
-    def list_extended_types(base_sport_type: Optional[str] = None) -> list:
+    def list_extended_types(base_sport_type: Optional[str] = None) -> str:
         """List custom extended activity type classifications.
 
         Args:
             base_sport_type: Optional filter (e.g. 'Run', 'Ride').
 
         Returns:
-            List of extended type dicts with id, base_sport_type, custom_name, color_class.
+            JSON array of extended type dicts with id, base_sport_type, custom_name, color_class.
         """
         rows = type_repo.get_extended_types()
         if base_sport_type:
             rows = [r for r in rows if r.get("base_sport_type") == base_sport_type]
-        return [dict(r) for r in rows]
+        return json.dumps([dict(r) for r in rows])
 
     @mcp.tool()
-    def list_gear() -> list:
+    def list_gear() -> str:
         """List all gear (bikes, shoes, etc.) with usage statistics.
 
         Returns:
-            List of gear dicts including stats (total_activities, total_distance_km, etc.).
+            JSON array of gear dicts including stats (total_activities, total_distance_km, etc.).
         """
         gear_list = gear_repo.get_all_gear_with_stats()
         result = []
@@ -57,4 +58,4 @@ def register_type_tools(mcp, conn: sqlite3.Connection) -> None:
                 )
                 item["stats"] = stats
             result.append(item)
-        return result
+        return json.dumps(result)

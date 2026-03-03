@@ -1,5 +1,6 @@
 """Day journal tools for the MCP server."""
 
+import json
 import sqlite3
 from typing import Optional
 
@@ -27,7 +28,7 @@ def register_day_tools(mcp, conn: sqlite3.Connection) -> None:
         return dict(result) if result else {}
 
     @mcp.tool()
-    def get_days_in_range(start_date: str, end_date: str) -> list:
+    def get_days_in_range(start_date: str, end_date: str) -> str:
         """Get all journal entries within a date range.
 
         Args:
@@ -35,11 +36,11 @@ def register_day_tools(mcp, conn: sqlite3.Connection) -> None:
             end_date: End date (YYYY-MM-DD), inclusive.
 
         Returns:
-            List of day dictionaries ordered by date.
+            JSON array of day dictionaries ordered by date.
         """
         auth = get_current_auth()
         rows = repo.get_days_in_range(start_date, end_date, user_id=auth.user_id)
-        return [dict(r) for r in rows]
+        return json.dumps([dict(r) for r in rows])
 
     @mcp.tool()
     def get_day_with_activities(date: str) -> dict:
