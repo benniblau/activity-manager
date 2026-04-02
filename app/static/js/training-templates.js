@@ -155,6 +155,27 @@ const tmpl = (() => {
         .catch(err => { console.error(err); alert('Failed to save segment.'); });
     }
 
+    function duplicateSegment(seg, templateId) {
+        const payload = {
+            label: seg.label,
+            distance_meters: seg.distance_meters || null,
+            duration_seconds: seg.duration_seconds || null,
+            target_pace_sec_per_km: seg.target_pace_sec_per_km || null,
+            notes: seg.notes || null,
+        };
+        fetch(`/api/templates/${templateId}/segments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            window.location.reload();
+        })
+        .catch(err => { console.error(err); alert('Failed to duplicate segment.'); });
+    }
+
     function deleteSegment(segmentId, templateId) {
         const doDelete = () => {
             fetch(`/api/templates/${templateId}/segments/${segmentId}`, { method: 'DELETE' })
@@ -240,6 +261,7 @@ const tmpl = (() => {
         submitAddSegment,
         openEditSegmentModal,
         submitEditSegment,
+        duplicateSegment,
         deleteSegment,
         initSegmentSortable,
         openEditTemplateModal,
