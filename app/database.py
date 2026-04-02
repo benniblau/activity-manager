@@ -197,6 +197,12 @@ def init_db():
     # Run migration to add API keys table
     _migrate_add_api_keys_table(db)
 
+    # Run migration to add training templates
+    _migrate_add_training_templates(db)
+
+    # Run migration to add template_id to planned_activities
+    _migrate_add_template_to_planned(db)
+
     # Create activity_media table for photos linked to activities
     db.execute('''
         CREATE TABLE IF NOT EXISTS activity_media (
@@ -905,6 +911,51 @@ def _migrate_add_api_keys_table(db):
     db.execute('CREATE INDEX IF NOT EXISTS idx_api_keys_user ON api_keys(user_id)')
     db.execute('CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)')
     db.commit()
+
+
+def _migrate_add_training_templates(db):
+    """Add training_templates and template_segments tables"""
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS training_templates (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            name        TEXT NOT NULL,
+            sport_type  TEXT REFERENCES standard_activity_types(name) ON DELETE SET NULL,
+            description TEXT,
+            is_active   INTEGER DEFAULT 1,
+            created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, name)
+        )
+    ''')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_training_templates_user ON training_templates(user_id)')
+
+    db.execute('''
+        CREATE TABLE IF NOT EXISTS template_segments (
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            template_id             INTEGER NOT NULL REFERENCES training_templates(id) ON DELETE CASCADE,
+            sort_order              INTEGER NOT NULL DEFAULT 0,
+            label                   TEXT NOT NULL,
+            distance_meters         REAL,
+            duration_seconds        INTEGER,
+            target_pace_sec_per_km  INTEGER,
+            notes                   TEXT,
+            created_at              TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    db.execute('CREATE INDEX IF NOT EXISTS idx_template_segments_template ON template_segments(template_id, sort_order)')
+    db.commit()
+
+
+def _migrate_add_template_to_planned(db):
+    """Add template_id column to planned_activities"""
+    cursor = db.execute("PRAGMA table_info(planned_activities)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'template_id' not in columns:
+        db.execute(
+            'ALTER TABLE planned_activities ADD COLUMN template_id INTEGER REFERENCES training_templates(id) ON DELETE SET NULL'
+        )
+        db.commit()
 
 
 def get_extended_types(base_sport_type=None):

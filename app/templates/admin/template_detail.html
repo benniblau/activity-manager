@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}{{ template.name }} – Training Template{% endblock %}
+
+{% block extra_css %}
+<style>
+.segment-row td { padding: 4px 6px; vertical-align: middle; }
+.segment-drag { width: 20px; color: var(--bs-secondary); cursor: grab; text-align: center; }
+.segment-drag:active { cursor: grabbing; }
+.seg-ghost { opacity: 0.35; background: rgba(255,255,255,0.04); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <a href="{{ url_for('admin.manage_templates') }}" class="text-secondary text-decoration-none small">
+            <i class="bi bi-arrow-left"></i> Templates
+        </a>
+        <h4 class="mb-0 mt-1">{{ template.name }}</h4>
+        {% if template.description %}
+        <p class="text-secondary small mb-0">{{ template.description }}</p>
+        {% endif %}
+    </div>
+    <div class="d-flex gap-2">
+        {% if template.sport_type %}
+        <span class="badge bg-secondary align-self-center">{{ template.sport_type }}</span>
+        {% endif %}
+        <button class="btn btn-outline-secondary btn-sm"
+                onclick="tmpl.openEditTemplateModal({{ template|tojson }})">
+            <i class="bi bi-pencil"></i> Edit
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span class="fw-semibold">Segments</span>
+        <button class="btn btn-primary btn-sm" onclick="tmpl.toggleAddSegmentForm()">
+            <i class="bi bi-plus-circle"></i> Add Segment
+        </button>
+    </div>
+
+    {# Add segment form (hidden by default) #}
+    <div id="addSegmentForm" class="card-body border-bottom" style="display:none;">
+        <form onsubmit="tmpl.submitAddSegment(event, {{ template.id }})">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Label <span class="text-danger">*</span></label>
+                    <input type="text" name="label" class="form-control form-control-sm"
+                           placeholder="e.g. Warm-up, Tempo block" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Distance (km)</label>
+                    <input type="number" name="distance_km" class="form-control form-control-sm"
+                           step="0.01" min="0" placeholder="e.g. 1.5">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Duration (m:ss)</label>
+                    <input type="text" name="duration_mss" class="form-control form-control-sm"
+                           pattern="[0-9]+:[0-5][0-9]" placeholder="e.g. 5:00">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Target Pace (m:ss/km)</label>
+                    <input type="text" name="pace_mss" class="form-control form-control-sm"
+                           pattern="[0-9]+:[0-5][0-9]" placeholder="e.g. 5:30">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Notes</label>
+                    <input type="text" name="notes" class="form-control form-control-sm"
+                           placeholder="Optional">
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+                <button type="submit" class="btn btn-primary btn-sm">Add</button>
+                <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="tmpl.toggleAddSegmentForm()">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    {% if template.segments %}
+    <div class="table-responsive">
+    <table class="table table-sm mb-0">
+        <thead>
+            <tr>
+                <th style="width:20px;"></th>
+                <th>#</th>
+                <th>Label</th>
+                <th>Distance</th>
+                <th>Duration</th>
+                <th>Pace</th>
+                <th>Notes</th>
+                <th style="width:80px;"></th>
+            </tr>
+        </thead>
+        <tbody id="segmentList" data-template-id="{{ template.id }}">
+            {% for seg in template.segments %}
+            <tr class="segment-row" data-id="{{ seg.id }}">
+                <td class="segment-drag"><i class="bi bi-grip-vertical"></i></td>
+                <td class="text-secondary small">{{ loop.index }}</td>
+                <td class="fw-semibold">{{ seg.label }}</td>
+                <td class="small text-secondary">
+                    {% if seg.distance_meters %}{{ "%.2f"|format(seg.distance_meters / 1000) }} km{% else %}—{% endif %}
+                </td>
+                <td class="small text-secondary">
+                    {% if seg.duration_seconds %}
+                        {% set m = seg.duration_seconds // 60 %}{% set s = seg.duration_seconds % 60 %}
+                        {{ m }}:{{ "%02d"|format(s) }}
+                    {% else %}—{% endif %}
+                </td>
+                <td class="small text-secondary">
+                    {% if seg.target_pace_sec_per_km %}
+                        {% set pm = seg.target_pace_sec_per_km // 60 %}{% set ps = seg.target_pace_sec_per_km % 60 %}
+                        {{ pm }}:{{ "%02d"|format(ps) }}/km
+                    {% else %}—{% endif %}
+                </td>
+                <td class="small text-secondary">{{ seg.notes or '—' }}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            onclick='tmpl.openEditSegmentModal({{ seg|tojson }}, {{ template.id }})'>
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger"
+                            onclick="tmpl.deleteSegment({{ seg.id }}, {{ template.id }})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="card-body text-secondary text-center py-4">
+        No segments yet. Add one above.
+    </div>
+    {% endif %}
+</div>
+
+{# Edit Template Modal #}
+<div class="modal fade" id="editTemplateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editTemplateForm" onsubmit="tmpl.submitEditTemplate(event)">
+                <input type="hidden" id="editTemplateId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" id="editTemplateName" name="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sport Type</label>
+                        <select id="editTemplateSport" name="sport_type" class="form-select">
+                            <option value="">— Any —</option>
+                            <option value="Run">Run</option>
+                            <option value="TrailRun">Trail Run</option>
+                            <option value="Ride">Ride</option>
+                            <option value="Swim">Swim</option>
+                            <option value="Walk">Walk</option>
+                            <option value="Hike">Hike</option>
+                            <option value="WeightTraining">Weight Training</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" id="editTemplateDesc" name="description" class="form-control">
+                    </div>
+                    <div id="editTemplateError" class="text-danger small" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Edit Segment Modal #}
+<div class="modal fade" id="editSegmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Segment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editSegmentForm" onsubmit="tmpl.submitEditSegment(event)">
+                <input type="hidden" id="editSegmentId">
+                <input type="hidden" id="editSegmentTemplateId">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Label <span class="text-danger">*</span></label>
+                        <input type="text" id="editSegmentLabel" name="label" class="form-control" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Distance (km)</label>
+                            <input type="number" id="editSegmentDist" name="distance_km"
+                                   class="form-control" step="0.01" min="0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Duration (m:ss)</label>
+                            <input type="text" id="editSegmentDur" name="duration_mss"
+                                   class="form-control" pattern="[0-9]+:[0-5][0-9]" placeholder="5:00">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Target Pace (m:ss/km)</label>
+                        <input type="text" id="editSegmentPace" name="pace_mss"
+                               class="form-control" pattern="[0-9]+:[0-5][0-9]" placeholder="5:30">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <input type="text" id="editSegmentNotes" name="notes" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="{{ url_for('static', filename='js/training-templates.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    tmpl.initSegmentSortable({{ template.id }});
+});
+</script>
+{% endblock %}

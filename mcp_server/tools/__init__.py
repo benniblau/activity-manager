@@ -6,6 +6,7 @@ from mcp_server.tools.activities import register_activity_tools
 from mcp_server.tools.days import register_day_tools
 from mcp_server.tools.planning import register_planning_tools
 from mcp_server.tools.types import register_type_tools
+from mcp_server.tools.templates import register_template_tools
 
 
 def register_all_tools(mcp, conn: sqlite3.Connection) -> None:
@@ -14,3 +15,4 @@ def register_all_tools(mcp, conn: sqlite3.Connection) -> None:
     register_day_tools(mcp, conn)
     register_planning_tools(mcp, conn)
     register_type_tools(mcp, conn)
+    register_template_tools(mcp, conn)

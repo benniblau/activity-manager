@@ -917,6 +917,26 @@ def plan():
         is_active=True, user_id=viewing_user_id
     )
 
+    from app.repositories.training_template_repository import TrainingTemplateRepository
+    tmpl_repo = TrainingTemplateRepository()
+    all_templates = tmpl_repo.get_templates(viewing_user_id)
+    templates_by_sport = {}
+    for t in all_templates:
+        key = t['sport_type'] or ''
+        templates_by_sport.setdefault(key, []).append(dict(t))
+
+    # Fetch segments for any templates assigned to this week's planned activities
+    used_template_ids = {
+        item['template_id']
+        for day_items in planned_by_day.values()
+        for item in day_items
+        if item.get('template_id')
+    }
+    segments_by_template = {}
+    for tid in used_template_ids:
+        segs = tmpl_repo.get_segments(tid)
+        segments_by_template[tid] = [dict(s) for s in segs]
+
     return render_template(
         'plan.html',
         week_start=week_start_str,
@@ -928,4 +948,6 @@ def plan():
         next_week=next_week,
         standard_types_by_category=standard_types_by_category,
         extended_types_by_sport=extended_types_by_sport,
+        templates_by_sport=templates_by_sport,
+        segments_by_template=segments_by_template,
     )

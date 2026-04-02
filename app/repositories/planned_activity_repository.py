@@ -20,11 +20,14 @@ class PlannedActivityRepository(BaseRepository):
                    a.name as matched_activity_name,
                    a.sport_type as matched_sport_type,
                    a.distance as matched_distance,
-                   a.moving_time as matched_moving_time
+                   a.moving_time as matched_moving_time,
+                   tt.name as template_name,
+                   tt.sport_type as template_sport_type
             FROM planned_activities p
             LEFT JOIN standard_activity_types s ON p.sport_type = s.name
             LEFT JOIN extended_activity_types e ON p.extended_type_id = e.id
             LEFT JOIN activities a ON p.matched_activity_id = a.id
+            LEFT JOIN training_templates tt ON p.template_id = tt.id
             WHERE p.user_id = ? AND p.day_date = ?
             ORDER BY p.sort_order ASC, p.id ASC
         ''', (user_id, day_date))
@@ -41,11 +44,14 @@ class PlannedActivityRepository(BaseRepository):
                    a.name as matched_activity_name,
                    a.sport_type as matched_sport_type,
                    a.distance as matched_distance,
-                   a.moving_time as matched_moving_time
+                   a.moving_time as matched_moving_time,
+                   tt.name as template_name,
+                   tt.sport_type as template_sport_type
             FROM planned_activities p
             LEFT JOIN standard_activity_types s ON p.sport_type = s.name
             LEFT JOIN extended_activity_types e ON p.extended_type_id = e.id
             LEFT JOIN activities a ON p.matched_activity_id = a.id
+            LEFT JOIN training_templates tt ON p.template_id = tt.id
             WHERE p.user_id = ? AND p.day_date >= ? AND p.day_date <= ?
             ORDER BY p.day_date ASC, p.sort_order ASC, p.id ASC
         ''', (user_id, start_date, end_date))
@@ -77,7 +83,7 @@ class PlannedActivityRepository(BaseRepository):
         # Build SET clause
         allowed_fields = {
             'sport_type', 'extended_type_id', 'planned_distance', 'planned_duration',
-            'notes', 'matched_activity_id', 'sort_order', 'day_date', 'updated_at'
+            'notes', 'matched_activity_id', 'sort_order', 'day_date', 'template_id', 'updated_at'
         }
         update_data = {k: v for k, v in data.items() if k in allowed_fields}
 

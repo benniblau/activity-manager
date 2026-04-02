@@ -39,6 +39,15 @@
 .plan-item-actions { display: flex; gap: 2px; flex-shrink: 0; }
 .plan-item-actions .btn { padding: 1px 5px; font-size: 0.75rem; }
 
+/* Template inline detail */
+.template-detail { margin-top: 4px; }
+.template-name-row { font-size: 0.73rem; margin-bottom: 2px; }
+.template-segments-inline { padding-left: 4px; border-left: 2px solid rgba(13,202,240,0.3); margin-left: 2px; }
+.template-seg-row { display: flex; align-items: baseline; gap: 4px; font-size: 0.72rem; line-height: 1.5; }
+.seg-index { color: var(--bs-secondary); flex-shrink: 0; min-width: 14px; }
+.seg-label { color: var(--bs-body-color); }
+.seg-meta { color: var(--bs-secondary); }
+
 /* Add row */
 .plan-add-row td { padding: 3px 6px 8px; }
 .plan-add-form {
@@ -127,6 +136,42 @@
                                     {{ item.notes }}
                                 </span>
                             {% endif %}
+                            {% if item.template_name %}
+                                {% set segs = segments_by_template.get(item.template_id, []) %}
+                                <div class="mt-1 template-detail">
+                                    <div class="template-name-row">
+                                        <i class="bi bi-list-ol"></i>
+                                        <span class="text-info fw-semibold" style="font-size:0.75rem;">{{ item.template_name }}</span>
+                                    </div>
+                                    {% if segs %}
+                                    <div class="template-segments-inline">
+                                        {% for seg in segs %}
+                                        <div class="template-seg-row">
+                                            <span class="seg-index">{{ loop.index }}.</span>
+                                            <span class="seg-label">{{ seg.label }}</span>
+                                            {% if seg.distance_meters or seg.target_pace_sec_per_km or seg.duration_seconds %}
+                                            <span class="seg-meta">
+                                                {%- if seg.distance_meters -%}
+                                                    {{ "%.2f"|format(seg.distance_meters / 1000)|replace('.00','') }} km
+                                                {%- endif -%}
+                                                {%- if seg.target_pace_sec_per_km -%}
+                                                    {%- set pm = seg.target_pace_sec_per_km // 60 -%}
+                                                    {%- set ps = seg.target_pace_sec_per_km % 60 -%}
+                                                    {%- if seg.distance_meters %} · {% endif %}@ {{ pm }}:{{ "%02d"|format(ps) }}/km
+                                                {%- endif -%}
+                                                {%- if seg.duration_seconds -%}
+                                                    {%- set dm = seg.duration_seconds // 60 -%}
+                                                    {%- set ds = seg.duration_seconds % 60 -%}
+                                                    {%- if seg.distance_meters or seg.target_pace_sec_per_km %} · {% endif %}{{ dm }}:{{ "%02d"|format(ds) }}
+                                                {%- endif -%}
+                                            </span>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="plan-item-actions">
@@ -197,6 +242,12 @@
                                     <option value="">— Any —</option>
                                 </select>
                             </div>
+                            <div class="col-12" id="template-container-{{ day_date }}" style="display:none;">
+                                <label class="form-label small mb-1">Training Template</label>
+                                <select class="form-select form-select-sm" name="template_id" id="template-{{ day_date }}">
+                                    <option value="">— No template —</option>
+                                </select>
+                            </div>
                             <div class="col-6">
                                 <label class="form-label small mb-1">Distance (km)</label>
                                 <input type="number" class="form-control form-control-sm" name="planned_distance_km"
@@ -260,6 +311,12 @@
                             <option value="">— Any —</option>
                         </select>
                     </div>
+                    <div class="mb-3" id="edit-template-container" style="display:none;">
+                        <label class="form-label">Training Template</label>
+                        <select class="form-select" id="edit-template-id">
+                            <option value="">— No template —</option>
+                        </select>
+                    </div>
                     <div class="row g-2 mb-3">
                         <div class="col-6">
                             <label class="form-label">Distance (km)</label>
@@ -289,6 +346,7 @@
 {% block extra_js %}
 <script>
 const EXTENDED_TYPES_BY_SPORT = {{ extended_types_by_sport | tojson }};
+const TEMPLATES_BY_SPORT = {{ templates_by_sport | tojson }};
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="{{ url_for('static', filename='js/plan.js') }}"></script>

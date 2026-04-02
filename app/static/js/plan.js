@@ -37,6 +37,47 @@ const planUI = (() => {
         form.style.display = form.style.display === 'none' ? 'block' : 'none';
     }
 
+    // ── Template helpers ──────────────────────────────────────────────────────
+
+    /** Populate a template <select> for the given sport type.
+     *  Includes templates tagged for the sport AND templates with no sport tag. */
+    function _populateTemplateSelect(select, container, sportType, selectedId) {
+        const sport = (TEMPLATES_BY_SPORT || {})[sportType] || [];
+        const any = (TEMPLATES_BY_SPORT || {})[''] || [];
+        // Merge, deduplicate by id
+        const seen = new Set();
+        const templates = [...sport, ...any].filter(t => {
+            if (seen.has(t.id)) return false;
+            seen.add(t.id);
+            return true;
+        });
+        select.innerHTML = '<option value="">— No template —</option>';
+        templates.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.name + (t.sport_type ? ` (${t.sport_type})` : '');
+            if (selectedId && String(t.id) === String(selectedId)) opt.selected = true;
+            select.appendChild(opt);
+        });
+        container.style.display = templates.length > 0 ? 'block' : 'none';
+    }
+
+    function loadTemplates(sportType, dayDate) {
+        const container = document.getElementById(`template-container-${dayDate}`);
+        const select = document.getElementById(`template-${dayDate}`);
+        if (!container || !select) return;
+        if (!sportType) { container.style.display = 'none'; return; }
+        _populateTemplateSelect(select, container, sportType, null);
+    }
+
+    function loadEditTemplates(sportType, currentTemplateId) {
+        const container = document.getElementById('edit-template-container');
+        const select = document.getElementById('edit-template-id');
+        if (!container || !select) return;
+        if (!sportType) { container.style.display = 'none'; return; }
+        _populateTemplateSelect(select, container, sportType, currentTemplateId);
+    }
+
     // ── Load extended types into a select (for Add form) ─────────────────────
     function _populateExtSelect(select, container, sportType, selectedId) {
         const types = (EXTENDED_TYPES_BY_SPORT[sportType] || []);
@@ -57,6 +98,7 @@ const planUI = (() => {
         if (!container || !select) return;
         if (!sportType) { container.style.display = 'none'; return; }
         _populateExtSelect(select, container, sportType, null);
+        loadTemplates(sportType, dayDate);
     }
 
     function _initAddFormSportSelects() {
@@ -91,6 +133,7 @@ const planUI = (() => {
             planned_distance: distKm > 0 ? distKm * 1000 : null,
             planned_duration: durationSec,
             notes: fd.get('notes') || null,
+            template_id: fd.get('template_id') ? parseInt(fd.get('template_id'), 10) : null,
         };
 
         fetch('/api/plan/', {
@@ -222,8 +265,9 @@ const planUI = (() => {
         }
         document.getElementById('edit-duration').value = durationStr;
 
-        // Load extended types for this sport
+        // Load extended types and templates for this sport
         loadEditExtendedTypes(item.sport_type, item.extended_type_id);
+        loadEditTemplates(item.sport_type, item.template_id);
 
         const modal = new bootstrap.Modal(document.getElementById('editPlanModal'));
         modal.show();
@@ -234,6 +278,7 @@ const planUI = (() => {
         const select = document.getElementById('edit-extended-type');
         if (!sportType) { container.style.display = 'none'; return; }
         _populateExtSelect(select, container, sportType, currentExtId);
+        loadEditTemplates(sportType, null);
     }
 
     function submitEdit(event) {
@@ -249,6 +294,7 @@ const planUI = (() => {
         }
 
         const extVal = document.getElementById('edit-extended-type').value;
+        const tmplVal = document.getElementById('edit-template-id').value;
 
         const payload = {
             sport_type: document.getElementById('edit-sport-type').value || null,
@@ -256,6 +302,7 @@ const planUI = (() => {
             planned_distance: distKm > 0 ? distKm * 1000 : null,
             planned_duration: durationSec,
             notes: document.getElementById('edit-notes').value || null,
+            template_id: tmplVal ? parseInt(tmplVal, 10) : null,
         };
 
         fetch(`/api/plan/${planId}`, {
@@ -281,6 +328,8 @@ const planUI = (() => {
     return {
         toggleAddForm,
         loadExtendedTypes,
+        loadTemplates,
+        loadEditTemplates,
         submitAdd,
         deletePlan,
         duplicate,

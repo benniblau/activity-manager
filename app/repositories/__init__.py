@@ -7,6 +7,7 @@ from .day_repository import DayRepository
 from .gear_repository import GearRepository
 from .planned_activity_repository import PlannedActivityRepository
 from .api_key_repository import ApiKeyRepository
+from .training_template_repository import TrainingTemplateRepository
 
 __all__ = [
     'BaseRepository',
@@ -16,4 +17,5 @@ __all__ = [
     'GearRepository',
     'PlannedActivityRepository',
     'ApiKeyRepository',
+    'TrainingTemplateRepository',
 ]

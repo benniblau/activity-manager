@@ -30,6 +30,7 @@ def create_plan():
         'planned_distance': data.get('planned_distance') or None,
         'planned_duration': data.get('planned_duration') or None,
         'notes': data.get('notes') or None,
+        'template_id': data.get('template_id') or None,
     }
 
     try:
@@ -53,7 +54,7 @@ def update_plan(plan_id):
 
     allowed = {
         'sport_type', 'extended_type_id', 'planned_distance', 'planned_duration',
-        'notes', 'matched_activity_id', 'day_date'
+        'notes', 'matched_activity_id', 'day_date', 'template_id'
     }
     update_data = {k: data.get(k) for k in allowed if k in data}
 

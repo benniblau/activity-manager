@@ -3,12 +3,13 @@ from flask_login import login_required, current_user
 from app.admin import admin_bp
 from app.repositories import TypeRepository
 from app.repositories.api_key_repository import ApiKeyRepository
+from app.repositories.training_template_repository import TrainingTemplateRepository
 from app.utils.errors import ValidationError, AppError
 from app.auth.user_auth import update_user_profile, update_password
 from app.services.access_control_service import (
     invite_coach, get_pending_invitations, get_coach_athletes_list,
     accept_coach_invitation, reject_coach_invitation, remove_coach_access,
-    set_viewing_user_id, get_athlete_pending_coach_invitations
+    set_viewing_user_id, get_athlete_pending_coach_invitations, get_viewing_user_id
 )
 from app.services.invitation_service import (
     create_invitation, cancel_invitation, get_invitations_sent_by
@@ -397,3 +398,29 @@ def switch_view(user_id):
         flash(str(e), 'danger')
 
     return redirect(url_for('web.index'))
+
+
+# ── Training Templates ────────────────────────────────────────────────────────
+
+@admin_bp.route('/templates')
+@login_required
+def manage_templates():
+    """Training templates list page"""
+    user_id = get_viewing_user_id()
+    repo = TrainingTemplateRepository()
+    templates = repo.get_templates(user_id)
+    return render_template('admin/manage_templates.html', templates=templates)
+
+
+@admin_bp.route('/templates/<int:template_id>')
+@login_required
+def template_detail(template_id):
+    """Template detail / segment management page"""
+    user_id = get_viewing_user_id()
+    repo = TrainingTemplateRepository()
+    try:
+        template = repo.get_template_with_segments(template_id, user_id)
+    except AppError:
+        flash('Template not found', 'danger')
+        return redirect(url_for('admin.manage_templates'))
+    return render_template('admin/template_detail.html', template=template)

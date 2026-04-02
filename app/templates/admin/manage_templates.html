@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Training Templates{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0"><i class="bi bi-journal-richtext me-2"></i>Training Templates</h4>
+    <div>
+        <a href="{{ url_for('admin.index') }}" class="btn btn-outline-secondary btn-sm me-1">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTemplateModal">
+            <i class="bi bi-plus-circle"></i> New Template
+        </button>
+    </div>
+</div>
+
+{% if templates %}
+<div class="table-responsive">
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Sport</th>
+            <th>Segments</th>
+            <th>Description</th>
+            <th style="width:130px;"></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in templates %}
+        <tr>
+            <td class="fw-semibold">{{ t.name }}</td>
+            <td>
+                {% if t.sport_type %}
+                <span class="badge bg-secondary">{{ t.sport_type }}</span>
+                {% else %}
+                <span class="text-secondary small">Any</span>
+                {% endif %}
+            </td>
+            <td><span class="badge bg-dark border">{{ t.segment_count }}</span></td>
+            <td class="text-secondary small">{{ t.description or '—' }}</td>
+            <td>
+                <a href="{{ url_for('admin.template_detail', template_id=t.id) }}"
+                   class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <button class="btn btn-outline-danger btn-sm"
+                        onclick="tmpl.deleteTemplate({{ t.id }}, '{{ t.name|e }}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-journal-richtext" style="font-size:3rem;color:var(--bs-secondary);"></i>
+    <p class="mt-3 text-secondary">No training templates yet.</p>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTemplateModal">
+        <i class="bi bi-plus-circle"></i> Create your first template
+    </button>
+</div>
+{% endif %}
+
+{# Add Template Modal #}
+<div class="modal fade" id="addTemplateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> New Training Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addTemplateForm" onsubmit="tmpl.submitAdd(event)">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control"
+                               placeholder="e.g. 5 km Tempo, Long Run Base" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sport Type</label>
+                        <select name="sport_type" class="form-select">
+                            <option value="">— Any —</option>
+                            <option value="Run">Run</option>
+                            <option value="TrailRun">Trail Run</option>
+                            <option value="Ride">Ride</option>
+                            <option value="Swim">Swim</option>
+                            <option value="Walk">Walk</option>
+                            <option value="Hike">Hike</option>
+                            <option value="WeightTraining">Weight Training</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" name="description" class="form-control"
+                               placeholder="Optional description">
+                    </div>
+                    <div id="addTemplateError" class="text-danger small" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/training-templates.js') }}"></script>
+{% endblock %}
