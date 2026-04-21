@@ -18,6 +18,6 @@ def _mcp_url() -> str:
     return os.environ.get("AM_MCP_URL", "http://127.0.0.1:8080").rstrip("/")
 
 
-@mcp_proxy_bp.route("/mcp", methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"])
+@mcp_proxy_bp.route("/mcp", methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"], strict_slashes=False)
 def mcp():
     return redirect(f"{_mcp_url()}/mcp", code=307)

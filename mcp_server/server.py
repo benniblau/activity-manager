@@ -82,11 +82,20 @@ def main() -> None:
             async with session_manager.run():
                 yield
 
+        def _normalize_path(inner):
+            async def wrapped(scope, receive, send):
+                if scope["type"] == "http" and not scope.get("path"):
+                    scope = {**scope, "path": "/"}
+                await inner(scope, receive, send)
+            return wrapped
+
         app = Starlette(
             routes=[
                 Mount(
                     "/mcp",
-                    app=ApiKeyMiddleware(session_manager.handle_request, conn),
+                    app=ApiKeyMiddleware(
+                        _normalize_path(session_manager.handle_request), conn
+                    ),
                 )
             ],
             lifespan=lifespan,
