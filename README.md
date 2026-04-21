@@ -64,9 +64,8 @@ A **multi-user sports training and recovery journal** for athletes working with 
 - **Model Context Protocol** — Exposes activity data to AI agents (Claude Desktop, Claude Code, mcporter, etc.) via the MCP standard
 - **API Key Authentication** — Keys created per-user from Profile → API Keys; sha256-hashed, never stored in plaintext
 - **Two Permission Scopes** — `read` (list/get tools only) or `readwrite` (+ annotation and planning mutations)
-- **stdio & Streamable HTTP transports** — stdio for local clients (Claude Desktop); Streamable HTTP (`/mcp`) for persistent server deployments
-- **Built-in Flask proxy** — The main app proxies `/mcp` to the MCP server; only one public port needed
-- **Auth discovery** — 401 responses include `WWW-Authenticate: Bearer resource_metadata=…`; RFC 9728 / RFC 8414 endpoints at `/.well-known/` for machine-readable auth discovery
+- **stdio & Streamable HTTP transports** — stdio for local clients (Claude Desktop); Streamable HTTP for persistent server deployments
+- **Standalone server** — Runs as its own process/service (port 8080); Flask `/mcp` redirects clients there
 - **17 tools** — activities (list, get, search, stats, annotate), days (get, range, with-activities, update), planning (get day/week, create/update/delete), types, gear
 
 ### User Interface
@@ -280,21 +279,6 @@ server {
         proxy_set_header Authorization $http_authorization;
     }
 
-    # MCP endpoint — disable buffering for streaming responses
-    location /mcp {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        # Explicitly forward the Authorization header — nginx may strip it otherwise.
-        proxy_set_header Authorization $http_authorization;
-        proxy_buffering off;
-        proxy_cache off;
-        # Required for SSE / Streamable HTTP keep-alive streams.
-        proxy_read_timeout 3600s;
-    }
-
     location /static {
         alias /var/www/activity-manager/app/static;
     }
@@ -341,30 +325,28 @@ The client launches the server automatically as a subprocess. Add this to your C
 
 Restart Claude Desktop — no separate process to start.
 
-#### Streamable HTTP — persistent daemon (for servers / remote access)
+#### HTTP — persistent daemon (for servers / remote access)
 
-The current MCP standard transport (spec 2025-03-26). Clients authenticate per-request via API key — no `AM_API_KEY` env var needed on the server.
+The current MCP standard transport (spec 2025-03-26). The MCP server runs as a standalone process; clients send an API key on every request.
 
 ```bash
-MCP_TRANSPORT=streamable-http python -m mcp_server.server
-# Listens on http://127.0.0.1:8001/mcp by default
+AM_MCP_TRANSPORT=http python -m mcp_server.server
+# Listens on http://0.0.0.0:8080/mcp by default
 ```
 
-The main Flask app proxies `/mcp` to the MCP server, so clients only need the Flask app's URL:
+The Flask app's `/mcp` route redirects clients to the MCP server, so they only need the Flask app's URL:
 
 ```bash
-# Direct (dev):
---http-url http://127.0.0.1:8001/mcp
+# Direct:
+--http-url http://127.0.0.1:8080/mcp
 
-# Via Flask proxy (production):
+# Via Flask redirect (if AM_MCP_URL is set):
 --http-url https://your-domain.com/mcp
 ```
 
 Send the API key as `Authorization: Bearer am_your_key_here` on every request.
 
-Auth requirements are machine-discoverable — clients that support MCP auth discovery will find them automatically via `/.well-known/oauth-protected-resource`.
-
-#### Streamable HTTP as a systemd service
+#### HTTP as a systemd service
 
 ```bash
 sudo cp activity-manager-mcp.service /etc/systemd/system/
@@ -372,8 +354,6 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now activity-manager-mcp
 journalctl -u activity-manager-mcp -f
 ```
-
-Set `MCP_BASE_URL=https://your-domain.com` in `/opt/activity-manager/.env` so auth discovery metadata advertises the correct public URL.
 
 ### Available Tools
 
@@ -403,18 +383,17 @@ Set `MCP_BASE_URL=https://your-domain.com` in `/opt/activity-manager/.env` so au
 
 | Variable | Default | Description |
 |---|---|---|
-| `MCP_TRANSPORT` | `stdio` | `stdio`, `streamable-http`, or `sse` (legacy) |
-| `MCP_HOST` | `127.0.0.1` | Bind host (HTTP modes only) |
-| `MCP_PORT` | `8001` | Bind port (HTTP modes only) |
-| `MCP_BASE_URL` | `http://{host}:{port}` | Externally-accessible base URL — set to your Flask app's domain in production (e.g. `https://your-domain.com`) |
+| `AM_MCP_TRANSPORT` | `http` | `http` or `stdio` |
+| `AM_MCP_HTTP_HOST` | `0.0.0.0` | Bind host (HTTP mode only) |
+| `AM_MCP_HTTP_PORT` | `8080` | Bind port (HTTP mode only) |
 | `DATABASE_PATH` | `./activities.db` | Path to the SQLite database |
-| `AM_API_KEY` | *(required for stdio)* | API key from Profile → API Keys — not used in HTTP modes |
+| `AM_API_KEY` | *(required for stdio)* | API key from Profile → API Keys — not used in HTTP mode |
 
-#### Flask app (proxy)
+#### Flask app (redirect)
 
 | Variable | Default | Description |
 |---|---|---|
-| `MCP_UPSTREAM_URL` | `http://127.0.0.1:8001` | Address of the MCP server as seen by Flask — must match `MCP_HOST`/`MCP_PORT` |
+| `AM_MCP_URL` | `http://127.0.0.1:8080` | Public base URL of the MCP server — Flask redirects `/mcp` here |
 
 ---
 
@@ -517,10 +496,8 @@ Always creates a timestamped backup before making any changes.
 - `POST /activity/<id>/coach-comment` — Save coach comment on an activity
 - `POST /day/<date>/coach-comment` — Save coach comment on a day entry
 
-### MCP (proxied to MCP server — API key auth, no session required)
-- `POST/GET /mcp` — Streamable HTTP MCP endpoint
-- `GET /.well-known/oauth-protected-resource` — RFC 9728 auth discovery
-- `GET /.well-known/oauth-authorization-server` — RFC 8414 auth server metadata
+### MCP (redirects to standalone MCP server — API key auth, no session required)
+- `POST/GET /mcp` — 307 redirect to the standalone MCP server (`AM_MCP_URL/mcp`)
 
 ---
 

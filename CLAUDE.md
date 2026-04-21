@@ -207,4 +207,14 @@ Environment variables (`.env`):
 - `SESSION_LIFETIME` / `REMEMBER_ME_DURATION` - Session duration in hours/days (default: 24h / 30d)
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` - Email for invitations
 
+**MCP server process** (`mcp_server/server.py`):
+- `AM_MCP_TRANSPORT` - `http` (default) or `stdio`
+- `AM_MCP_HTTP_HOST` - Bind host for HTTP mode (default: `0.0.0.0`)
+- `AM_MCP_HTTP_PORT` - Bind port for HTTP mode (default: `8080`)
+- `DATABASE_PATH` - Shared with Flask app
+- `AM_API_KEY` - Required for stdio mode only; API key from Profile → API Keys
+
+**Flask app** (redirects `/mcp` to standalone MCP server):
+- `AM_MCP_URL` - Public base URL of the MCP server (default: `http://127.0.0.1:8080`); used for the 307 redirect at `/mcp`
+
 Production deployment via `wsgi.py` (WSGI entry point for gunicorn). Systemd unit file at `activity-manager.service`.
