@@ -46,7 +46,18 @@ from mcp_server.tools import register_all_tools
 
 
 def main() -> None:
-    transport = os.environ.get("AM_MCP_TRANSPORT", "stdio").lower()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Activity Manager MCP Server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http"],
+        default=os.environ.get("AM_MCP_TRANSPORT", "stdio"),
+        help="Transport mode (default: stdio)",
+    )
+    args = parser.parse_args()
+
+    transport = args.transport
     host = os.environ.get("AM_MCP_HTTP_HOST", "0.0.0.0")
     port = int(os.environ.get("AM_MCP_HTTP_PORT", "8080"))
 
