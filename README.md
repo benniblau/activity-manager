@@ -270,6 +270,21 @@ server {
     listen 80;
     server_name activity.yourdomain.com;
 
+    # MCP server — route /mcp and /mcp/ directly to the standalone MCP process.
+    # Using a regex location ensures both variants reach the same backend without
+    # a client-visible redirect (which MCP clients may not follow reliably).
+    location ~ ^/mcp/?$ {
+        proxy_pass http://127.0.0.1:8080/mcp;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_set_header Host $host;
