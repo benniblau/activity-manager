@@ -85,7 +85,7 @@ def main() -> None:
         def _normalize_path(inner):
             async def wrapped(scope, receive, send):
                 if scope["type"] == "http" and not scope.get("path"):
-                    scope = {**scope, "path": "/"}
+                    scope = {**scope, "path": "/", "raw_path": b"/"}
                 await inner(scope, receive, send)
             return wrapped
 
