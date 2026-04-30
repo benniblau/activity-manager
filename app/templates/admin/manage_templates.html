@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import format_estimate %}
 
 {% block title %}Training Templates{% endblock %}
 
@@ -24,6 +25,7 @@
             <th>Name</th>
             <th>Sport</th>
             <th>Segments</th>
+            <th>Estimate</th>
             <th>Description</th>
             <th style="width:130px;"></th>
         </tr>
@@ -40,6 +42,10 @@
                 {% endif %}
             </td>
             <td><span class="badge bg-dark border">{{ t.segment_count }}</span></td>
+            <td class="text-secondary small text-nowrap">
+                {%- set est = format_estimate(t.estimated_distance_meters, t.estimated_duration_seconds) -%}
+                {{ est.strip() if est.strip() else '—' }}
+            </td>
             <td class="text-secondary small">{{ t.description or '—' }}</td>
             <td>
                 <a href="{{ url_for('admin.template_detail', template_id=t.id) }}"

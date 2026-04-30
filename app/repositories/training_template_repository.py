@@ -4,6 +4,42 @@ from datetime import datetime
 from .base import BaseRepository
 from app.utils.errors import DatabaseError, ValidationError, AppError
 
+_DEFAULT_PACE_SEC_PER_KM = 360  # 6 min/km assumed when pace is unknown
+
+
+def _estimate_totals(segments):
+    """Return (estimated_distance_meters, estimated_duration_seconds) from segment list.
+
+    Segments missing one value have it inferred at _DEFAULT_PACE_SEC_PER_KM.
+    Segments with neither distance nor duration are skipped.
+    Returns (None, None) when no segments carry any distance/duration data.
+    """
+    total_dist = 0.0
+    total_dur = 0.0
+    has_data = False
+    for seg in segments:
+        d = seg.get('distance_meters')
+        t = seg.get('duration_seconds')
+        if d is None and t is None:
+            continue
+        has_data = True
+        total_dist += d if d is not None else t / _DEFAULT_PACE_SEC_PER_KM * 1000
+        total_dur += t if t is not None else d / 1000 * _DEFAULT_PACE_SEC_PER_KM
+    if not has_data:
+        return None, None
+    return total_dist, total_dur
+
+
+_ESTIMATE_COLS = '''
+    SUM(CASE
+        WHEN s.distance_meters  IS NOT NULL THEN s.distance_meters
+        WHEN s.duration_seconds IS NOT NULL THEN CAST(s.duration_seconds AS REAL) / 360 * 1000
+    END) AS estimated_distance_meters,
+    SUM(CASE
+        WHEN s.duration_seconds IS NOT NULL THEN s.duration_seconds
+        WHEN s.distance_meters  IS NOT NULL THEN CAST(s.distance_meters  AS REAL) / 1000 * 360
+    END) AS estimated_duration_seconds'''
+
 
 class TrainingTemplateRepository(BaseRepository):
     """Repository for training template CRUD and segment management"""
@@ -14,7 +50,7 @@ class TrainingTemplateRepository(BaseRepository):
         """List active templates for a user, optionally filtered by sport_type"""
         if sport_type:
             return self.fetchall(
-                '''SELECT t.*, COUNT(s.id) as segment_count
+                f'''SELECT t.*, COUNT(s.id) as segment_count, {_ESTIMATE_COLS}
                    FROM training_templates t
                    LEFT JOIN template_segments s ON s.template_id = t.id
                    WHERE t.user_id = ? AND t.is_active = 1 AND t.sport_type = ?
@@ -23,7 +59,7 @@ class TrainingTemplateRepository(BaseRepository):
                 (user_id, sport_type)
             )
         return self.fetchall(
-            '''SELECT t.*, COUNT(s.id) as segment_count
+            f'''SELECT t.*, COUNT(s.id) as segment_count, {_ESTIMATE_COLS}
                FROM training_templates t
                LEFT JOIN template_segments s ON s.template_id = t.id
                WHERE t.user_id = ? AND t.is_active = 1
@@ -43,11 +79,14 @@ class TrainingTemplateRepository(BaseRepository):
         return row
 
     def get_template_with_segments(self, template_id, user_id):
-        """Fetch a template with its ordered segments"""
+        """Fetch a template with its ordered segments and estimated totals"""
         template = self.get_template(template_id, user_id)
         segments = self.get_segments(template_id)
         result = dict(template)
         result['segments'] = [dict(s) for s in segments]
+        est_dist, est_dur = _estimate_totals(result['segments'])
+        result['estimated_distance_meters'] = est_dist
+        result['estimated_duration_seconds'] = est_dur
         return result
 
     def create_template(self, data, user_id):

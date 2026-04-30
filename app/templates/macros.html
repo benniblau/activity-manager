@@ -1,5 +1,19 @@
 {# Reusable Jinja2 macros for templates #}
 
+{# Format a distance+duration estimate derived from template segments.
+   dist_m: estimated distance in metres (float or None)
+   dur_s:  estimated duration in seconds (float or None)
+   Both are None together when no segment carries distance/duration data. #}
+{% macro format_estimate(dist_m, dur_s) %}
+{%- if dist_m is not none -%}
+  {%- set km = dist_m / 1000 -%}
+  {%- set total_min = (dur_s // 60)|int -%}
+  {%- set h = (total_min // 60)|int -%}
+  {%- set m = (total_min % 60)|int -%}
+  ~{{ "%.1f"|format(km) }} km · {% if h > 0 %}~{{ h }}h {{ "%02d"|format(m) }}m{% else %}~{{ m }} min{% endif %}
+{%- endif %}
+{% endmacro %}
+
 {# Sport type to Font Awesome icon mapping #}
 {% macro sport_icon(sport_type) %}
 {%- set sport_lower = sport_type|lower|replace(' ', '')|replace('-', '') -%}

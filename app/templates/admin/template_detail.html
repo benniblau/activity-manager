@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import format_estimate %}
 
 {% block title %}{{ template.name }} – Training Template{% endblock %}
 
@@ -140,6 +141,13 @@
     {% else %}
     <div class="card-body text-secondary text-center py-4">
         No segments yet. Add one above.
+    </div>
+    {% endif %}
+    {% if template.estimated_distance_meters is not none %}
+    <div class="card-footer text-secondary small">
+        <i class="bi bi-calculator me-1"></i>
+        {{ format_estimate(template.estimated_distance_meters, template.estimated_duration_seconds) }}
+        <span class="ms-1 text-muted">(6:00/km assumed for segments without pace)</span>
     </div>
     {% endif %}
 </div>
