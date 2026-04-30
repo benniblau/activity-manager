@@ -28,7 +28,7 @@
         <span class="badge bg-secondary align-self-center">{{ template.sport_type }}</span>
         {% endif %}
         <button class="btn btn-outline-secondary btn-sm"
-                onclick="tmpl.openEditTemplateModal({{ template|tojson }})">
+                onclick='tmpl.openEditTemplateModal({{ template|tojson }})'>
             <i class="bi bi-pencil"></i> Edit
         </button>
     </div>
