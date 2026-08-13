@@ -9,11 +9,18 @@ def create_app(config_name=None):
     Flask application factory.
 
     Args:
-        config_name: Configuration name ('development', 'production', or None for default)
+        config_name: Configuration name ('development', 'production'), a mapping of
+                     config overrides applied on top of the default config (used by
+                     tests), or None for default
 
     Returns:
         Flask application instance
     """
+    overrides = None
+    if isinstance(config_name, dict):
+        overrides = config_name
+        config_name = None
+
     if config_name is None:
         config_name = os.environ.get('FLASK_ENV', 'development')
 
@@ -21,6 +28,8 @@ def create_app(config_name=None):
 
     # Load configuration
     app.config.from_object(config.get(config_name, config['default']))
+    if overrides:
+        app.config.update(overrides)
 
     # Initialize Flask-Login
     login_manager = LoginManager()

@@ -159,14 +159,67 @@ class PlannedActivityRepository(BaseRepository):
         """
         try:
             db = self.get_db()
-            for index, plan_id in enumerate(ordered_ids):
-                db.execute(
-                    '''UPDATE planned_activities
-                       SET sort_order = ?, updated_at = ?
-                       WHERE id = ? AND user_id = ? AND day_date = ?''',
-                    (index, datetime.utcnow().isoformat(), plan_id, user_id, day_date)
-                )
+            self._apply_order(db, user_id, day_date, ordered_ids, datetime.utcnow().isoformat())
             db.commit()
             return True
         except Exception as e:
             raise DatabaseError(f"Reorder failed: {str(e)}", e)
+
+    def move_to_day(self, plan_id, user_id, to_day, to_ordered_ids=None,
+                    from_day=None, from_ordered_ids=None):
+        """Move a planned activity to another day and re-apply sort order on both days
+
+        A match points at an activity that happened on a specific day, so the
+        matched activity is dropped when it does not belong to the target day.
+
+        Args:
+            plan_id: Plan ID to move
+            user_id: User ID (for access control)
+            to_day: Target day as YYYY-MM-DD
+            to_ordered_ids: Plan IDs of the target day in desired order (incl. plan_id)
+            from_day: Source day as YYYY-MM-DD (optional)
+            from_ordered_ids: Plan IDs remaining on the source day in desired order
+
+        Returns:
+            Dict with resulting `day_date` and `matched_activity_id`,
+            or None if the plan was not found / not owned by the user
+        """
+        source = self.fetchone(
+            'SELECT day_date, matched_activity_id FROM planned_activities WHERE id = ? AND user_id = ?',
+            (plan_id, user_id)
+        )
+        if not source:
+            return None
+
+        matched_id = source['matched_activity_id']
+        if matched_id is not None and source['day_date'] != to_day:
+            matched = self.fetchone('SELECT day_date FROM activities WHERE id = ?', (matched_id,))
+            if not matched or matched['day_date'] != to_day:
+                matched_id = None
+
+        now = datetime.utcnow().isoformat()
+        try:
+            db = self.get_db()
+            db.execute(
+                '''UPDATE planned_activities
+                   SET day_date = ?, matched_activity_id = ?, updated_at = ?
+                   WHERE id = ? AND user_id = ?''',
+                (to_day, matched_id, now, plan_id, user_id)
+            )
+            self._apply_order(db, user_id, to_day, to_ordered_ids or [], now)
+            if from_day and from_day != to_day:
+                self._apply_order(db, user_id, from_day, from_ordered_ids or [], now)
+            db.commit()
+            return {'day_date': to_day, 'matched_activity_id': matched_id}
+        except Exception as e:
+            raise DatabaseError(f"Move failed: {str(e)}", e)
+
+    def _apply_order(self, db, user_id, day_date, ordered_ids, timestamp):
+        """Write sort_order for the given day; ignores IDs not on that day"""
+        for index, plan_id in enumerate(ordered_ids):
+            db.execute(
+                '''UPDATE planned_activities
+                   SET sort_order = ?, updated_at = ?
+                   WHERE id = ? AND user_id = ? AND day_date = ?''',
+                (index, timestamp, plan_id, user_id, day_date)
+            )

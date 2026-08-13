@@ -7,27 +7,110 @@ const planUI = (() => {
     const actualsLoaded = {};
 
     // ── Sortable drag-to-reorder ──────────────────────────────────────────────
-    // Each <tbody> is its own sortable group; dragging moves complete <tr> rows
-    // so the planned-activity chip and match dropdown stay in sync automatically.
+    // All day <tbody> elements share one Sortable group, so rows can be dropped
+    // on any day. Dragging moves complete <tr> rows so the planned-activity chip
+    // and match dropdown stay in sync automatically.
+    //
+    // `draggable: 'tr'` makes every row a valid drop target (otherwise a day with
+    // no planned items — only its header and add-form rows — cannot be dropped
+    // onto). Only `.plan-item-row` carries a `.plan-drag-cell` handle, so the
+    // other rows can be hovered but never dragged; _normalizeDay() puts them back
+    // into place afterwards.
     function initSortables() {
         document.querySelectorAll('tbody.plan-day-body').forEach(tbody => {
             Sortable.create(tbody, {
                 animation: 150,
+                group: 'plan-days',
                 handle: '.plan-drag-cell',
-                draggable: '.plan-item-row',
+                draggable: 'tr',
                 ghostClass: 'sortable-ghost',
-                onEnd() {
-                    const dayDate = tbody.dataset.day;
-                    const orderedIds = Array.from(tbody.querySelectorAll('.plan-item-row'))
-                        .map(row => parseInt(row.dataset.id, 10));
-                    fetch('/api/plan/reorder', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ day_date: dayDate, ordered_ids: orderedIds }),
-                    }).catch(err => console.error('Reorder failed', err));
-                }
+                onEnd: handleDrop,
             });
         });
+    }
+
+    /** Restore the day header at the top and the add-form row at the bottom */
+    function _normalizeDay(tbody) {
+        const header = tbody.querySelector('.plan-day-header');
+        const addRow = tbody.querySelector('.plan-add-row');
+        if (header && header !== tbody.firstElementChild) {
+            tbody.insertBefore(header, tbody.firstElementChild);
+        }
+        if (addRow) tbody.appendChild(addRow);
+    }
+
+    function _orderedIds(tbody) {
+        return Array.from(tbody.querySelectorAll('.plan-item-row'))
+            .map(row => parseInt(row.dataset.id, 10));
+    }
+
+    function handleDrop(evt) {
+        const fromBody = evt.from;
+        const toBody = evt.to;
+        _normalizeDay(fromBody);
+        if (toBody !== fromBody) _normalizeDay(toBody);
+
+        const fromDay = fromBody.dataset.day;
+        const toDay = toBody.dataset.day;
+
+        if (fromDay === toDay) {
+            fetch('/api/plan/reorder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ day_date: toDay, ordered_ids: _orderedIds(toBody) }),
+            }).catch(err => console.error('Reorder failed', err));
+            return;
+        }
+
+        const row = evt.item;
+        const payload = {
+            plan_id: parseInt(row.dataset.id, 10),
+            to_day: toDay,
+            from_day: fromDay,
+            to_ordered_ids: _orderedIds(toBody),
+            from_ordered_ids: _orderedIds(fromBody),
+        };
+
+        fetch('/api/plan/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                window.location.reload();  // DOM no longer matches the database
+                return;
+            }
+            _applyDayChange(row, toDay, data.matched_activity_id);
+        })
+        .catch(err => {
+            console.error('Move failed', err);
+            alert('Failed to move planned activity.');
+            window.location.reload();
+        });
+    }
+
+    /** Re-point a moved row at its new day: the match dropdown lists activities
+     *  of the old day, and the server drops a match that belongs elsewhere. */
+    function _applyDayChange(row, newDay, matchedActivityId) {
+        row.dataset.day = newDay;
+
+        const select = row.querySelector('select[data-plan-id]');
+        if (!select) return;
+        select.dataset.day = newDay;
+        select.setAttribute('onfocus', `planUI.ensureActualsLoaded(this, '${newDay}')`);
+
+        if (!matchedActivityId) {
+            while (select.options.length > 1) select.remove(1);
+            select.value = '';
+            const badge = select.parentElement.querySelector('.matched-badge');
+            if (badge) badge.remove();
+        }
+
+        // Options are stale for the new day — refetch them on next focus
+        delete actualsLoaded[newDay];
     }
 
     // ── Add form toggle ───────────────────────────────────────────────────────

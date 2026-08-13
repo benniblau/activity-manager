@@ -1,5 +1,7 @@
 """REST API endpoints for planned activities (training plan feature)"""
 
+from datetime import datetime
+
 from flask import request, jsonify
 from flask_login import login_required
 from app.api import api_bp
@@ -131,3 +133,50 @@ def reorder_plan():
         return jsonify({'success': True}), 200
     except DatabaseError as e:
         return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/plan/move', methods=['POST'])
+@login_required
+def move_plan():
+    """Move a planned activity to another day, reordering both affected days"""
+    viewing_user_id = get_viewing_user_id()
+    if not viewing_user_id:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json(silent=True) or {}
+
+    plan_id = data.get('plan_id')
+    to_day = (data.get('to_day') or '').strip()
+    from_day = (data.get('from_day') or '').strip()
+    to_ordered_ids = data.get('to_ordered_ids', [])
+    from_ordered_ids = data.get('from_ordered_ids', [])
+
+    if not isinstance(plan_id, int) or not to_day:
+        return jsonify({'error': 'plan_id and to_day are required'}), 400
+    if not isinstance(to_ordered_ids, list) or not isinstance(from_ordered_ids, list):
+        return jsonify({'error': 'to_ordered_ids and from_ordered_ids must be lists'}), 400
+    if not _is_valid_date(to_day) or (from_day and not _is_valid_date(from_day)):
+        return jsonify({'error': 'Dates must be YYYY-MM-DD'}), 400
+
+    try:
+        repo = PlannedActivityRepository()
+        result = repo.move_to_day(
+            plan_id, viewing_user_id, to_day,
+            to_ordered_ids=to_ordered_ids,
+            from_day=from_day or None,
+            from_ordered_ids=from_ordered_ids,
+        )
+        if result is None:
+            return jsonify({'error': 'Not found or unauthorized'}), 404
+        return jsonify({'success': True, **result}), 200
+    except DatabaseError as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def _is_valid_date(value):
+    """True if value is a YYYY-MM-DD date string"""
+    try:
+        datetime.strptime(value, '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
