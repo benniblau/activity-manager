@@ -89,6 +89,20 @@ def main() -> None:
                 await inner(scope, receive, send)
             return wrapped
 
+        def _accept_both_mcp_paths(inner):
+            """Serve /mcp and /mcp/ alike.
+
+            Starlette matches Mount("/mcp") only at "/mcp/" and 307-redirects
+            the bare path. Rewriting the scope ahead of the router means no
+            redirect is emitted at all, so clients that do not re-POST the body
+            across a 307 still work.
+            """
+            async def wrapped(scope, receive, send):
+                if scope["type"] == "http" and scope.get("path") == "/mcp":
+                    scope = {**scope, "path": "/mcp/", "raw_path": b"/mcp/"}
+                await inner(scope, receive, send)
+            return wrapped
+
         app = Starlette(
             routes=[
                 Mount(
@@ -100,6 +114,7 @@ def main() -> None:
             ],
             lifespan=lifespan,
         )
+        app = _accept_both_mcp_paths(app)
 
         logger.info(
             "Starting activity-manager MCP HTTP server on %s:%d — endpoint: http://%s:%d/mcp",
